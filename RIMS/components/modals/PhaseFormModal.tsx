@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormDrawer, FormDrawerField, FormDrawerSection } from "@/components/common/FormDrawer";
 import type { ResearchPhase, PhaseStatus } from "@/lib/types";
+import type { ProjectPhasePayload } from "@/lib/api/research-api";
+import { toApiPhaseStatus } from "@/lib/mappers/status-mapper";
 
 const STATUS_OPTIONS: PhaseStatus[] = [
   "Chưa bắt đầu",
@@ -23,10 +25,28 @@ interface PhaseFormModalProps {
   open: boolean;
   onClose: () => void;
   phase?: ResearchPhase | null;
+  projectId?: string;
+  nextOrder?: number;
+  onSubmit?: (payload: ProjectPhasePayload) => Promise<void>;
 }
 
-export default function PhaseFormModal({ open, onClose, phase }: PhaseFormModalProps) {
+const toNumberOrNull = (value?: string | null) => {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const toOptionalDate = (value: string) => value || null;
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  return "Không lưu được giai đoạn. Vui lòng thử lại.";
+}
+
+export default function PhaseFormModal({ open, onClose, phase, projectId, nextOrder = 1, onSubmit }: PhaseFormModalProps) {
   const isEdit = !!phase;
+  const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const [form, setForm] = useState({
     name: "",
@@ -43,6 +63,7 @@ export default function PhaseFormModal({ open, onClose, phase }: PhaseFormModalP
   });
 
   useEffect(() => {
+    setSubmitError("");
     if (phase) {
       setForm({
         name: phase.name,
@@ -78,14 +99,67 @@ export default function PhaseFormModal({ open, onClose, phase }: PhaseFormModalP
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleSave = async () => {
+    setSubmitError("");
+    if (!form.name.trim()) {
+      setSubmitError("Vui lòng nhập tên giai đoạn.");
+      return;
+    }
+
+    const numericProjectId = toNumberOrNull(phase?.researchId ?? projectId);
+    if (!isEdit && !numericProjectId) {
+      setSubmitError("Không xác định được đề tài để tạo giai đoạn.");
+      return;
+    }
+
+    const progress = Number(form.progress);
+    if (!Number.isFinite(progress) || progress < 0 || progress > 100) {
+      setSubmitError("Tiến độ phải nằm trong khoảng 0-100%.");
+      return;
+    }
+
+    const payload: ProjectPhasePayload = {
+      ...(numericProjectId ? { projectId: numericProjectId } : {}),
+      phaseName: form.name.trim(),
+      description: form.description.trim() || null,
+      responsibleUserId: toNumberOrNull(phase?.responsibleUserId),
+      plannedStartDate: toOptionalDate(form.plannedStartDate),
+      plannedEndDate: toOptionalDate(form.plannedEndDate),
+      deadlineDate: toOptionalDate(form.deadline),
+      actualStartDate: toOptionalDate(form.actualStartDate),
+      actualEndDate: toOptionalDate(form.actualEndDate),
+      progressPercent: progress,
+      phaseStatus: toApiPhaseStatus(form.status),
+      notes: form.notes.trim() || null,
+      sortOrder: phase?.order ?? nextOrder,
+    };
+
+    try {
+      setSaving(true);
+      await onSubmit?.(payload);
+      onClose();
+    } catch (error) {
+      setSubmitError(getErrorMessage(error));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <FormDrawer
       open={open}
       onOpenChange={onClose}
       title={isEdit ? "Chỉnh sửa giai đoạn" : "Thêm giai đoạn mới"}
-      onSave={onClose}
+      onSave={handleSave}
       saveLabel={isEdit ? "Cập nhật" : "Lưu"}
+      isSaving={saving}
     >
+      {submitError && (
+        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+          {submitError}
+        </div>
+      )}
+
       <FormDrawerField label="Tên giai đoạn" required colSpan={2}>
         <Input
           value={form.name}

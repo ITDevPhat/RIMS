@@ -23,6 +23,8 @@ export default function UserManagementTab() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -37,6 +39,19 @@ export default function UserManagementTab() {
       setLoading(false);
     }
   }, [searchQuery]);
+
+  const runUserAction = async (userId: string, action: () => Promise<unknown>) => {
+    setActionError("");
+    setPendingUserId(userId);
+    try {
+      await action();
+      await loadUsers();
+    } catch (actionFailure) {
+      setActionError(actionFailure instanceof Error ? actionFailure.message : "Không cập nhật được người dùng.");
+    } finally {
+      setPendingUserId(null);
+    }
+  };
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadUsers(), 250);
@@ -77,7 +92,7 @@ export default function UserManagementTab() {
           <h2 className="text-lg font-bold text-slate-800">Quản Lý Người Dùng</h2>
           <p className="text-sm text-slate-600 mt-1">Tổng cộng: {users.length} người dùng</p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" disabled title="Chưa hỗ trợ thêm người dùng trong MVP">
           <Plus className="h-4 w-4" />
           Thêm Người Dùng
         </Button>
@@ -99,6 +114,11 @@ export default function UserManagementTab() {
         <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
           {error}
           <Button size="sm" variant="outline" onClick={() => void loadUsers()}>Thử lại</Button>
+        </div>
+      )}
+      {actionError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+          {actionError}
         </div>
       )}
 
@@ -137,6 +157,7 @@ export default function UserManagementTab() {
                   <div className="flex items-center justify-end gap-2">
                     <button
                       title="Sửa"
+                      disabled
                       className="p-1.5 text-slate-600 hover:bg-slate-100 rounded transition"
                     >
                       <Edit2 className="h-4 w-4" />
@@ -144,10 +165,8 @@ export default function UserManagementTab() {
                     {user.status === "active" && (
                       <button
                         title="Khóa"
-                        onClick={async () => {
-                          await adminApi.lockUser(user.id);
-                          await loadUsers();
-                        }}
+                        disabled={pendingUserId === user.id}
+                        onClick={() => void runUserAction(user.id, () => adminApi.lockUser(user.id))}
                         className="p-1.5 text-slate-600 hover:bg-slate-100 rounded transition"
                       >
                         <Lock className="h-4 w-4" />
@@ -155,10 +174,8 @@ export default function UserManagementTab() {
                     )}
                     <button
                       title="Xóa"
-                      onClick={async () => {
-                        await adminApi.deleteUser(user.id);
-                        await loadUsers();
-                      }}
+                      disabled={pendingUserId === user.id}
+                      onClick={() => void runUserAction(user.id, () => adminApi.deleteUser(user.id))}
                       className="p-1.5 text-slate-600 hover:bg-red-50 hover:text-red-600 rounded transition"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -166,10 +183,8 @@ export default function UserManagementTab() {
                     {user.status === "locked" && (
                       <button
                         title="Mở khóa"
-                        onClick={async () => {
-                          await adminApi.unlockUser(user.id);
-                          await loadUsers();
-                        }}
+                        disabled={pendingUserId === user.id}
+                        onClick={() => void runUserAction(user.id, () => adminApi.unlockUser(user.id))}
                         className="p-1.5 text-slate-600 hover:bg-slate-100 rounded transition"
                       >
                         <RotateCcw className="h-4 w-4" />

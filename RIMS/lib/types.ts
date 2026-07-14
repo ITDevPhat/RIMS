@@ -82,6 +82,7 @@ export interface ResearchPhase {
   sortOrder?: number;
   name: string;
   description?: string;
+  responsibleUserId?: string | null;
   assignee?: string;
   assignedTo?: string;
   plannedStartDate: string;
@@ -108,6 +109,7 @@ export interface ResearchMilestone {
   order: number;
   sortOrder?: number;
   name: string;
+  responsibleUserId?: string | null;
   assignee?: string;
   assignedTo?: string;
   plannedStartDate: string;

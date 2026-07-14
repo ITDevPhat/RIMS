@@ -52,6 +52,31 @@ export function mapPhaseStatus(status?: string | null): PhaseStatus {
   }
 }
 
+export function toApiPhaseStatus(status: PhaseStatus): string {
+  switch (status) {
+    case "Hoàn thành":
+      return "completed";
+    case "Hoàn thành trễ":
+      return "completed_late";
+    case "Chờ duyệt":
+      return "pending";
+    case "Cần chỉnh sửa":
+      return "revision_required";
+    case "Chưa bắt đầu":
+      return "not_started";
+    case "Trễ hạn":
+      return "overdue";
+    case "Có nguy cơ":
+      return "at_risk";
+    case "Tạm dừng":
+      return "paused";
+    case "Hủy":
+      return "cancelled";
+    default:
+      return "in_progress";
+  }
+}
+
 export function mapHealthStatus(status?: string | null): ProjectHealth {
   switch (status) {
     case "at_risk":
@@ -87,6 +112,23 @@ export function mapRiskLevel(status?: string | null): RiskLevel {
       return "Hoàn thành trễ";
     default:
       return "Đúng tiến độ";
+  }
+}
+
+export function toApiPriorityLevel(risk: RiskLevel): string {
+  switch (risk) {
+    case "Có nguy cơ":
+      return "high";
+    case "Trễ hạn":
+      return "urgent";
+    case "Đã hoàn thành":
+      return "completed";
+    case "Hoàn thành trễ":
+      return "completed_late";
+    case "Tạm dừng":
+      return "paused";
+    default:
+      return "normal";
   }
 }
 

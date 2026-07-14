@@ -118,6 +118,7 @@ public sealed class AuditLogQuery : PaginationQuery
     public string? ModuleCode { get; set; }
     public string? ActionType { get; set; }
     public string? EntityType { get; set; }
+    public long? EntityId { get; set; }
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }
 }

@@ -9,9 +9,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { PhaseStatus, ResearchPhase, ResearchProject } from "@/lib/types";
 import { projectPhaseApi, researchApi } from "@/lib/api/research-api";
+import type { ProjectPhasePayload } from "@/lib/api/research-api";
 import { mapApiProjectToUi } from "@/lib/mappers/project-mapper";
 import { mapApiPhaseToUi } from "@/lib/mappers/phase-mapper";
 import PhaseFormModal from "@/components/modals/PhaseFormModal";
+import { ConfirmationDialog } from "@/components/common/ConfirmationDialog";
 
 function PhaseBadge({ status }: { status: PhaseStatus }) {
   const map: Record<string, string> = {
@@ -37,8 +39,11 @@ export default function QuanLyGiaiDoan() {
   const [selectedResearch, setSelectedResearch] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPhase, setEditingPhase] = useState<ResearchPhase | null>(null);
+  const [phaseToDelete, setPhaseToDelete] = useState<ResearchPhase | null>(null);
+  const [deletingPhaseId, setDeletingPhaseId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [actionError, setActionError] = useState("");
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -65,6 +70,33 @@ export default function QuanLyGiaiDoan() {
     void loadData();
   }, [loadData]);
 
+  const handleSubmitPhase = async (payload: ProjectPhasePayload) => {
+    if (editingPhase) {
+      const updatePayload = { ...payload };
+      delete updatePayload.projectId;
+      await projectPhaseApi.updatePhase(editingPhase.id, updatePayload);
+    } else {
+      await projectPhaseApi.createPhase(payload);
+    }
+    setEditingPhase(null);
+    await loadData();
+  };
+
+  const handleDeletePhase = async () => {
+    if (!phaseToDelete) return;
+    setActionError("");
+    setDeletingPhaseId(phaseToDelete.id);
+    try {
+      await projectPhaseApi.deletePhase(phaseToDelete.id);
+      setPhaseToDelete(null);
+      await loadData();
+    } catch (deleteError) {
+      setActionError(deleteError instanceof Error ? deleteError.message : "Không xóa được giai đoạn.");
+    } finally {
+      setDeletingPhaseId(null);
+    }
+  };
+
   const visiblePhases = useMemo(
     () => selectedResearch === "all" ? phases : phases.filter((phase) => phase.researchId === selectedResearch),
     [phases, selectedResearch]
@@ -90,6 +122,11 @@ export default function QuanLyGiaiDoan() {
               {error}
               <Button size="sm" variant="outline" onClick={() => void loadData()}>Thử lại</Button>
             </CardContent>
+          </Card>
+        )}
+        {actionError && (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-4 text-sm font-medium text-red-700">{actionError}</CardContent>
           </Card>
         )}
 
@@ -131,7 +168,15 @@ export default function QuanLyGiaiDoan() {
                     <TableCell className="px-3 py-3">
                       <div className="flex gap-1">
                         <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditingPhase(phase); setModalOpen(true); }}><Pencil className="h-3 w-3" /></Button>
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 hover:text-red-500" onClick={async () => { await projectPhaseApi.deletePhase(phase.id); await loadData(); }}><Trash2 className="h-3 w-3" /></Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 hover:text-red-500"
+                          disabled={deletingPhaseId === phase.id}
+                          onClick={() => setPhaseToDelete(phase)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -144,7 +189,24 @@ export default function QuanLyGiaiDoan() {
         <p className="text-xs text-slate-400">Hiển thị {visiblePhases.length} giai đoạn</p>
       </div>
 
-      <PhaseFormModal open={modalOpen} onClose={() => setModalOpen(false)} phase={editingPhase} />
+      <PhaseFormModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        phase={editingPhase}
+        projectId={selectedResearch === "all" ? projects[0]?.id : selectedResearch}
+        nextOrder={visiblePhases.length + 1}
+        onSubmit={handleSubmitPhase}
+      />
+      <ConfirmationDialog
+        open={!!phaseToDelete}
+        onOpenChange={(open) => {
+          if (!open && !deletingPhaseId) setPhaseToDelete(null);
+        }}
+        type="delete"
+        itemName={phaseToDelete?.name ?? "giai đoạn này"}
+        onConfirm={() => void handleDeletePhase()}
+        isLoading={!!deletingPhaseId}
+      />
     </div>
   );
 }

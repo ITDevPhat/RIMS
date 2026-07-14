@@ -39,6 +39,26 @@ export interface ApiSetting {
   isActive: boolean;
 }
 
+export interface ApiRolePermissionAction {
+  actionCode: string;
+  actionName: string;
+  permissionCode: string;
+  permissionId: number;
+  isAllowed: boolean;
+}
+
+export interface ApiRolePermissionModule {
+  moduleCode: string;
+  moduleName: string;
+  actions: ApiRolePermissionAction[];
+}
+
+export interface ApiRolePermissionMatrix {
+  roleId: number;
+  roleName: string;
+  modules: ApiRolePermissionModule[];
+}
+
 export const adminApi = {
   getUsers: (filters?: QueryParams) => apiClient.get<PagedResult<ApiAdminUser>>("/users", filters),
   getUser: (id: string | number) => apiClient.get<ApiAdminUser>(`/users/${id}`),
@@ -58,6 +78,7 @@ export const adminApi = {
   updateRolePermissions: (roleId: string | number, payload: { permissionIds: number[] }) =>
     apiClient.put<unknown>(`/roles/${roleId}/permissions`, payload),
   getSettings: (filters?: QueryParams) => apiClient.get<PagedResult<ApiSetting>>("/settings", filters),
+  createSetting: (payload: unknown) => apiClient.post<ApiSetting>("/settings", payload),
   updateSetting: (key: string, payload: unknown) => apiClient.put<ApiSetting>(`/settings/${key}`, payload),
   getAccountPreferences: () => apiClient.get<unknown>("/account/preferences"),
   updateAccountPreferences: (payload: unknown) => apiClient.put<unknown>("/account/preferences", payload),

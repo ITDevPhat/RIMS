@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Bell,
   Check,
@@ -34,6 +34,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useThemeMode, type ThemeMode } from "@/lib/theme-mode";
 import { cn } from "@/lib/utils";
+import UserManagementTab from "@/components/admin/UserManagementTab";
+import RoleManagementTab from "@/components/admin/RoleManagementTab";
+import { adminApi, type ApiAdminRole, type ApiRolePermissionMatrix, type ApiSetting } from "@/lib/api/admin-api";
+import { auditApi, type ApiAuditLog } from "@/lib/api/audit-api";
+import { notificationApi, type ApiNotificationRule, type ApiNotificationSettings } from "@/lib/api/notification-api";
 
 type SettingsTab = "general" | "notifications" | "rules" | "users" | "roles" | "permissions" | "audit";
 
@@ -53,36 +58,20 @@ const themeOptions: Array<{ value: ThemeMode; label: string; description: string
   { value: "system", label: "Theo hệ thống", description: "Tự động theo cài đặt của thiết bị.", icon: Monitor },
 ];
 
-const users = [
-  { name: "Quản trị viên Bệnh viện", email: "admin@hospital.vn", username: "admin", department: "Phòng Quản lý Nghiên cứu Khoa học", role: "Quản trị viên", status: "Hoạt động", lastLogin: "16/07/2026 08:15" },
-  { name: "BS.CKII Nguyễn Văn An", email: "an.nguyen@hospital.vn", username: "nguyenvanan", department: "Khoa Khám bệnh", role: "Chủ nhiệm đề tài", status: "Hoạt động", lastLogin: "15/07/2026 16:20" },
-  { name: "CN Trần Thị Mai", email: "mai.tran@hospital.vn", username: "tranthimai", department: "Phòng Quản lý Nghiên cứu Khoa học", role: "Điều phối nghiên cứu", status: "Hoạt động", lastLogin: "16/07/2026 09:20" },
-  { name: "CN Võ Thị Thanh", email: "thanh.vo@hospital.vn", username: "vothithanh", department: "Tổ Thống kê", role: "Thành viên nghiên cứu", status: "Hoạt động", lastLogin: "16/07/2026 10:40" },
-];
+const GENERAL_SETTING_DEFS = [
+  { key: "system.name", label: "Tên hệ thống", valueType: "string", group: "general", name: "Tên hệ thống", defaultValue: "ResearchTracker RMS" },
+  { key: "system.organization", label: "Đơn vị triển khai", valueType: "string", group: "general", name: "Đơn vị triển khai", defaultValue: "Bệnh viện Đa khoa Thành phố" },
+  { key: "system.timezone", label: "Múi giờ", valueType: "string", group: "general", name: "Múi giờ", defaultValue: "Asia/Ho_Chi_Minh" },
+  { key: "system.language", label: "Ngôn ngữ mặc định", valueType: "string", group: "general", name: "Ngôn ngữ mặc định", defaultValue: "Tiếng Việt" },
+  { key: "system.date_format", label: "Định dạng ngày", valueType: "string", group: "general", name: "Định dạng ngày", defaultValue: "dd/MM/yyyy" },
+  { key: "system.working_year", label: "Năm làm việc", valueType: "number", group: "general", name: "Năm làm việc", defaultValue: "2026" },
+  { key: "research.warning_days", label: "Ngưỡng cảnh báo sắp trễ", valueType: "number", group: "research", name: "Ngưỡng cảnh báo sắp trễ", defaultValue: "7" },
+  { key: "research.low_progress_threshold", label: "Ngưỡng tiến độ thấp hơn kế hoạch", valueType: "number", group: "research", name: "Ngưỡng tiến độ thấp hơn kế hoạch", defaultValue: "20" },
+  { key: "research.auto_status", label: "Tự động tính trạng thái module", valueType: "boolean", group: "research", name: "Tự động tính trạng thái module", defaultValue: "true" },
+  { key: "research.auto_delay", label: "Tự động tính số ngày trễ", valueType: "boolean", group: "research", name: "Tự động tính số ngày trễ", defaultValue: "true" },
+] as const;
 
-const roles = [
-  { code: "ADMIN", name: "Quản trị viên", description: "Toàn quyền hệ thống", count: 1, status: "Đang dùng" },
-  { code: "RESEARCH_OFFICE", name: "Phòng Quản lý Nghiên cứu", description: "Quản lý đề tài, module, milestone", count: 3, status: "Đang dùng" },
-  { code: "PI", name: "Chủ nhiệm đề tài", description: "Quản lý đề tài được phân công", count: 5, status: "Đang dùng" },
-  { code: "RESEARCH_MEMBER", name: "Thành viên nghiên cứu", description: "Cập nhật milestone và tiến độ", count: 12, status: "Đang dùng" },
-  { code: "VIEWER", name: "Người xem", description: "Chỉ xem dữ liệu được phân quyền", count: 8, status: "Đang dùng" },
-];
-
-const rulesInitial = [
-  { code: "DEADLINE_DUE_7D", name: "Nhắc hạn chót còn 7 ngày", target: "Module", condition: "Sắp đến hạn", days: 7, channel: "Hệ thống", priority: "Cao", enabled: true },
-  { code: "MILESTONE_OVERDUE", name: "Nhắc milestone trễ hạn", target: "Milestone", condition: "Trễ hạn", days: 0, channel: "Hệ thống + Email", priority: "Khẩn cấp", enabled: true },
-  { code: "ETHICS_EXPIRING_30D", name: "Nhắc phê duyệt đạo đức sắp hết hạn", target: "Nghiên cứu", condition: "Sắp hết hạn", days: 30, channel: "Hệ thống", priority: "Cao", enabled: true },
-];
-
-const permissionModules = ["Tổng quan", "Nghiên cứu", "Module", "Milestone", "Hạn chót", "Thông báo", "Cài đặt", "Người dùng", "Vai trò"];
-const permissionActions = ["Xem", "Thêm", "Sửa", "Xóa", "Duyệt", "Xuất dữ liệu", "Cấu hình"];
-
-const auditLogs = [
-  { time: "16/07/2026 08:15", user: "Quản trị viên Bệnh viện", module: "Người dùng", action: "Đăng nhập", target: "admin@hospital.vn", content: "Đăng nhập hệ thống thành công", status: "Thành công" },
-  { time: "16/07/2026 09:20", user: "CN Trần Thị Mai", module: "Nghiên cứu", action: "Sửa", target: "NC-2026-001", content: "Cập nhật tiến độ nghiên cứu", status: "Thành công" },
-  { time: "16/07/2026 10:05", user: "BS Nguyễn Văn Bình", module: "Module", action: "Sửa", target: "Thu thập số liệu", content: "Cập nhật tiến độ module lên 58%", status: "Thành công" },
-  { time: "16/07/2026 10:40", user: "CN Võ Thị Thanh", module: "Milestone", action: "Thêm", target: "Kiểm tra thiếu dữ liệu định kỳ", content: "Tạo milestone mới", status: "Thành công" },
-];
+type GeneralSettingKey = typeof GENERAL_SETTING_DEFS[number]["key"];
 
 function Toggle({
   checked,
@@ -132,6 +121,37 @@ function SettingRow({
       {children}
     </div>
   );
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("vi-VN");
+}
+
+function settingPayload(def: typeof GENERAL_SETTING_DEFS[number], value: string) {
+  return {
+    settingValue: value,
+    valueType: def.valueType,
+    settingGroup: def.group,
+    settingName: def.name,
+    description: null,
+    isPublic: true,
+    isActive: true,
+  };
+}
+
+async function saveSetting(def: typeof GENERAL_SETTING_DEFS[number], value: string, existing?: ApiSetting) {
+  const payload = settingPayload(def, value);
+  if (existing) {
+    return adminApi.updateSetting(def.key, payload);
+  }
+  return adminApi.createSetting({ settingKey: def.key, ...payload });
 }
 
 function ThemeSelector({ compact = false }: { compact?: boolean }) {
@@ -225,12 +245,72 @@ export default function CaiDat() {
 }
 
 function GeneralSettingsTab() {
-  const [autoStatus, setAutoStatus] = useState(true);
-  const [autoDelay, setAutoDelay] = useState(true);
-  const [saved, setSaved] = useState(false);
+  const [settings, setSettings] = useState<Record<GeneralSettingKey, string>>(() =>
+    Object.fromEntries(GENERAL_SETTING_DEFS.map((def) => [def.key, def.defaultValue])) as Record<GeneralSettingKey, string>
+  );
+  const [existingSettings, setExistingSettings] = useState<Record<GeneralSettingKey, ApiSetting | undefined>>({} as Record<GeneralSettingKey, ApiSetting | undefined>);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState("");
+
+  const loadSettings = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const result = await adminApi.getSettings({ pageSize: 200 });
+      const nextSettings = Object.fromEntries(GENERAL_SETTING_DEFS.map((def) => [def.key, def.defaultValue])) as Record<GeneralSettingKey, string>;
+      const nextExisting = {} as Record<GeneralSettingKey, ApiSetting | undefined>;
+      for (const item of result.items) {
+        const def = GENERAL_SETTING_DEFS.find((entry) => entry.key === item.settingKey);
+        if (def) {
+          nextSettings[def.key] = item.settingValue ?? def.defaultValue;
+          nextExisting[def.key] = item;
+        }
+      }
+      setSettings(nextSettings);
+      setExistingSettings(nextExisting);
+    } catch (loadError) {
+      setError(getErrorMessage(loadError, "Không tải được cài đặt hệ thống."));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadSettings();
+  }, [loadSettings]);
+
+  const updateSettingValue = (key: GeneralSettingKey, value: string) => {
+    setSaved("");
+    setSettings((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError("");
+    setSaved("");
+    try {
+      const savedSettings = await Promise.all(GENERAL_SETTING_DEFS.map((def) => saveSetting(def, settings[def.key], existingSettings[def.key])));
+      const nextExisting = {} as Record<GeneralSettingKey, ApiSetting | undefined>;
+      for (const item of savedSettings) {
+        const def = GENERAL_SETTING_DEFS.find((entry) => entry.key === item.settingKey);
+        if (def) nextExisting[def.key] = item;
+      }
+      setExistingSettings((prev) => ({ ...prev, ...nextExisting }));
+      setSaved("Đã lưu cài đặt hệ thống.");
+      await loadSettings();
+    } catch (saveError) {
+      setError(getErrorMessage(saveError, "Không lưu được cài đặt hệ thống."));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-5">
+      {loading && <Card><CardContent className="p-4 text-sm text-slate-500">Đang tải cài đặt hệ thống...</CardContent></Card>}
+      {error && <Card className="border-red-200 bg-red-50"><CardContent className="p-4 text-sm font-medium text-red-700">{error}</CardContent></Card>}
       <div className="grid gap-5 xl:grid-cols-2">
         <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <CardHeader>
@@ -238,17 +318,16 @@ function GeneralSettingsTab() {
             <CardDescription>Thông tin vận hành chung của ResearchTracker RMS.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
-            {[
-              ["Tên hệ thống", "ResearchTracker RMS"],
-              ["Đơn vị triển khai", "Bệnh viện Đa khoa Thành phố"],
-              ["Múi giờ", "Asia/Ho_Chi_Minh"],
-              ["Ngôn ngữ mặc định", "Tiếng Việt"],
-              ["Định dạng ngày", "dd/MM/yyyy"],
-              ["Năm làm việc", "2026"],
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
-                <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
-                <p className="mt-1 truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{value}</p>
+            {GENERAL_SETTING_DEFS.slice(0, 6).map((def) => (
+              <div key={def.key} className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+                <p className="text-xs text-slate-500 dark:text-slate-400">{def.label}</p>
+                <Input
+                  className="mt-1 h-9 text-sm font-semibold"
+                  type={def.valueType === "number" ? "number" : "text"}
+                  value={settings[def.key]}
+                  onChange={(event) => updateSettingValue(def.key, event.target.value)}
+                  disabled={loading || saving}
+                />
               </div>
             ))}
           </CardContent>
@@ -261,16 +340,16 @@ function GeneralSettingsTab() {
           </CardHeader>
           <CardContent className="space-y-3">
             <SettingRow label="Ngưỡng cảnh báo sắp trễ" description="Số ngày trước hạn chót để cảnh báo.">
-              <Input className="h-9 w-24 text-right" value="7 ngày" readOnly />
+              <Input className="h-9 w-24 text-right" type="number" value={settings["research.warning_days"]} onChange={(event) => updateSettingValue("research.warning_days", event.target.value)} disabled={loading || saving} />
             </SettingRow>
             <SettingRow label="Ngưỡng tiến độ thấp hơn kế hoạch" description="Chênh lệch tiến độ cho phép.">
-              <Input className="h-9 w-24 text-right" value="20%" readOnly />
+              <Input className="h-9 w-24 text-right" type="number" value={settings["research.low_progress_threshold"]} onChange={(event) => updateSettingValue("research.low_progress_threshold", event.target.value)} disabled={loading || saving} />
             </SettingRow>
             <SettingRow label="Tự động tính trạng thái module">
-              <Toggle checked={autoStatus} onChange={setAutoStatus} label="Tự động tính trạng thái module" />
+              <Toggle checked={settings["research.auto_status"] === "true"} onChange={(value) => updateSettingValue("research.auto_status", String(value))} label="Tự động tính trạng thái module" />
             </SettingRow>
             <SettingRow label="Tự động tính số ngày trễ">
-              <Toggle checked={autoDelay} onChange={setAutoDelay} label="Tự động tính số ngày trễ" />
+              <Toggle checked={settings["research.auto_delay"] === "true"} onChange={(value) => updateSettingValue("research.auto_delay", String(value))} label="Tự động tính số ngày trễ" />
             </SettingRow>
           </CardContent>
         </Card>
@@ -287,26 +366,61 @@ function GeneralSettingsTab() {
       </Card>
 
       <div className="flex items-center gap-3">
-        <Button className="gap-2" onClick={() => setSaved(true)}>
+        <Button className="gap-2" onClick={() => void handleSave()} disabled={saving || loading}>
           <Save className="h-4 w-4" />
-          Lưu thay đổi
+          {saving ? "Đang lưu..." : "Lưu thay đổi"}
         </Button>
-        {saved && <span className="text-sm font-medium text-emerald-600">Đã cập nhật cài đặt giao diện.</span>}
+        {saved && <span className="text-sm font-medium text-emerald-600">{saved}</span>}
       </div>
     </div>
   );
 }
 
 function NotificationSettingsTab() {
-  const [state, setState] = useState({
-    inApp: true,
-    email: false,
-    deadline: true,
-    milestone: true,
-    ethics: true,
-    scanTime: "07:00",
-  });
-  const [saved, setSaved] = useState(false);
+  const [state, setState] = useState<ApiNotificationSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState("");
+
+  const loadSettings = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      setState(await notificationApi.getNotificationSettings());
+    } catch (loadError) {
+      setError(getErrorMessage(loadError, "Không tải được cấu hình thông báo."));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadSettings();
+  }, [loadSettings]);
+
+  const updateState = (updater: (current: ApiNotificationSettings) => ApiNotificationSettings) => {
+    setSaved("");
+    setState((current) => current ? updater(current) : current);
+  };
+
+  const handleSave = async () => {
+    if (!state) return;
+    setSaving(true);
+    setError("");
+    setSaved("");
+    try {
+      const updated = await notificationApi.updateNotificationSettings(state);
+      setState(updated);
+      setSaved("Đã lưu cấu hình thông báo.");
+    } catch (saveError) {
+      setError(getErrorMessage(saveError, "Không lưu được cấu hình thông báo."));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const scanTime = `${String(state?.scannerRunHour ?? 7).padStart(2, "0")}:00`;
 
   return (
     <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -315,37 +429,46 @@ function NotificationSettingsTab() {
         <CardDescription>Cấu hình cách hệ thống nhắc hạn nghiên cứu, milestone và đạo đức.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {loading && <div className="rounded-lg border border-slate-200 p-4 text-sm text-slate-500">Đang tải cấu hình thông báo...</div>}
+        {error && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">{error}</div>}
         <div className="grid gap-3 lg:grid-cols-2">
           <SettingRow label="Bật thông báo trong hệ thống">
-            <Toggle checked={state.inApp} onChange={(value) => setState((prev) => ({ ...prev, inApp: value }))} />
+            <Toggle checked={state?.enableInAppNotification ?? false} onChange={(value) => updateState((prev) => ({ ...prev, enableInAppNotification: value, enableSystemNotification: value || prev.enableEmailNotification }))} />
           </SettingRow>
           <SettingRow label="Bật thông báo qua email">
-            <Toggle checked={state.email} onChange={(value) => setState((prev) => ({ ...prev, email: value }))} />
+            <Toggle checked={state?.enableEmailNotification ?? false} onChange={(value) => updateState((prev) => ({ ...prev, enableEmailNotification: value, enableSystemNotification: value || prev.enableInAppNotification }))} />
           </SettingRow>
           <SettingRow label="Nhắc deadline nghiên cứu">
-            <Toggle checked={state.deadline} onChange={(value) => setState((prev) => ({ ...prev, deadline: value }))} />
+            <Toggle checked={(state?.deadlineReminderDays.length ?? 0) > 0} onChange={(value) => updateState((prev) => ({ ...prev, deadlineReminderDays: value ? [7, 3, 1, 0] : [] }))} />
           </SettingRow>
           <SettingRow label="Nhắc milestone sắp đến hạn">
-            <Toggle checked={state.milestone} onChange={(value) => setState((prev) => ({ ...prev, milestone: value }))} />
+            <Toggle checked={(state?.progressReportReminderDays.length ?? 0) > 0} onChange={(value) => updateState((prev) => ({ ...prev, progressReportReminderDays: value ? [7, 3, 1] : [] }))} />
           </SettingRow>
           <SettingRow label="Nhắc phê duyệt đạo đức sắp hết hạn">
-            <Toggle checked={state.ethics} onChange={(value) => setState((prev) => ({ ...prev, ethics: value }))} />
+            <Toggle checked={(state?.ethicsReminderDays.length ?? 0) > 0} onChange={(value) => updateState((prev) => ({ ...prev, ethicsReminderDays: value ? [90, 30, 7] : [] }))} />
           </SettingRow>
           <SettingRow label="Thời gian quét thông báo hằng ngày">
-            <Input type="time" className="h-9 w-28" value={state.scanTime} onChange={(e) => setState((prev) => ({ ...prev, scanTime: e.target.value }))} />
+            <Input
+              type="time"
+              className="h-9 w-28"
+              value={scanTime}
+              disabled={!state || loading || saving}
+              onChange={(event) => updateState((prev) => ({ ...prev, scannerRunHour: Number(event.target.value.slice(0, 2)) || 0 }))}
+            />
           </SettingRow>
         </div>
         <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
           <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Các mốc nhắc deadline</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {["7 ngày", "3 ngày", "1 ngày", "Đúng ngày"].map((item) => (
-              <Badge key={item} className="border-blue-200 bg-blue-50 text-blue-700">{item}</Badge>
+            {(state?.deadlineReminderDays ?? []).map((item) => (
+              <Badge key={item} className="border-blue-200 bg-blue-50 text-blue-700">{item === 0 ? "Đúng ngày" : `${item} ngày`}</Badge>
             ))}
+            {state?.deadlineReminderDays.length === 0 && <span className="text-sm text-slate-400">Đang tắt nhắc deadline.</span>}
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button onClick={() => setSaved(true)}>Lưu cấu hình thông báo</Button>
-          {saved && <span className="text-sm font-medium text-emerald-600">Đã lưu cấu hình thông báo.</span>}
+          <Button onClick={() => void handleSave()} disabled={!state || loading || saving}>{saving ? "Đang lưu..." : "Lưu cấu hình thông báo"}</Button>
+          {saved && <span className="text-sm font-medium text-emerald-600">{saved}</span>}
         </div>
       </CardContent>
     </Card>
@@ -353,7 +476,46 @@ function NotificationSettingsTab() {
 }
 
 function NotificationRulesTab() {
-  const [rules, setRules] = useState(rulesInitial);
+  const [rules, setRules] = useState<ApiNotificationRule[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [savingRuleId, setSavingRuleId] = useState<number | null>(null);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState("");
+
+  const loadRules = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const result = await notificationApi.getNotificationRules({ pageSize: 100 });
+      setRules(result.items);
+    } catch (loadError) {
+      setError(getErrorMessage(loadError, "Không tải được quy tắc thông báo."));
+      setRules([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadRules();
+  }, [loadRules]);
+
+  const toggleRule = async (rule: ApiNotificationRule) => {
+    setSavingRuleId(rule.ruleId);
+    setError("");
+    setSaved("");
+    try {
+      const updated = rule.isActive
+        ? await notificationApi.disableRule(rule.ruleId)
+        : await notificationApi.enableRule(rule.ruleId);
+      setRules((prev) => prev.map((item) => item.ruleId === updated.ruleId ? updated : item));
+      setSaved(`Đã ${updated.isActive ? "bật" : "tắt"} quy tắc ${updated.ruleName}.`);
+    } catch (saveError) {
+      setError(getErrorMessage(saveError, "Không cập nhật được quy tắc thông báo."));
+    } finally {
+      setSavingRuleId(null);
+    }
+  };
 
   return (
     <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -362,6 +524,9 @@ function NotificationRulesTab() {
         <CardDescription>Danh sách quy tắc tự động tạo cảnh báo trong hệ thống.</CardDescription>
       </CardHeader>
       <CardContent>
+        {loading && <div className="mb-4 rounded-lg border border-slate-200 p-4 text-sm text-slate-500">Đang tải quy tắc thông báo...</div>}
+        {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">{error}</div>}
+        {saved && <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700">{saved}</div>}
         <Table>
           <TableHeader>
             <TableRow className="bg-slate-50 dark:bg-slate-950">
@@ -371,21 +536,23 @@ function NotificationRulesTab() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rules.map((rule, index) => (
-              <TableRow key={rule.code}>
-                <TableCell className="px-3 py-3 font-mono text-xs text-slate-700 dark:text-slate-200">{rule.code}</TableCell>
-                <TableCell className="px-3 py-3 text-xs font-semibold text-slate-800 dark:text-slate-100">{rule.name}</TableCell>
-                <TableCell className="px-3 py-3 text-xs">{rule.target}</TableCell>
-                <TableCell className="px-3 py-3 text-xs">{rule.condition}</TableCell>
-                <TableCell className="px-3 py-3 text-xs">{rule.days}</TableCell>
-                <TableCell className="px-3 py-3 text-xs">{rule.channel}</TableCell>
-                <TableCell className="px-3 py-3"><Badge className={rule.priority === "Khẩn cấp" ? "bg-red-50 text-red-700 border border-red-200" : "bg-orange-50 text-orange-700 border border-orange-200"}>{rule.priority}</Badge></TableCell>
-                <TableCell className="px-3 py-3"><Badge className={rule.enabled ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-600 border border-slate-200"}>{rule.enabled ? "Đang bật" : "Đang tắt"}</Badge></TableCell>
+            {rules.length === 0 && !loading ? (
+              <TableRow><TableCell colSpan={9} className="py-10 text-center text-sm text-slate-400">Không có quy tắc thông báo nào.</TableCell></TableRow>
+            ) : rules.map((rule) => (
+              <TableRow key={rule.ruleId}>
+                <TableCell className="px-3 py-3 font-mono text-xs text-slate-700 dark:text-slate-200">RULE-{rule.ruleId}</TableCell>
+                <TableCell className="px-3 py-3 text-xs font-semibold text-slate-800 dark:text-slate-100">{rule.ruleName}</TableCell>
+                <TableCell className="px-3 py-3 text-xs">{rule.targetType}</TableCell>
+                <TableCell className="px-3 py-3 text-xs">{rule.conditionType}</TableCell>
+                <TableCell className="px-3 py-3 text-xs">{rule.remindBeforeDays}</TableCell>
+                <TableCell className="px-3 py-3 text-xs">{rule.channels.join(" + ") || "Hệ thống"}</TableCell>
+                <TableCell className="px-3 py-3"><Badge className={rule.priorityLevel === "urgent" ? "bg-red-50 text-red-700 border border-red-200" : "bg-orange-50 text-orange-700 border border-orange-200"}>{rule.priorityLevel}</Badge></TableCell>
+                <TableCell className="px-3 py-3"><Badge className={rule.isActive ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-600 border border-slate-200"}>{rule.isActive ? "Đang bật" : "Đang tắt"}</Badge></TableCell>
                 <TableCell className="px-3 py-3">
                   <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" className="h-7">Sửa</Button>
-                    <Button size="sm" variant="outline" className="h-7" onClick={() => setRules((prev) => prev.map((item, i) => i === index ? { ...item, enabled: !item.enabled } : item))}>
-                      {rule.enabled ? "Tắt" : "Bật"}
+                    <Button size="sm" variant="ghost" className="h-7" disabled title="Chưa hỗ trợ chỉnh sửa quy tắc trong MVP">Sửa</Button>
+                    <Button size="sm" variant="outline" className="h-7" disabled={savingRuleId === rule.ruleId} onClick={() => void toggleRule(rule)}>
+                      {savingRuleId === rule.ruleId ? "Đang lưu..." : rule.isActive ? "Tắt" : "Bật"}
                     </Button>
                   </div>
                 </TableCell>
@@ -399,147 +566,93 @@ function NotificationRulesTab() {
 }
 
 function UsersTab() {
-  const [query, setQuery] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
-  const filtered = useMemo(() => {
-    const normalized = query.toLowerCase();
-    return users.filter((user) => [user.name, user.email, user.username, user.department, user.role].some((value) => value.toLowerCase().includes(normalized)));
-  }, [query]);
-
-  return (
-    <>
-      <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <CardTitle>Người dùng</CardTitle>
-              <CardDescription>Quản lý tài khoản tham gia hệ thống nghiên cứu.</CardDescription>
-            </div>
-            <Button className="gap-2" onClick={() => setModalOpen(true)}><Plus className="h-4 w-4" /> Thêm người dùng</Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tìm kiếm người dùng..." className="h-9 pl-9" />
-          </div>
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-slate-50 dark:bg-slate-950">
-                {["Họ và tên", "Email", "Tên đăng nhập", "Khoa/Phòng", "Vai trò", "Trạng thái", "Lần đăng nhập cuối", "Thao tác"].map((head) => (
-                  <TableHead key={head} className="px-3 py-2 text-[10px] font-semibold uppercase text-slate-500">{head}</TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((user) => (
-                <TableRow key={user.username}>
-                  <TableCell className="px-3 py-3 text-xs font-semibold text-slate-800 dark:text-slate-100">{user.name}</TableCell>
-                  <TableCell className="px-3 py-3 text-xs">{user.email}</TableCell>
-                  <TableCell className="px-3 py-3 text-xs">{user.username}</TableCell>
-                  <TableCell className="px-3 py-3 text-xs">{user.department}</TableCell>
-                  <TableCell className="px-3 py-3 text-xs">{user.role}</TableCell>
-                  <TableCell className="px-3 py-3"><Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200">{user.status}</Badge></TableCell>
-                  <TableCell className="px-3 py-3 text-xs">{user.lastLogin}</TableCell>
-                  <TableCell className="px-3 py-3">
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" className="h-7">Xem</Button>
-                      <Button size="sm" variant="ghost" className="h-7">Sửa</Button>
-                      <Button size="sm" variant="outline" className="h-7">Khóa</Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Thêm người dùng</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {["Họ và tên", "Email", "Tên đăng nhập", "Khoa/Phòng"].map((label) => (
-              <label key={label} className="space-y-1 text-xs font-medium text-slate-600">
-                <span>{label}</span>
-                <Input className="h-9" />
-              </label>
-            ))}
-            <label className="space-y-1 text-xs font-medium text-slate-600">
-              <span>Vai trò</span>
-              <Select defaultValue="Thành viên nghiên cứu">
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {roles.map((role) => <SelectItem key={role.code} value={role.name}>{role.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </label>
-            <label className="space-y-1 text-xs font-medium text-slate-600">
-              <span>Trạng thái</span>
-              <Select defaultValue="Hoạt động">
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Hoạt động">Hoạt động</SelectItem>
-                  <SelectItem value="Tạm khóa">Tạm khóa</SelectItem>
-                </SelectContent>
-              </Select>
-            </label>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setModalOpen(false)}>Hủy</Button>
-            <Button onClick={() => setModalOpen(false)}>Lưu</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
+  return <UserManagementTab />;
 }
 
 function RolesTab() {
-  return (
-    <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <CardHeader>
-        <CardTitle>Vai trò</CardTitle>
-        <CardDescription>Nhóm quyền theo trách nhiệm vận hành nghiên cứu trong bệnh viện.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-slate-50 dark:bg-slate-950">
-              {["Mã vai trò", "Tên vai trò", "Mô tả", "Số người dùng", "Trạng thái", "Thao tác"].map((head) => (
-                <TableHead key={head} className="px-3 py-2 text-[10px] font-semibold uppercase text-slate-500">{head}</TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {roles.map((role) => (
-              <TableRow key={role.code}>
-                <TableCell className="px-3 py-3 font-mono text-xs">{role.code}</TableCell>
-                <TableCell className="px-3 py-3 text-xs font-semibold text-slate-800 dark:text-slate-100">{role.name}</TableCell>
-                <TableCell className="px-3 py-3 text-xs">{role.description}</TableCell>
-                <TableCell className="px-3 py-3 text-xs">{role.count}</TableCell>
-                <TableCell className="px-3 py-3"><Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200">{role.status}</Badge></TableCell>
-                <TableCell className="px-3 py-3">
-                  <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" className="h-7">Xem quyền</Button>
-                    <Button size="sm" variant="ghost" className="h-7"><Pencil className="h-3.5 w-3.5" /> Sửa</Button>
-                    <Button size="sm" variant="outline" className="h-7">Xóa</Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-  );
+  return <RoleManagementTab />;
 }
 
 function PermissionsTab() {
-  const [role, setRole] = useState("Phòng Quản lý Nghiên cứu");
-  const [saved, setSaved] = useState(false);
+  const [roles, setRoles] = useState<ApiAdminRole[]>([]);
+  const [selectedRoleId, setSelectedRoleId] = useState("");
+  const [matrix, setMatrix] = useState<ApiRolePermissionMatrix | null>(null);
+  const [selectedPermissionIds, setSelectedPermissionIds] = useState<Set<number>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState("");
+
+  const loadRoles = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const result = await adminApi.getRoles({ pageSize: 100 });
+      setRoles(result.items);
+      setSelectedRoleId((current) => current || String(result.items[0]?.roleId ?? ""));
+    } catch (loadError) {
+      setError(getErrorMessage(loadError, "Không tải được danh sách vai trò."));
+      setRoles([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadRoles();
+  }, [loadRoles]);
+
+  useEffect(() => {
+    if (!selectedRoleId) {
+      setMatrix(null);
+      setSelectedPermissionIds(new Set());
+      return;
+    }
+    const loadMatrix = async () => {
+      setLoading(true);
+      setError("");
+      setSaved("");
+      try {
+        const result = await adminApi.getRolePermissions(selectedRoleId) as ApiRolePermissionMatrix;
+        setMatrix(result);
+        setSelectedPermissionIds(new Set(result.modules.flatMap((module) => module.actions.filter((action) => action.isAllowed).map((action) => action.permissionId))));
+      } catch (loadError) {
+        setError(getErrorMessage(loadError, "Không tải được ma trận phân quyền."));
+        setMatrix(null);
+        setSelectedPermissionIds(new Set());
+      } finally {
+        setLoading(false);
+      }
+    };
+    void loadMatrix();
+  }, [selectedRoleId]);
+
+  const togglePermission = (permissionId: number, checked: boolean) => {
+    setSaved("");
+    setSelectedPermissionIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(permissionId);
+      else next.delete(permissionId);
+      return next;
+    });
+  };
+
+  const handleSave = async () => {
+    if (!selectedRoleId) return;
+    setSaving(true);
+    setError("");
+    setSaved("");
+    try {
+      const result = await adminApi.updateRolePermissions(selectedRoleId, { permissionIds: Array.from(selectedPermissionIds) }) as ApiRolePermissionMatrix;
+      setMatrix(result);
+      setSelectedPermissionIds(new Set(result.modules.flatMap((module) => module.actions.filter((action) => action.isAllowed).map((action) => action.permissionId))));
+      setSaved(`Đã lưu phân quyền cho vai trò ${result.roleName}.`);
+    } catch (saveError) {
+      setError(getErrorMessage(saveError, "Không lưu được phân quyền."));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -548,12 +661,14 @@ function PermissionsTab() {
         <CardDescription>Ma trận phân quyền theo phân hệ và thao tác.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {loading && <div className="rounded-lg border border-slate-200 p-4 text-sm text-slate-500">Đang tải phân quyền...</div>}
+        {error && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">{error}</div>}
         <div className="flex flex-wrap items-center gap-3">
           <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">Chọn vai trò</label>
-          <Select value={role} onValueChange={(value) => value && setRole(value)}>
+          <Select value={selectedRoleId} onValueChange={(value) => value && setSelectedRoleId(value)}>
             <SelectTrigger className="h-9 w-72"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {roles.map((item) => <SelectItem key={item.code} value={item.name}>{item.name}</SelectItem>)}
+              {roles.map((item) => <SelectItem key={item.roleId} value={String(item.roleId)}>{item.roleName}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -561,22 +676,26 @@ function PermissionsTab() {
           <TableHeader>
             <TableRow className="bg-slate-50 dark:bg-slate-950">
               <TableHead className="px-3 py-2 text-[10px] font-semibold uppercase text-slate-500">Phân hệ</TableHead>
-              {permissionActions.map((action) => (
+              {(matrix?.modules[0]?.actions ?? []).map((action) => (
                 <TableHead key={action} className="px-3 py-2 text-center text-[10px] font-semibold uppercase text-slate-500">{action}</TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {permissionModules.map((module, rowIndex) => (
-              <TableRow key={module}>
-                <TableCell className="px-3 py-3 text-xs font-semibold text-slate-800 dark:text-slate-100">{module}</TableCell>
-                {permissionActions.map((action, actionIndex) => (
-                  <TableCell key={action} className="px-3 py-3 text-center">
+            {!matrix || matrix.modules.length === 0 ? (
+              <TableRow><TableCell colSpan={8} className="py-10 text-center text-sm text-slate-400">Không có dữ liệu phân quyền.</TableCell></TableRow>
+            ) : matrix.modules.map((module) => (
+              <TableRow key={module.moduleCode}>
+                <TableCell className="px-3 py-3 text-xs font-semibold text-slate-800 dark:text-slate-100">{module.moduleName}</TableCell>
+                {module.actions.map((action) => (
+                  <TableCell key={action.permissionId} className="px-3 py-3 text-center">
                     <input
                       type="checkbox"
-                      defaultChecked={rowIndex < 6 || actionIndex === 0}
+                      checked={selectedPermissionIds.has(action.permissionId)}
+                      onChange={(event) => togglePermission(action.permissionId, event.target.checked)}
+                      disabled={saving || loading}
                       className="h-4 w-4 rounded border-slate-300 text-blue-600"
-                      aria-label={`${module} ${action}`}
+                      aria-label={`${module.moduleName} ${action.actionName}`}
                     />
                   </TableCell>
                 ))}
@@ -585,8 +704,8 @@ function PermissionsTab() {
           </TableBody>
         </Table>
         <div className="flex items-center gap-3">
-          <Button onClick={() => setSaved(true)}>Lưu phân quyền</Button>
-          {saved && <span className="text-sm font-medium text-emerald-600">Đã lưu phân quyền cho vai trò {role}.</span>}
+          <Button onClick={() => void handleSave()} disabled={!matrix || saving || loading}>{saving ? "Đang lưu..." : "Lưu phân quyền"}</Button>
+          {saved && <span className="text-sm font-medium text-emerald-600">{saved}</span>}
         </div>
       </CardContent>
     </Card>
@@ -596,11 +715,46 @@ function PermissionsTab() {
 function AuditLogTab() {
   const [query, setQuery] = useState("");
   const [action, setAction] = useState("Tất cả");
-  const filtered = auditLogs.filter((log) => {
-    const matchesAction = action === "Tất cả" || log.action === action;
-    const matchesQuery = [log.time, log.user, log.module, log.target, log.content].some((value) => value.toLowerCase().includes(query.toLowerCase()));
-    return matchesAction && matchesQuery;
-  });
+  const [date, setDate] = useState("");
+  const [logs, setLogs] = useState<ApiAuditLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const actionMap: Record<string, string | undefined> = {
+    "Tất cả": undefined,
+    "Đăng nhập": "login",
+    "Thêm": "create",
+    "Sửa": "update",
+    "Xóa": "delete",
+    "Xuất dữ liệu": "export",
+  };
+
+  const loadLogs = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const fromDate = date ? `${date}T00:00:00` : undefined;
+      const toDate = date ? `${date}T23:59:59` : undefined;
+      const result = await auditApi.getAuditLogs({
+        pageSize: 100,
+        search: query || undefined,
+        actionType: actionMap[action],
+        fromDate,
+        toDate,
+      });
+      setLogs(result.items);
+    } catch (loadError) {
+      setError(getErrorMessage(loadError, "Không tải được nhật ký hệ thống."));
+      setLogs([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [action, date, query]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadLogs(), 250);
+    return () => window.clearTimeout(timer);
+  }, [loadLogs]);
 
   return (
     <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -609,6 +763,8 @@ function AuditLogTab() {
         <CardDescription>Theo dõi hoạt động quản trị và cập nhật dữ liệu quan trọng.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {loading && <div className="rounded-lg border border-slate-200 p-4 text-sm text-slate-500">Đang tải nhật ký hệ thống...</div>}
+        {error && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">{error}</div>}
         <div className="flex flex-wrap gap-3">
           <div className="relative min-w-64 flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -620,7 +776,7 @@ function AuditLogTab() {
               {["Tất cả", "Đăng nhập", "Thêm", "Sửa", "Xóa", "Xuất dữ liệu"].map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Input className="h-9 w-40" placeholder="Chọn ngày" />
+          <Input type="date" className="h-9 w-40" value={date} onChange={(event) => setDate(event.target.value)} />
         </div>
         <Table>
           <TableHeader>
@@ -631,15 +787,17 @@ function AuditLogTab() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((log) => (
-              <TableRow key={`${log.time}-${log.target}`}>
-                <TableCell className="px-3 py-3 text-xs">{log.time}</TableCell>
-                <TableCell className="px-3 py-3 text-xs font-semibold text-slate-800 dark:text-slate-100">{log.user}</TableCell>
-                <TableCell className="px-3 py-3 text-xs">{log.module}</TableCell>
-                <TableCell className="px-3 py-3 text-xs">{log.action}</TableCell>
-                <TableCell className="px-3 py-3 text-xs">{log.target}</TableCell>
-                <TableCell className="px-3 py-3 text-xs">{log.content}</TableCell>
-                <TableCell className="px-3 py-3"><Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200">{log.status}</Badge></TableCell>
+            {logs.length === 0 && !loading ? (
+              <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-slate-400">Không có nhật ký phù hợp.</TableCell></TableRow>
+            ) : logs.map((log) => (
+              <TableRow key={log.activityLogId}>
+                <TableCell className="px-3 py-3 text-xs">{formatDateTime(log.performedAt)}</TableCell>
+                <TableCell className="px-3 py-3 text-xs font-semibold text-slate-800 dark:text-slate-100">{log.performedByName ?? "Hệ thống"}</TableCell>
+                <TableCell className="px-3 py-3 text-xs">{log.moduleCode}</TableCell>
+                <TableCell className="px-3 py-3 text-xs">{log.actionType}</TableCell>
+                <TableCell className="px-3 py-3 text-xs">{log.entityType ?? "—"}{log.entityId ? ` #${log.entityId}` : ""}</TableCell>
+                <TableCell className="px-3 py-3 text-xs">{log.actionSummary}</TableCell>
+                <TableCell className="px-3 py-3"><Badge className={log.success ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}>{log.success ? "Thành công" : "Thất bại"}</Badge></TableCell>
               </TableRow>
             ))}
           </TableBody>

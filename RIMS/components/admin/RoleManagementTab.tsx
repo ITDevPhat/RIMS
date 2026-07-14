@@ -21,6 +21,8 @@ export default function RoleManagementTab() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [pendingRoleId, setPendingRoleId] = useState<string | null>(null);
 
   const loadRoles = useCallback(async () => {
     setLoading(true);
@@ -40,6 +42,19 @@ export default function RoleManagementTab() {
     void loadRoles();
   }, [loadRoles]);
 
+  const deleteRole = async (roleId: string) => {
+    setActionError("");
+    setPendingRoleId(roleId);
+    try {
+      await adminApi.deleteRole(roleId);
+      await loadRoles();
+    } catch (actionFailure) {
+      setActionError(actionFailure instanceof Error ? actionFailure.message : "Không xóa được vai trò.");
+    } finally {
+      setPendingRoleId(null);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     return status === "active"
       ? "bg-green-100 text-green-800"
@@ -57,7 +72,7 @@ export default function RoleManagementTab() {
           <h2 className="text-lg font-bold text-slate-800">Quản Lý Vai Trò</h2>
           <p className="text-sm text-slate-600 mt-1">Tổng cộng: {roles.length} vai trò</p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" disabled title="Chưa hỗ trợ thêm vai trò trong MVP">
           <Plus className="h-4 w-4" />
           Thêm Vai Trò
         </Button>
@@ -68,6 +83,11 @@ export default function RoleManagementTab() {
         <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
           {error}
           <Button size="sm" variant="outline" onClick={() => void loadRoles()}>Thử lại</Button>
+        </div>
+      )}
+      {actionError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+          {actionError}
         </div>
       )}
 
@@ -115,16 +135,15 @@ export default function RoleManagementTab() {
                   <div className="flex items-center justify-end gap-2">
                     <button
                       title="Sửa"
+                      disabled
                       className="p-1.5 text-slate-600 hover:bg-slate-100 rounded transition"
                     >
                       <Edit2 className="h-4 w-4" />
                     </button>
                     <button
                       title="Xóa"
-                      onClick={async () => {
-                        await adminApi.deleteRole(role.id);
-                        await loadRoles();
-                      }}
+                      disabled={pendingRoleId === role.id}
+                      onClick={() => void deleteRole(role.id)}
                       className="p-1.5 text-slate-600 hover:bg-red-50 hover:text-red-600 rounded transition"
                     >
                       <Trash2 className="h-4 w-4" />

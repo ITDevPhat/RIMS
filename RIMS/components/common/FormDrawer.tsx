@@ -91,7 +91,7 @@ export function FormDrawerFooter({
   isSaving = false,
 }: {
   onCancel: () => void;
-  onSave: () => void;
+  onSave: () => void | Promise<void>;
   saveLabel?: string;
   isSaving?: boolean;
 }) {
@@ -132,7 +132,7 @@ export function FormDrawer({
   title: string;
   children: React.ReactNode;
   onCancel?: () => void;
-  onSave: () => void;
+  onSave: () => void | Promise<void>;
   saveLabel?: string;
   isSaving?: boolean;
 }) {

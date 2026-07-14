@@ -36,6 +36,9 @@ public sealed class ProjectMilestoneQuery : PaginationQuery
 
 public sealed class ProjectDeadlineQuery : PaginationQuery
 {
+    public long? ProjectId { get; set; }
+    public long? PhaseId { get; set; }
+    public long? MilestoneId { get; set; }
     public string? Type { get; set; }
     public string? Status { get; set; }
     public string? Priority { get; set; }

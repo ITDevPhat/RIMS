@@ -151,6 +151,7 @@ public sealed class DashboardService : IDashboardService, IAuditQueryService
         if (!string.IsNullOrWhiteSpace(query.ModuleCode)) logs = logs.Where(x => x.ModuleCode == query.ModuleCode);
         if (!string.IsNullOrWhiteSpace(query.ActionType)) logs = logs.Where(x => x.ActionType == query.ActionType);
         if (!string.IsNullOrWhiteSpace(query.EntityType)) logs = logs.Where(x => x.EntityType == query.EntityType);
+        if (query.EntityId is not null) logs = logs.Where(x => x.EntityId == query.EntityId);
         if (query.FromDate is not null) logs = logs.Where(x => x.OccurredAt >= query.FromDate);
         if (query.ToDate is not null) logs = logs.Where(x => x.OccurredAt <= query.ToDate);
         if (!string.IsNullOrWhiteSpace(query.Search))

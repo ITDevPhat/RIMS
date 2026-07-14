@@ -30,6 +30,7 @@ import { Search, Plus, Eye, Pencil, Trash2, Filter } from "lucide-react";
 import DeTaiFormModal from "@/components/modals/DeTaiFormModal";
 import { researchApi } from "@/lib/api/research-api";
 import { mapApiProjectToUi } from "@/lib/mappers/project-mapper";
+import { ConfirmationDialog } from "@/components/common/ConfirmationDialog";
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -96,6 +97,9 @@ export default function DeTaiList({ onViewDetail }: DeTaiListProps) {
   const [filterEthics, setFilterEthics] = useState("Tất cả");
   const [showOverdueOnly, setShowOverdueOnly] = useState(false);
   const [formModalOpen, setFormModalOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<ResearchProject | null>(null);
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState("");
 
   const loadProjects = useCallback(async () => {
     setLoading(true);
@@ -115,6 +119,21 @@ export default function DeTaiList({ onViewDetail }: DeTaiListProps) {
     const timer = window.setTimeout(() => void loadProjects(), 250);
     return () => window.clearTimeout(timer);
   }, [loadProjects]);
+
+  const handleDeleteProject = async () => {
+    if (!projectToDelete) return;
+    setActionError("");
+    setDeletingProjectId(projectToDelete.id);
+    try {
+      await researchApi.deleteProject(projectToDelete.id);
+      setProjectToDelete(null);
+      await loadProjects();
+    } catch (deleteError) {
+      setActionError(deleteError instanceof Error ? deleteError.message : "Không xóa được đề tài.");
+    } finally {
+      setDeletingProjectId(null);
+    }
+  };
 
   const filtered = useMemo(() => {
     return projects.filter((p) => {
@@ -160,6 +179,11 @@ export default function DeTaiList({ onViewDetail }: DeTaiListProps) {
               <p className="text-sm font-medium text-red-700">{error}</p>
               <Button size="sm" variant="outline" onClick={() => void loadProjects()}>Thử lại</Button>
             </CardContent>
+          </Card>
+        )}
+        {actionError && (
+          <Card className="border-red-200 bg-red-50 shadow-sm">
+            <CardContent className="p-4 text-sm font-medium text-red-700">{actionError}</CardContent>
           </Card>
         )}
 
@@ -343,10 +367,8 @@ export default function DeTaiList({ onViewDetail }: DeTaiListProps) {
                               size="sm"
                               variant="ghost"
                               className="h-7 w-7 p-0 text-slate-400 hover:bg-red-50 hover:text-red-500"
-                              onClick={async () => {
-                                await researchApi.deleteProject(p.id);
-                                await loadProjects();
-                              }}
+                              disabled={deletingProjectId === p.id}
+                              onClick={() => setProjectToDelete(p)}
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>
@@ -395,6 +417,16 @@ export default function DeTaiList({ onViewDetail }: DeTaiListProps) {
           await researchApi.createProject(payload);
           await loadProjects();
         }}
+      />
+      <ConfirmationDialog
+        open={!!projectToDelete}
+        onOpenChange={(open) => {
+          if (!open && !deletingProjectId) setProjectToDelete(null);
+        }}
+        type="delete"
+        itemName={projectToDelete?.name ?? "đề tài này"}
+        onConfirm={() => void handleDeleteProject()}
+        isLoading={!!deletingProjectId}
       />
     </div>
   );

@@ -326,6 +326,9 @@ public sealed class ResearchService : IResearchService
     {
         var deadlines = DeadlineGraph().Where(x => x.DeletedAt == null);
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        if (query.ProjectId is not null) deadlines = deadlines.Where(x => x.ProjectId == query.ProjectId);
+        if (query.PhaseId is not null) deadlines = deadlines.Where(x => x.PhaseId == query.PhaseId);
+        if (query.MilestoneId is not null) deadlines = deadlines.Where(x => x.MilestoneId == query.MilestoneId);
         if (!string.IsNullOrWhiteSpace(query.Type)) deadlines = deadlines.Where(x => x.DeadlineType == query.Type);
         if (!string.IsNullOrWhiteSpace(query.Status)) deadlines = deadlines.Where(x => x.DeadlineStatus == query.Status);
         if (!string.IsNullOrWhiteSpace(query.Priority)) deadlines = deadlines.Where(x => x.PriorityLevel == query.Priority);

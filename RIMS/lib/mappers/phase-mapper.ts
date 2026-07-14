@@ -10,6 +10,7 @@ export function mapApiPhaseToUi(phase: ApiProjectPhase): ResearchPhase {
     order: phase.sortOrder,
     name: phase.phaseName,
     description: phase.description ?? undefined,
+    responsibleUserId: phase.responsibleUserId ? String(phase.responsibleUserId) : null,
     assignee: phase.responsibleUserName ?? undefined,
     plannedStartDate: phase.plannedStartDate ?? "",
     plannedEndDate: phase.plannedEndDate ?? "",

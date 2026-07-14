@@ -9,10 +9,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { PhaseStatus, ResearchMilestone, ResearchPhase, ResearchProject, RiskLevel } from "@/lib/types";
 import { projectMilestoneApi, projectPhaseApi, researchApi } from "@/lib/api/research-api";
+import type { ProjectMilestonePayload } from "@/lib/api/research-api";
 import { mapApiProjectToUi } from "@/lib/mappers/project-mapper";
 import { mapApiPhaseToUi } from "@/lib/mappers/phase-mapper";
 import { mapApiMilestoneToUi } from "@/lib/mappers/milestone-mapper";
 import MocTienDoFormModal from "@/components/modals/MocTienDoFormModal";
+import { ConfirmationDialog } from "@/components/common/ConfirmationDialog";
 
 function StatusBadge({ status }: { status: PhaseStatus }) {
   const map: Record<string, string> = {
@@ -52,8 +54,11 @@ export default function QuanLyMocTienDo() {
   const [selectedPhase, setSelectedPhase] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingMs, setEditingMs] = useState<ResearchMilestone | null>(null);
+  const [milestoneToDelete, setMilestoneToDelete] = useState<ResearchMilestone | null>(null);
+  const [deletingMilestoneId, setDeletingMilestoneId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [actionError, setActionError] = useState("");
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -81,6 +86,33 @@ export default function QuanLyMocTienDo() {
     void loadData();
   }, [loadData]);
 
+  const handleSubmitMilestone = async (payload: ProjectMilestonePayload) => {
+    if (editingMs) {
+      const updatePayload = { ...payload };
+      delete updatePayload.projectId;
+      await projectMilestoneApi.updateMilestone(editingMs.id, updatePayload);
+    } else {
+      await projectMilestoneApi.createMilestone(payload);
+    }
+    setEditingMs(null);
+    await loadData();
+  };
+
+  const handleDeleteMilestone = async () => {
+    if (!milestoneToDelete) return;
+    setActionError("");
+    setDeletingMilestoneId(milestoneToDelete.id);
+    try {
+      await projectMilestoneApi.deleteMilestone(milestoneToDelete.id);
+      setMilestoneToDelete(null);
+      await loadData();
+    } catch (deleteError) {
+      setActionError(deleteError instanceof Error ? deleteError.message : "Không xóa được mốc tiến độ.");
+    } finally {
+      setDeletingMilestoneId(null);
+    }
+  };
+
   const researchPhases = useMemo(() => phases.filter((phase) => phase.researchId === selectedResearch), [phases, selectedResearch]);
   const visibleMilestones = useMemo(() => milestones.filter((ms) => selectedPhase === "all" || ms.phaseId === selectedPhase), [milestones, selectedPhase]);
 
@@ -97,6 +129,7 @@ export default function QuanLyMocTienDo() {
       <div className="space-y-5 px-8 py-6">
         {loading && <Card><CardContent className="p-4 text-sm text-slate-500">Đang tải mốc tiến độ...</CardContent></Card>}
         {error && <Card className="border-red-200 bg-red-50"><CardContent className="flex items-center justify-between p-4 text-sm font-medium text-red-700">{error}<Button size="sm" variant="outline" onClick={() => void loadData()}>Thử lại</Button></CardContent></Card>}
+        {actionError && <Card className="border-red-200 bg-red-50"><CardContent className="p-4 text-sm font-medium text-red-700">{actionError}</CardContent></Card>}
 
         <div className="flex flex-wrap items-center gap-4">
           <Select value={selectedResearch} onValueChange={(value) => { if (value) { setSelectedResearch(value); setSelectedPhase("all"); } }}>
@@ -135,7 +168,15 @@ export default function QuanLyMocTienDo() {
                       <TableCell className="px-3 py-3">
                         <div className="flex gap-1">
                           <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditingMs(ms); setModalOpen(true); }}><Pencil className="h-3 w-3" /></Button>
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 hover:text-red-500" onClick={async () => { await projectMilestoneApi.deleteMilestone(ms.id); await loadData(); }}><Trash2 className="h-3 w-3" /></Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 hover:text-red-500"
+                            disabled={deletingMilestoneId === ms.id}
+                            onClick={() => setMilestoneToDelete(ms)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -148,7 +189,24 @@ export default function QuanLyMocTienDo() {
         <p className="text-xs text-slate-400">Hiển thị {visibleMilestones.length} mốc tiến độ</p>
       </div>
 
-      <MocTienDoFormModal open={modalOpen} onClose={() => setModalOpen(false)} milestone={editingMs} phases={researchPhases} />
+      <MocTienDoFormModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        milestone={editingMs}
+        phases={researchPhases}
+        projectId={selectedResearch === "all" ? projects[0]?.id : selectedResearch}
+        onSubmit={handleSubmitMilestone}
+      />
+      <ConfirmationDialog
+        open={!!milestoneToDelete}
+        onOpenChange={(open) => {
+          if (!open && !deletingMilestoneId) setMilestoneToDelete(null);
+        }}
+        type="delete"
+        itemName={milestoneToDelete?.name ?? "mốc tiến độ này"}
+        onConfirm={() => void handleDeleteMilestone()}
+        isLoading={!!deletingMilestoneId}
+      />
     </div>
   );
 }

@@ -1,15 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { mockPhases, mockMilestones, mockDeadlines } from "@/lib/mock-data";
-import type { ResearchProject, PhaseStatus, EthicsStatus, ProjectHealth } from "@/lib/types";
+import type { DeadlineItem, ResearchMilestone, ResearchPhase, ResearchProject, PhaseStatus, EthicsStatus, ProjectHealth } from "@/lib/types";
 import GiaiDoanGanttChart from "@/components/gantt/GiaiDoanGanttChart";
 import PhaseFormModal from "@/components/modals/PhaseFormModal";
+import { auditApi, type ApiAuditLog } from "@/lib/api/audit-api";
+import { projectDeadlineApi, projectMilestoneApi, projectPhaseApi, researchApi } from "@/lib/api/research-api";
+import type { ProjectPhasePayload } from "@/lib/api/research-api";
+import { mapApiDeadlineToUi } from "@/lib/mappers/deadline-mapper";
+import { mapApiMilestoneToUi } from "@/lib/mappers/milestone-mapper";
+import { mapApiPhaseToUi } from "@/lib/mappers/phase-mapper";
+import { mapApiProjectToUi } from "@/lib/mappers/project-mapper";
 import {
   ArrowLeft,
   Activity,
@@ -107,10 +113,46 @@ interface ChiTietDeTaiProps {
 export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeTaiProps) {
   const [activeTab, setActiveTab] = useState("tong-quan");
   const [phaseModalOpen, setPhaseModalOpen] = useState(false);
+  const [editingPhase, setEditingPhase] = useState<ResearchPhase | null>(null);
+  const [currentProject, setCurrentProject] = useState(project);
+  const [phases, setPhases] = useState<ResearchPhase[]>([]);
+  const [milestones, setMilestones] = useState<ResearchMilestone[]>([]);
+  const [deadlines, setDeadlines] = useState<DeadlineItem[]>([]);
+  const [activityLog, setActivityLog] = useState<ApiAuditLog[]>([]);
+  const [detailLoading, setDetailLoading] = useState(true);
+  const [detailError, setDetailError] = useState("");
 
-  const phases = mockPhases.filter((p) => p.researchId === project.id);
-  const milestones = mockMilestones.filter((m) => m.researchId === project.id);
-  const deadlines = mockDeadlines.filter((d) => d.researchId === project.id);
+  const loadDetail = useCallback(async () => {
+    setDetailLoading(true);
+    setDetailError("");
+    try {
+      const [projectResult, phaseResult, milestoneResult, deadlineResult, auditResult] = await Promise.all([
+        researchApi.getProject(project.id),
+        projectPhaseApi.getPhases({ pageSize: 100, projectId: project.id }),
+        projectMilestoneApi.getMilestones({ pageSize: 100, projectId: project.id }),
+        projectDeadlineApi.getDeadlines({ pageSize: 100, projectId: project.id }),
+        auditApi.getAuditLogs({ pageSize: 20, moduleCode: "research_project", entityType: "ResearchProject", entityId: project.id }),
+      ]);
+      setCurrentProject(mapApiProjectToUi(projectResult));
+      setPhases(phaseResult.items.map(mapApiPhaseToUi));
+      setMilestones(milestoneResult.items.map((item, index) => mapApiMilestoneToUi(item, index + 1)));
+      setDeadlines(deadlineResult.items.map(mapApiDeadlineToUi));
+      setActivityLog(auditResult.items);
+    } catch (error) {
+      setDetailError(error instanceof Error ? error.message : "Không tải được dữ liệu chi tiết đề tài.");
+      setCurrentProject(project);
+      setPhases([]);
+      setMilestones([]);
+      setDeadlines([]);
+      setActivityLog([]);
+    } finally {
+      setDetailLoading(false);
+    }
+  }, [project]);
+
+  useEffect(() => {
+    void loadDetail();
+  }, [loadDetail]);
 
   const phaseDone = phases.filter((p) => p.status === "Hoàn thành" || p.status === "Hoàn thành trễ").length;
   const phaseInProgress = phases.filter((p) => p.status === "Đang thực hiện").length;
@@ -129,21 +171,32 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
     ethics:   "bg-purple-50 text-purple-700 border-purple-200",
   }[priority] ?? "bg-slate-50 text-slate-600 border-slate-200");
 
-  // Mock activity log
-  const activityLog = [
-    { date: "03/07/2026", user: "PGS.TS Nguyễn Thị Mai", action: "Cập nhật tiến độ giai đoạn Thu thập số liệu lên 45%", type: "update" },
-    { date: "01/07/2026", user: "Hệ thống",               action: "Giai đoạn Triển khai nghiên cứu đạt 80% tiến độ", type: "milestone" },
-    { date: "15/06/2026", user: "PGS.TS Nguyễn Thị Mai", action: "Hoàn thành giai đoạn Phê duyệt đạo đức (trễ 10 ngày)", type: "complete" },
-    { date: "01/06/2026", user: "Hệ thống",               action: "Bắt đầu giai đoạn Triển khai nghiên cứu", type: "start" },
-    { date: "05/05/2026", user: "PGS.TS Nguyễn Thị Mai", action: "Nộp hồ sơ phê duyệt đạo đức lên IRB", type: "update" },
-  ];
-
   const activityIcon = (type: string) => ({
     update:    <TrendingUp className="h-3.5 w-3.5 text-blue-500" />,
+    create:    <Plus className="h-3.5 w-3.5 text-blue-500" />,
+    delete:    <XCircle className="h-3.5 w-3.5 text-red-500" />,
     milestone: <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />,
     complete:  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />,
     start:     <Circle className="h-3.5 w-3.5 text-slate-400" />,
   }[type] ?? <Circle className="h-3.5 w-3.5 text-slate-400" />);
+
+  const formatDateTime = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString("vi-VN");
+  };
+
+  const handleSubmitPhase = async (payload: ProjectPhasePayload) => {
+    if (editingPhase) {
+      const updatePayload = { ...payload };
+      delete updatePayload.projectId;
+      await projectPhaseApi.updatePhase(editingPhase.id, updatePayload);
+    } else {
+      await projectPhaseApi.createPhase(payload);
+    }
+    setEditingPhase(null);
+    await loadDetail();
+  };
 
   return (
     <div>
@@ -159,14 +212,14 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="inline-flex items-center rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 border border-blue-100">
-                {project.code}
+                {currentProject.code}
               </span>
-              <HealthBadge health={project.health} />
+              <HealthBadge health={currentProject.health} />
             </div>
             <h1 className="text-base font-bold text-slate-800 leading-snug max-w-2xl">
-              {project.name}
+              {currentProject.name}
             </h1>
-            <p className="mt-1 text-xs text-slate-500">{project.department} &mdash; {project.pi}</p>
+            <p className="mt-1 text-xs text-slate-500">{currentProject.department} &mdash; {currentProject.pi}</p>
           </div>
           <Button
             variant="outline"
@@ -181,11 +234,11 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
       <div className="bg-white border-b border-slate-100 px-8 py-3">
         <div className="flex items-center gap-8 flex-wrap">
           {[
-            { label: "Tiến độ tổng", value: `${project.progress}%`, color: "text-blue-600" },
-            { label: "Giai đoạn hiện tại", value: project.currentPhase, color: "text-slate-800" },
-            { label: "Bắt đầu", value: formatDate(project.startDate), color: "text-slate-700" },
-            { label: "Dự kiến kết thúc", value: formatDate(project.plannedEndDate), color: "text-slate-700" },
-            { label: "Đạo đức", value: project.ethicsStatus, color: "text-slate-700", badge: <EthicsBadge status={project.ethicsStatus} /> },
+            { label: "Tiến độ tổng", value: `${currentProject.progress}%`, color: "text-blue-600" },
+            { label: "Giai đoạn hiện tại", value: currentProject.currentPhase, color: "text-slate-800" },
+            { label: "Bắt đầu", value: formatDate(currentProject.startDate), color: "text-slate-700" },
+            { label: "Dự kiến kết thúc", value: formatDate(currentProject.plannedEndDate), color: "text-slate-700" },
+            { label: "Đạo đức", value: currentProject.ethicsStatus, color: "text-slate-700", badge: <EthicsBadge status={currentProject.ethicsStatus} /> },
           ].map((item) => (
             <div key={item.label} className="flex flex-col gap-0.5">
               <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">{item.label}</span>
@@ -194,13 +247,26 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
           ))}
           <div className="flex flex-col gap-1 flex-1 min-w-32 max-w-48">
             <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Thanh tiến độ</span>
-            <Progress value={project.progress} className="h-2 bg-slate-100" />
+            <Progress value={currentProject.progress} className="h-2 bg-slate-100" />
           </div>
         </div>
       </div>
 
       {/* ── Tabs ────────────────────────────────────────────────────────────── */}
       <div className="px-8 py-5">
+        {detailLoading && (
+          <Card className="mb-4 border-slate-200 shadow-sm">
+            <CardContent className="p-4 text-sm text-slate-500">Đang tải dữ liệu chi tiết đề tài...</CardContent>
+          </Card>
+        )}
+        {detailError && (
+          <Card className="mb-4 border-red-200 bg-red-50 shadow-sm">
+            <CardContent className="flex items-center justify-between gap-3 p-4">
+              <p className="text-sm font-medium text-red-700">{detailError}</p>
+              <Button size="sm" variant="outline" onClick={() => void loadDetail()}>Thử lại</Button>
+            </CardContent>
+          </Card>
+        )}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="h-9 border border-slate-200 bg-slate-50 p-0.5 rounded-lg">
             {[
@@ -233,21 +299,21 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="px-5 py-2">
-                  <InfoRow label="Mã đề tài">{project.code}</InfoRow>
+                  <InfoRow label="Mã đề tài">{currentProject.code}</InfoRow>
                   <InfoRow label="Tên đề tài">
-                    <span className="leading-snug">{project.name}</span>
+                    <span className="leading-snug">{currentProject.name}</span>
                   </InfoRow>
                   <InfoRow label="Mô tả">
-                    <span className="leading-relaxed text-slate-600">{project.description}</span>
+                    <span className="leading-relaxed text-slate-600">{currentProject.description}</span>
                   </InfoRow>
-                  <InfoRow label="Khoa/phòng chủ trì">{project.department}</InfoRow>
-                  <InfoRow label="Chủ nhiệm đề tài">{project.pi}</InfoRow>
-                  <InfoRow label="Nhà tài trợ">{project.sponsor}</InfoRow>
-                  <InfoRow label="Loại nghiên cứu">{project.researchType}</InfoRow>
+                  <InfoRow label="Khoa/phòng chủ trì">{currentProject.department}</InfoRow>
+                  <InfoRow label="Chủ nhiệm đề tài">{currentProject.pi}</InfoRow>
+                  <InfoRow label="Nhà tài trợ">{currentProject.sponsor}</InfoRow>
+                  <InfoRow label="Loại nghiên cứu">{currentProject.researchType}</InfoRow>
                   <InfoRow label="Mã đề cương">
-                    <span className="font-mono">{project.protocolNumber}</span>
+                    <span className="font-mono">{currentProject.protocolNumber}</span>
                   </InfoRow>
-                  <InfoRow label="Phiên bản đề cương">{project.protocolVersion}</InfoRow>
+                  <InfoRow label="Phiên bản đề cương">{currentProject.protocolVersion}</InfoRow>
                 </CardContent>
               </Card>
 
@@ -262,12 +328,12 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
                   </CardHeader>
                   <CardContent className="px-5 py-2">
                     <InfoRow label="Trạng thái đạo đức">
-                      <EthicsBadge status={project.ethicsStatus} />
+                      <EthicsBadge status={currentProject.ethicsStatus} />
                     </InfoRow>
                     <InfoRow label="Ngày hết hạn đạo đức">
-                      {project.ethicsExpiry ? (
-                        <span className={cn("font-semibold", project.ethicsStatus === "Sắp hết hạn" || project.ethicsStatus === "Hết hạn" ? "text-red-600" : "text-slate-800")}>
-                          {formatDate(project.ethicsExpiry)}
+                      {currentProject.ethicsExpiry ? (
+                        <span className={cn("font-semibold", currentProject.ethicsStatus === "Sắp hết hạn" || currentProject.ethicsStatus === "Hết hạn" ? "text-red-600" : "text-slate-800")}>
+                          {formatDate(currentProject.ethicsExpiry)}
                         </span>
                       ) : "—"}
                     </InfoRow>
@@ -282,20 +348,20 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="px-5 py-2">
-                    <InfoRow label="Ngày bắt đầu">{formatDate(project.startDate)}</InfoRow>
-                    <InfoRow label="Ngày kết thúc dự kiến">{formatDate(project.plannedEndDate)}</InfoRow>
+                    <InfoRow label="Ngày bắt đầu">{formatDate(currentProject.startDate)}</InfoRow>
+                    <InfoRow label="Ngày kết thúc dự kiến">{formatDate(currentProject.plannedEndDate)}</InfoRow>
                     <InfoRow label="Tiến độ tổng">
                       <div className="flex items-center gap-3">
-                        <Progress value={project.progress} className="flex-1 h-2" />
-                        <span className="font-bold text-blue-600 w-8 text-sm">{project.progress}%</span>
+                        <Progress value={currentProject.progress} className="flex-1 h-2" />
+                        <span className="font-bold text-blue-600 w-8 text-sm">{currentProject.progress}%</span>
                       </div>
                     </InfoRow>
-                    <InfoRow label="Giai đoạn hiện tại">{project.currentPhase}</InfoRow>
+                    <InfoRow label="Giai đoạn hiện tại">{currentProject.currentPhase}</InfoRow>
                     <InfoRow label="Hạn chót gần nhất">
-                      <span className="text-red-500 font-semibold">{formatDate(project.nearestDeadline)}</span>
+                      <span className="text-red-500 font-semibold">{formatDate(currentProject.nearestDeadline)}</span>
                     </InfoRow>
                     <InfoRow label="Tình trạng dự án">
-                      <HealthBadge health={project.health} />
+                      <HealthBadge health={currentProject.health} />
                     </InfoRow>
                   </CardContent>
                 </Card>
@@ -322,18 +388,25 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
           <TabsContent value="giai-doan" className="mt-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-slate-700">
-                Danh sách giai đoạn ({phases.length})
+                Danh sách giai đoạn ({phases.length}) · {milestones.length} mốc tiến độ
               </h3>
               <Button
                 size="sm"
                 className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs h-8"
-                onClick={() => setPhaseModalOpen(true)}
+                onClick={() => {
+                  setEditingPhase(null);
+                  setPhaseModalOpen(true);
+                }}
               >
                 <Plus className="h-3.5 w-3.5" /> Thêm giai đoạn
               </Button>
             </div>
             <div className="space-y-2">
-              {phases.map((phase) => (
+              {phases.length === 0 ? (
+                <Card className="border-slate-200 shadow-sm">
+                  <CardContent className="p-6 text-center text-sm text-slate-400">Không có giai đoạn nào.</CardContent>
+                </Card>
+              ) : phases.map((phase) => (
                 <Card key={phase.id} className="border-slate-200 shadow-sm hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
                     <div className="flex items-start gap-4">
@@ -370,7 +443,15 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
                         </div>
                       </div>
                       {/* Actions */}
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:bg-slate-100 flex-shrink-0">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0 text-slate-400 hover:bg-slate-100 flex-shrink-0"
+                        onClick={() => {
+                          setEditingPhase(phase);
+                          setPhaseModalOpen(true);
+                        }}
+                      >
                         <Pencil className="h-3 w-3" />
                       </Button>
                     </div>
@@ -462,22 +543,28 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
             <h3 className="mb-4 text-sm font-semibold text-slate-700">Nhật ký hoạt động</h3>
             <div className="relative pl-5">
               <div className="absolute left-1.5 top-0 h-full w-0.5 bg-slate-200" />
-              <div className="space-y-4">
-                {activityLog.map((log, i) => (
-                  <div key={i} className="relative flex items-start gap-3">
-                    <div className="absolute -left-3.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white border border-slate-200">
-                      {activityIcon(log.type)}
-                    </div>
-                    <div className="flex-1 rounded-lg border border-slate-100 bg-white px-4 py-3 shadow-sm">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-xs text-slate-700 leading-snug">{log.action}</p>
-                        <span className="text-[10px] text-slate-400 whitespace-nowrap flex-shrink-0">{log.date}</span>
+              {activityLog.length === 0 ? (
+                <Card className="border-slate-200 shadow-sm">
+                  <CardContent className="p-6 text-center text-sm text-slate-400">Chưa có nhật ký hoạt động cho đề tài này.</CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {activityLog.map((log) => (
+                    <div key={log.activityLogId} className="relative flex items-start gap-3">
+                      <div className="absolute -left-3.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white border border-slate-200">
+                        {activityIcon(log.actionType)}
                       </div>
-                      <p className="mt-1 text-[10px] font-medium text-slate-400">{log.user}</p>
+                      <div className="flex-1 rounded-lg border border-slate-100 bg-white px-4 py-3 shadow-sm">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-xs text-slate-700 leading-snug">{log.actionSummary}</p>
+                          <span className="text-[10px] text-slate-400 whitespace-nowrap flex-shrink-0">{formatDateTime(log.performedAt)}</span>
+                        </div>
+                        <p className="mt-1 text-[10px] font-medium text-slate-400">{log.performedByName ?? "Hệ thống"}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>
@@ -485,8 +572,14 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
 
       <PhaseFormModal
         open={phaseModalOpen}
-        onClose={() => setPhaseModalOpen(false)}
-        phase={null}
+        onClose={() => {
+          setPhaseModalOpen(false);
+          setEditingPhase(null);
+        }}
+        phase={editingPhase}
+        projectId={currentProject.id}
+        nextOrder={phases.length + 1}
+        onSubmit={handleSubmitPhase}
       />
     </div>
   );

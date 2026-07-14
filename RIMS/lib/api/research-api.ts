@@ -84,6 +84,35 @@ export interface ApiProjectDeadline {
   severityLabel: string;
 }
 
+export interface ProjectPhasePayload {
+  projectId?: number;
+  phaseName: string;
+  description?: string | null;
+  responsibleUserId?: number | null;
+  plannedStartDate?: string | null;
+  plannedEndDate?: string | null;
+  deadlineDate?: string | null;
+  actualStartDate?: string | null;
+  actualEndDate?: string | null;
+  progressPercent: number;
+  phaseStatus: string;
+  notes?: string | null;
+  sortOrder: number;
+}
+
+export interface ProjectMilestonePayload {
+  projectId?: number;
+  phaseId?: number | null;
+  milestoneName: string;
+  description?: string | null;
+  dueDate: string;
+  responsibleUserId?: number | null;
+  milestoneStatus: string;
+  priorityLevel: string;
+  completedAt?: string | null;
+  notes?: string | null;
+}
+
 export const researchApi = {
   getProjects: (filters?: QueryParams) => apiClient.get<PagedResult<ApiResearchProject>>("/research-projects", filters),
   getProject: (id: string | number) => apiClient.get<ApiResearchProject>(`/research-projects/${id}`),

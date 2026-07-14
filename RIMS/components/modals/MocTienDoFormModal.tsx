@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/select";
 import { FormDrawer, FormDrawerField, FormDrawerSection } from "@/components/common/FormDrawer";
 import type { PhaseStatus, ResearchMilestone, ResearchPhase, RiskLevel } from "@/lib/types";
+import type { ProjectMilestonePayload } from "@/lib/api/research-api";
+import { toApiPhaseStatus, toApiPriorityLevel } from "@/lib/mappers/status-mapper";
 
 const STATUS_OPTIONS: PhaseStatus[] = [
   "Chưa bắt đầu",
@@ -39,6 +41,21 @@ interface MocTienDoFormModalProps {
   onClose: () => void;
   milestone?: ResearchMilestone | null;
   phases: ResearchPhase[];
+  projectId?: string;
+  onSubmit?: (payload: ProjectMilestonePayload) => Promise<void>;
+}
+
+const toNumberOrNull = (value?: string | null) => {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const toOptionalDate = (value: string) => value || null;
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  return "Không lưu được mốc tiến độ. Vui lòng thử lại.";
 }
 
 export default function MocTienDoFormModal({
@@ -46,8 +63,12 @@ export default function MocTienDoFormModal({
   onClose,
   milestone,
   phases,
+  projectId,
+  onSubmit,
 }: MocTienDoFormModalProps) {
   const isEdit = !!milestone;
+  const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const [form, setForm] = useState({
     phaseId: phases[0]?.id ?? "",
@@ -67,6 +88,7 @@ export default function MocTienDoFormModal({
   });
 
   useEffect(() => {
+    setSubmitError("");
     if (milestone) {
       setForm({
         phaseId: milestone.phaseId,
@@ -108,14 +130,71 @@ export default function MocTienDoFormModal({
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleSave = async () => {
+    setSubmitError("");
+    if (!form.phaseId) {
+      setSubmitError("Vui lòng chọn giai đoạn.");
+      return;
+    }
+    if (!form.name.trim()) {
+      setSubmitError("Vui lòng nhập tên mốc tiến độ.");
+      return;
+    }
+
+    const dueDate = form.deadline || form.plannedEndDate || form.plannedStartDate;
+    if (!dueDate) {
+      setSubmitError("Vui lòng nhập hạn chót cho mốc tiến độ.");
+      return;
+    }
+
+    const selectedPhase = phases.find((phase) => phase.id === form.phaseId);
+    const numericProjectId = toNumberOrNull(milestone?.researchId ?? selectedPhase?.researchId ?? projectId);
+    if (!isEdit && !numericProjectId) {
+      setSubmitError("Không xác định được đề tài để tạo mốc tiến độ.");
+      return;
+    }
+
+    const payload: ProjectMilestonePayload = {
+      ...(numericProjectId ? { projectId: numericProjectId } : {}),
+      phaseId: toNumberOrNull(form.phaseId),
+      milestoneName: form.name.trim(),
+      description: null,
+      dueDate,
+      responsibleUserId: toNumberOrNull(milestone?.responsibleUserId),
+      milestoneStatus: toApiPhaseStatus(form.status),
+      priorityLevel: toApiPriorityLevel(form.risk),
+      completedAt: toOptionalDate(form.actualEndDate),
+      notes: form.hasIssue === "Có"
+        ? (form.issueReason.trim() || form.notes.trim() || null)
+        : (form.notes.trim() || null),
+    };
+
+    try {
+      setSaving(true);
+      await onSubmit?.(payload);
+      onClose();
+    } catch (error) {
+      setSubmitError(getErrorMessage(error));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <FormDrawer
       open={open}
       onOpenChange={onClose}
       title={isEdit ? "Chỉnh sửa mốc tiến độ" : "Thêm mốc tiến độ mới"}
-      onSave={onClose}
+      onSave={handleSave}
       saveLabel={isEdit ? "Cập nhật" : "Lưu"}
+      isSaving={saving}
     >
+      {submitError && (
+        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+          {submitError}
+        </div>
+      )}
+
       <FormDrawerField label="Giai đoạn" required colSpan={2}>
         <Select
           value={form.phaseId}
