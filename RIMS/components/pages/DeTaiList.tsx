@@ -26,11 +26,12 @@ import {
   SPONSORS,
 } from "@/lib/mock-data";
 import type { ResearchProject, EthicsStatus, ProjectHealth } from "@/lib/types";
-import { Search, Plus, Eye, Pencil, Trash2, Filter } from "lucide-react";
-import DeTaiFormModal from "@/components/modals/DeTaiFormModal";
+import { Search, Plus, Eye, Pencil, Trash2, Filter, ArrowUpDown } from "lucide-react";
+import DeTaiFormModal, { type DeTaiFormData } from "@/components/modals/DeTaiFormModal";
 import { researchApi } from "@/lib/api/research-api";
 import { mapApiProjectToUi } from "@/lib/mappers/project-mapper";
 import { ConfirmationDialog } from "@/components/common/ConfirmationDialog";
+import { toast } from "@/lib/toast";
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -85,6 +86,90 @@ interface DeTaiListProps {
   onViewDetail: (project: ResearchProject) => void;
 }
 
+type SortKey =
+  | "code"
+  | "name"
+  | "department"
+  | "pi"
+  | "sponsor"
+  | "protocolNumber"
+  | "ethicsStatus"
+  | "currentPhase"
+  | "progress"
+  | "nearestDeadline"
+  | "status"
+  | "health";
+
+type SortDirection = "asc" | "desc";
+
+const columns: Array<{ label: string; key?: SortKey; className?: string }> = [
+  { label: "Mã", key: "code", className: "w-[7%]" },
+  { label: "Tên đề tài", key: "name", className: "w-[16%]" },
+  { label: "Khoa/phòng", key: "department", className: "w-[8%]" },
+  { label: "Chủ nhiệm", key: "pi", className: "w-[8%]" },
+  { label: "Tài trợ", key: "sponsor", className: "w-[7%]" },
+  { label: "Đề cương", key: "protocolNumber", className: "w-[7%]" },
+  { label: "Đạo đức", key: "ethicsStatus", className: "w-[8%]" },
+  { label: "Giai đoạn", key: "currentPhase", className: "w-[8%]" },
+  { label: "Tiến độ", key: "progress", className: "w-[7%]" },
+  { label: "Hạn chót", key: "nearestDeadline", className: "w-[7%]" },
+  { label: "Trạng thái", key: "status", className: "w-[7%]" },
+  { label: "Sức khỏe", key: "health", className: "w-[7%]" },
+  { label: "", className: "w-[8%]" },
+];
+
+function mapEthicsToApi(status: string) {
+  if (status === "Đã duyệt" || status === "Sắp hết hạn") return "approved";
+  if (status === "Chờ duyệt") return "pending";
+  if (status === "Hết hạn") return "expired";
+  return "not_required";
+}
+
+function mapStatusToApi(status: string) {
+  if (status === "Hoàn thành") return "completed";
+  if (status === "Chưa bắt đầu") return "not_started";
+  if (status === "Tạm dừng") return "paused";
+  return "in_progress";
+}
+
+function mapHealthToApi(health?: ProjectHealth) {
+  if (health === "Trễ hạn" || health === "Hoàn thành trễ") return "high";
+  if (health === "Có nguy cơ") return "medium";
+  return "low";
+}
+
+function buildProjectPayload(data: DeTaiFormData, existing?: ResearchProject | null) {
+  return {
+    projectTitle: data.name.trim(),
+    description: data.description.trim() || null,
+    departmentId: existing?.departmentId ?? null,
+    principalInvestigatorId: existing?.principalInvestigatorId ?? null,
+    sponsorId: existing?.sponsorId ?? null,
+    sponsorName: data.sponsor.trim() || null,
+    researchType: data.type || null,
+    protocolNumber: data.protocolNumber.trim() || null,
+    protocolVersion: data.protocolVersion.trim() || null,
+    ethicsStatus: mapEthicsToApi(data.ethicsStatus),
+    ethicsApprovalDate: null,
+    ethicsExpiryDate: null,
+    plannedStartDate: data.startDate || null,
+    plannedEndDate: data.endDate || null,
+    actualStartDate: null,
+    actualEndDate: null,
+    currentPhaseName: data.currentPhase.trim() || "Chưa bắt đầu",
+    progressPercent: Number(data.progress || 0),
+    projectStatus: mapStatusToApi(data.status),
+    riskLevel: mapHealthToApi(existing?.health),
+    notes: data.notes.trim() || null,
+  };
+}
+
+function getSortValue(project: ResearchProject, key: SortKey) {
+  if (key === "progress") return project.progress;
+  if (key === "nearestDeadline") return project.nearestDeadline ? new Date(project.nearestDeadline).getTime() : 0;
+  return String(project[key] ?? "").toLocaleLowerCase("vi-VN");
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function DeTaiList({ onViewDetail }: DeTaiListProps) {
   const [projects, setProjects] = useState<ResearchProject[]>([]);
@@ -97,9 +182,12 @@ export default function DeTaiList({ onViewDetail }: DeTaiListProps) {
   const [filterEthics, setFilterEthics] = useState("Tất cả");
   const [showOverdueOnly, setShowOverdueOnly] = useState(false);
   const [formModalOpen, setFormModalOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<ResearchProject | null>(null);
   const [projectToDelete, setProjectToDelete] = useState<ResearchProject | null>(null);
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("code");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const loadProjects = useCallback(async () => {
     setLoading(true);
@@ -109,6 +197,7 @@ export default function DeTaiList({ onViewDetail }: DeTaiListProps) {
       setProjects(result.items.map(mapApiProjectToUi));
     } catch {
       setError("Không tải được danh sách đề tài từ API.");
+      toast.error("Không tải được danh sách đề tài.");
       setProjects([]);
     } finally {
       setLoading(false);
@@ -126,12 +215,59 @@ export default function DeTaiList({ onViewDetail }: DeTaiListProps) {
     setDeletingProjectId(projectToDelete.id);
     try {
       await researchApi.deleteProject(projectToDelete.id);
+      toast.success({ title: "Đã xóa đề tài", description: projectToDelete.code });
       setProjectToDelete(null);
       await loadProjects();
     } catch (deleteError) {
-      setActionError(deleteError instanceof Error ? deleteError.message : "Không xóa được đề tài.");
+      const message = deleteError instanceof Error ? deleteError.message : "Không xóa được đề tài.";
+      setActionError(message);
+      toast.error({ title: "Không xóa được đề tài", description: message });
     } finally {
       setDeletingProjectId(null);
+    }
+  };
+
+  const handleSort = (key: SortKey) => {
+    setSortKey((currentKey) => {
+      if (currentKey === key) {
+        setSortDirection((currentDirection) => currentDirection === "asc" ? "desc" : "asc");
+        return currentKey;
+      }
+      setSortDirection("asc");
+      return key;
+    });
+  };
+
+  const handleCreateProject = async (data: DeTaiFormData) => {
+    setActionError("");
+    try {
+      await researchApi.createProject({
+        projectCode: data.code.trim(),
+        ...buildProjectPayload(data),
+      });
+      toast.success({ title: "Đã thêm đề tài", description: data.code.trim() });
+      await loadProjects();
+    } catch (createError) {
+      const message = createError instanceof Error ? createError.message : "Không thêm được đề tài.";
+      setActionError(message);
+      toast.error({ title: "Không thêm được đề tài", description: message });
+      throw new Error(message);
+    }
+  };
+
+  const handleUpdateProject = async (data: DeTaiFormData) => {
+    if (!editingProject) return;
+    setActionError("");
+    try {
+      await researchApi.updateProject(editingProject.id, buildProjectPayload(data, editingProject));
+      toast.success({ title: "Đã cập nhật đề tài", description: editingProject.code });
+      setEditingProject(null);
+      await loadProjects();
+    } catch (updateError) {
+      const message = updateError instanceof Error ? updateError.message : "Không cập nhật được đề tài.";
+      setActionError(message);
+      toast.error({ title: "Không cập nhật được đề tài", description: message });
+      throw new Error(message);
     }
   };
 
@@ -149,6 +285,17 @@ export default function DeTaiList({ onViewDetail }: DeTaiListProps) {
       return true;
     });
   }, [projects, searchQuery, filterDept, filterSponsor, filterStatus, filterEthics, showOverdueOnly]);
+
+  const sortedProjects = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const left = getSortValue(a, sortKey);
+      const right = getSortValue(b, sortKey);
+      const result = typeof left === "number" && typeof right === "number"
+        ? left - right
+        : String(left).localeCompare(String(right), "vi-VN", { numeric: true, sensitivity: "base" });
+      return sortDirection === "asc" ? result : -result;
+    });
+  }, [filtered, sortDirection, sortKey]);
 
   const hasFilters = filterDept !== "Tất cả" || filterSponsor !== "Tất cả" || filterStatus !== "Tất cả" || filterEthics !== "Tất cả" || showOverdueOnly || !!searchQuery;
 
@@ -250,79 +397,80 @@ export default function DeTaiList({ onViewDetail }: DeTaiListProps) {
         {/* Table */}
         <Card className="border-slate-200 shadow-sm overflow-hidden">
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
+              <Table className="w-full table-fixed">
                 <TableHeader>
                   <TableRow className="bg-slate-50 hover:bg-slate-50 border-b border-slate-200">
-                    {[
-                      "Mã đề tài",
-                      "Tên đề tài",
-                      "Khoa/phòng",
-                      "Chủ nhiệm",
-                      "Nhà tài trợ",
-                      "Mã đề cương",
-                      "Đạo đức",
-                      "Giai đoạn hiện tại",
-                      "Tiến độ",
-                      "Hạn chót",
-                      "Trạng thái",
-                      "Sức khỏe DA",
-                      "Thao tác",
-                    ].map((h) => (
+                    {columns.map((column) => (
                       <TableHead
-                        key={h}
-                        className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 py-2.5 px-3 whitespace-nowrap"
+                        key={column.label}
+                        className={cn("py-2.5 px-2 align-top text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-normal", column.className)}
                       >
-                        {h}
+                        {column.key ? (
+                          <button
+                            type="button"
+                            onClick={() => handleSort(column.key!)}
+                            className={cn(
+                              "flex w-full items-start gap-1 rounded px-0.5 py-0.5 text-left leading-tight hover:bg-slate-100 hover:text-slate-700",
+                              sortKey === column.key && "text-blue-700"
+                            )}
+                            title={`Sắp xếp theo ${column.label}`}
+                          >
+                            <span className="min-w-0 flex-1 break-words">{column.label}</span>
+                            <ArrowUpDown className={cn("mt-0.5 h-3 w-3 shrink-0", sortKey === column.key && sortDirection === "desc" && "rotate-180")} />
+                          </button>
+                        ) : (
+                          column.label
+                        )}
                       </TableHead>
                     ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.length === 0 ? (
+                  {sortedProjects.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={13} className="py-12 text-center text-sm text-slate-400">
                         Không tìm thấy đề tài nào.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filtered.map((p) => (
+                    sortedProjects.map((p) => (
                       <TableRow
                         key={p.id}
                         className="border-b border-slate-100 hover:bg-slate-50/70 transition-colors"
                       >
-                        <TableCell className="px-3 py-2.5">
+                        <TableCell className="px-2 py-2.5 align-top whitespace-normal">
                           <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-100 whitespace-nowrap">
                             {p.code}
                           </span>
                         </TableCell>
-                        <TableCell className="px-3 py-2.5 max-w-48">
-                          <p className="text-xs font-semibold text-slate-800 leading-snug line-clamp-2">{p.name}</p>
+                        <TableCell className="px-2 py-2.5 align-top whitespace-normal">
+                          <p className="text-xs font-semibold leading-snug text-slate-800 break-words">{p.name}</p>
+                          {p.description && <p className="mt-1 text-[10px] leading-snug text-slate-500 break-words">{p.description}</p>}
                         </TableCell>
-                        <TableCell className="px-3 py-2.5">
-                          <span className="text-xs text-slate-600 whitespace-nowrap">{p.department}</span>
+                        <TableCell className="px-2 py-2.5 align-top whitespace-normal">
+                          <span className="text-xs leading-snug text-slate-600 break-words">{p.department}</span>
                         </TableCell>
-                        <TableCell className="px-3 py-2.5">
-                          <span className="text-xs text-slate-700 whitespace-nowrap font-medium">{p.pi}</span>
+                        <TableCell className="px-2 py-2.5 align-top whitespace-normal">
+                          <span className="text-xs font-medium leading-snug text-slate-700 break-words">{p.pi}</span>
                         </TableCell>
-                        <TableCell className="px-3 py-2.5 max-w-36">
-                          <span className="text-xs text-slate-500 line-clamp-1">{p.sponsor}</span>
+                        <TableCell className="px-2 py-2.5 align-top whitespace-normal">
+                          <span className="text-xs leading-snug text-slate-500 break-words">{p.sponsor}</span>
                         </TableCell>
-                        <TableCell className="px-3 py-2.5">
+                        <TableCell className="px-2 py-2.5 align-top whitespace-normal">
                           <div className="space-y-0.5">
-                            <p className="text-[10px] font-mono text-slate-700">{p.protocolNumber}</p>
+                            <p className="text-[10px] font-mono leading-snug text-slate-700 break-words">{p.protocolNumber || "Chưa có"}</p>
                             <p className="text-[9px] text-slate-400">{p.protocolVersion}</p>
                           </div>
                         </TableCell>
-                        <TableCell className="px-3 py-2.5">
+                        <TableCell className="px-2 py-2.5 align-top">
                           <EthicsBadge status={p.ethicsStatus} />
                         </TableCell>
-                        <TableCell className="px-3 py-2.5">
-                          <span className="text-[10px] text-slate-600 whitespace-nowrap">{p.currentPhase}</span>
+                        <TableCell className="px-2 py-2.5 align-top whitespace-normal">
+                          <span className="text-[10px] leading-snug text-slate-600 break-words">{p.currentPhase}</span>
                         </TableCell>
-                        <TableCell className="px-3 py-2.5">
-                          <div className="flex items-center gap-1.5">
-                            <div className="h-1.5 w-20 rounded-full bg-slate-200 overflow-hidden">
+                        <TableCell className="px-2 py-2.5 align-top">
+                          <div className="space-y-1">
+                            <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
                               <div
                                 className={cn(
                                   "h-full rounded-full transition-all",
@@ -331,42 +479,48 @@ export default function DeTaiList({ onViewDetail }: DeTaiListProps) {
                                 style={{ width: `${p.progress}%` }}
                               />
                             </div>
-                            <span className="text-[10px] font-semibold text-slate-600 w-7">{p.progress}%</span>
+                            <span className="block text-[10px] font-semibold text-slate-600">{p.progress}%</span>
                           </div>
                         </TableCell>
-                        <TableCell className="px-3 py-2.5">
+                        <TableCell className="px-2 py-2.5 align-top">
                           {p.nearestDeadline ? (
-                            <span className="text-[10px] font-medium text-red-500 whitespace-nowrap">
+                            <span className="text-[10px] font-medium leading-tight text-red-500">
                               {p.nearestDeadline.split("-").reverse().join("/")}
                             </span>
                           ) : (
                             <span className="text-slate-300 text-xs">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="px-3 py-2.5">
+                        <TableCell className="px-2 py-2.5 align-top">
                           <StatusBadge status={p.status} />
                         </TableCell>
-                        <TableCell className="px-3 py-2.5">
+                        <TableCell className="px-2 py-2.5 align-top">
                           <HealthBadge health={p.health} />
                         </TableCell>
-                        <TableCell className="px-3 py-2.5">
-                          <div className="flex items-center gap-0.5">
+                        <TableCell className="px-2 py-2.5 align-top whitespace-nowrap">
+                          <div className="flex flex-nowrap items-center justify-end gap-0.5">
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-7 gap-1 px-2 text-blue-600 hover:bg-blue-50 text-[10px] font-medium"
+                              className="h-6 w-6 p-0 text-blue-600 hover:bg-blue-50"
+                              title="Xem chi tiết"
                               onClick={() => onViewDetail(p)}
                             >
                               <Eye className="h-3 w-3" />
-                              Xem
                             </Button>
-                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:bg-slate-100">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 text-slate-500 hover:bg-slate-100"
+                              title="Sửa đề tài"
+                              onClick={() => setEditingProject(p)}
+                            >
                               <Pencil className="h-3 w-3" />
                             </Button>
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-7 w-7 p-0 text-slate-400 hover:bg-red-50 hover:text-red-500"
+                              className="h-6 w-6 p-0 text-slate-400 hover:bg-red-50 hover:text-red-500"
                               disabled={deletingProjectId === p.id}
                               onClick={() => setProjectToDelete(p)}
                             >
@@ -379,44 +533,28 @@ export default function DeTaiList({ onViewDetail }: DeTaiListProps) {
                   )}
                 </TableBody>
               </Table>
-            </div>
           </CardContent>
         </Card>
 
         <p className="text-xs text-slate-400">
-          Hiển thị {filtered.length} / {projects.length} đề tài
+          Hiển thị {sortedProjects.length} / {projects.length} đề tài. Bấm tiêu đề cột để sắp xếp.
         </p>
       </div>
 
-      {/* Add Topic Modal */}
       <DeTaiFormModal
         open={formModalOpen}
+        mode="create"
         onOpenChange={setFormModalOpen}
-        onSave={async (data) => {
-          const payload = {
-            projectCode: data.code,
-            projectTitle: data.name,
-            description: data.description,
-            sponsorName: data.sponsor === "Tất cả" ? null : data.sponsor,
-            researchType: data.type,
-            protocolNumber: data.protocolNumber,
-            protocolVersion: data.protocolVersion,
-            ethicsStatus: data.ethicsStatus === "Đã duyệt" ? "approved" : data.ethicsStatus === "Chờ duyệt" ? "pending" : "not_required",
-            ethicsApprovalDate: null,
-            ethicsExpiryDate: null,
-            plannedStartDate: data.startDate || null,
-            plannedEndDate: data.endDate || null,
-            actualStartDate: null,
-            actualEndDate: null,
-            currentPhaseName: "Chưa bắt đầu",
-            progressPercent: 0,
-            projectStatus: data.status === "Hoàn thành" ? "completed" : data.status === "Chưa bắt đầu" ? "not_started" : "in_progress",
-            riskLevel: "low",
-            notes: data.notes,
-          };
-          await researchApi.createProject(payload);
-          await loadProjects();
+        onSave={handleCreateProject}
+      />
+      <DeTaiFormModal
+        open={!!editingProject}
+        mode="edit"
+        project={editingProject}
+        onOpenChange={(open) => {
+          if (!open) setEditingProject(null);
         }}
+        onSave={handleUpdateProject}
       />
       <ConfirmationDialog
         open={!!projectToDelete}

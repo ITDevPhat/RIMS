@@ -74,6 +74,7 @@ export const adminApi = {
   updateRole: (id: string | number, payload: unknown) => apiClient.put<ApiAdminRole>(`/roles/${id}`, payload),
   deleteRole: (id: string | number) => apiClient.delete<null>(`/roles/${id}`),
   getPermissions: (filters?: QueryParams) => apiClient.get<PagedResult<ApiPermission>>("/permissions", filters),
+  updatePermission: (id: string | number, payload: unknown) => apiClient.put<ApiPermission>(`/permissions/${id}`, payload),
   getRolePermissions: (roleId: string | number) => apiClient.get<unknown>(`/roles/${roleId}/permissions`),
   updateRolePermissions: (roleId: string | number, payload: { permissionIds: number[] }) =>
     apiClient.put<unknown>(`/roles/${roleId}/permissions`, payload),

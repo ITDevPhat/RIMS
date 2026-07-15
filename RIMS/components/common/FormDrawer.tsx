@@ -12,11 +12,14 @@ export function FormDrawerHeader({
   onClose: () => void;
 }) {
   return (
-    <div className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4 shadow-sm">
-      <h2 className="text-lg font-bold text-slate-800">{title}</h2>
+    <div className="sticky top-0 z-20 flex items-start justify-between border-b border-slate-200 bg-white px-6 py-5 shadow-sm">
+      <div>
+        <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+        <p className="mt-1 text-sm text-slate-500">Kiểm tra thông tin bắt buộc, mốc thời gian và trạng thái trước khi lưu.</p>
+      </div>
       <button
         onClick={onClose}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+        className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
         aria-label="Đóng"
       >
         <X className="h-5 w-5" />
@@ -32,7 +35,7 @@ export function FormDrawerContent({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex-1 overflow-y-auto px-6 py-5">
+    <div className="flex-1 overflow-y-auto bg-slate-50/70 px-6 py-5">
       {children}
     </div>
   );
@@ -47,16 +50,16 @@ export function FormDrawerSection({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mb-6">
+    <section className="mb-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       {title && (
-        <h3 className="mb-4 text-sm font-semibold text-slate-700">
+        <h3 className="mb-4 border-b border-slate-100 pb-3 text-sm font-bold text-slate-800">
           {title}
         </h3>
       )}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {children}
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -74,7 +77,7 @@ export function FormDrawerField({
 }) {
   return (
     <div className={colSpan === 2 ? "sm:col-span-2" : ""}>
-      <label className="mb-2 flex items-center text-sm font-medium text-slate-700">
+      <label className="mb-1.5 flex items-center text-xs font-semibold uppercase tracking-wide text-slate-500">
         {label}
         {required && <span className="ml-1 text-red-500">*</span>}
       </label>
@@ -96,7 +99,7 @@ export function FormDrawerFooter({
   isSaving?: boolean;
 }) {
   return (
-    <div className="sticky bottom-0 z-20 border-t border-slate-200 bg-slate-50 px-6 py-4 flex justify-end gap-3 shadow-sm">
+    <div className="sticky bottom-0 z-20 flex justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4 shadow-sm">
       <Button
         variant="outline"
         onClick={onCancel}
@@ -107,7 +110,7 @@ export function FormDrawerFooter({
       </Button>
       <Button
         onClick={onSave}
-        className="h-10 min-w-[120px] rounded-lg"
+        className="h-10 min-w-[140px] rounded-lg"
         disabled={isSaving}
       >
         {isSaving ? "Đang lưu..." : saveLabel}
@@ -151,7 +154,7 @@ export function FormDrawer({
       
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="flex h-[90vh] w-full max-w-2xl flex-col rounded-lg bg-white shadow-lg">
+        <div className="flex h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl ring-1 ring-slate-200">
           <FormDrawerHeader title={title} onClose={handleClose} />
           <FormDrawerContent>{children}</FormDrawerContent>
           <FormDrawerFooter

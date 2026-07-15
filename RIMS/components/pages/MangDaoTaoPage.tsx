@@ -21,6 +21,7 @@ import LichDaoTao from "@/components/pages/training/LichDaoTao";
 import DanhSachSuKien from "@/components/pages/training/DanhSachSuKien";
 import ThongKeNam from "@/components/pages/training/ThongKeNam";
 import CaiDatDaoTao from "@/components/pages/training/CaiDatDaoTao";
+import { toast } from "@/lib/toast";
 
 export default function MangDaoTaoPage() {
   const [selectedYear, setSelectedYear] = useState(2026);
@@ -41,6 +42,7 @@ export default function MangDaoTaoPage() {
       setAllConferences(result.items.map(mapApiTrainingEventToUi));
     } catch {
       setError("Không tải được dữ liệu đào tạo từ API.");
+      toast.error("Không tải được dữ liệu đào tạo.");
       setAllConferences([]);
     } finally {
       setLoading(false);
@@ -76,18 +78,33 @@ export default function MangDaoTaoPage() {
   });
 
   const handleSave = async (data: Partial<HoiNghi>) => {
-    if (editTarget) {
-      await trainingApi.updateTrainingEvent(editTarget.id, toPayload({ ...editTarget, ...data }));
-    } else {
-      await trainingApi.createTrainingEvent(toPayload(data));
+    try {
+      if (editTarget) {
+        await trainingApi.updateTrainingEvent(editTarget.id, toPayload({ ...editTarget, ...data }));
+        toast.success({ title: "Đã cập nhật sự kiện đào tạo", description: editTarget.ma });
+      } else {
+        await trainingApi.createTrainingEvent(toPayload(data));
+        toast.success({ title: "Đã thêm sự kiện đào tạo", description: data.ma || data.ten });
+      }
+      setEditTarget(null);
+      await loadEvents();
+    } catch (saveError) {
+      const message = saveError instanceof Error ? saveError.message : "Không lưu được sự kiện đào tạo.";
+      toast.error({ title: "Không lưu được sự kiện đào tạo", description: message });
+      throw saveError;
     }
-    setEditTarget(null);
-    await loadEvents();
   };
 
   const handleDelete = async (id: string) => {
-    await trainingApi.deleteTrainingEvent(id);
-    await loadEvents();
+    const target = allConferences.find((item) => item.id === id);
+    try {
+      await trainingApi.deleteTrainingEvent(id);
+      toast.success({ title: "Đã xóa sự kiện đào tạo", description: target?.ma ?? id });
+      await loadEvents();
+    } catch (deleteError) {
+      const message = deleteError instanceof Error ? deleteError.message : "Không xóa được sự kiện đào tạo.";
+      toast.error({ title: "Không xóa được sự kiện đào tạo", description: message });
+    }
   };
 
   return (

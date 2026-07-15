@@ -195,40 +195,40 @@ export default function MocTienDoFormModal({
         </div>
       )}
 
-      <FormDrawerField label="Giai đoạn" required colSpan={2}>
-        <Select
-          value={form.phaseId}
-          onValueChange={(v) => v && handleChange("phaseId", v)}
-        >
-          <SelectTrigger className="h-9 border-slate-200">
-            <SelectValue placeholder="Chọn giai đoạn..." />
-          </SelectTrigger>
-          <SelectContent>
-            {phases.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.order}. {p.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </FormDrawerField>
+      <FormDrawerSection title="Thông tin mốc tiến độ">
+        <FormDrawerField label="Giai đoạn" required colSpan={2}>
+          <Select
+            value={form.phaseId}
+            onValueChange={(v) => v && handleChange("phaseId", v)}
+          >
+            <SelectTrigger className="h-10 border-slate-200">
+              <SelectValue placeholder="Chọn giai đoạn..." />
+            </SelectTrigger>
+            <SelectContent>
+              {phases.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.order}. {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FormDrawerField>
 
-      <FormDrawerField label="Tên mốc tiến độ" required colSpan={2}>
-        <Input
-          value={form.name}
-          onChange={(e) => handleChange("name", e.target.value)}
-          placeholder="Nhập tên mốc tiến độ..."
-          className="h-9 border-slate-200"
-        />
-      </FormDrawerField>
+        <FormDrawerField label="Tên mốc tiến độ" required colSpan={2}>
+          <Input
+            value={form.name}
+            onChange={(e) => handleChange("name", e.target.value)}
+            placeholder="VD: Hoàn thiện bộ câu hỏi thu thập số liệu"
+            className="h-10 border-slate-200"
+          />
+        </FormDrawerField>
 
-      <FormDrawerSection>
         <FormDrawerField label="Người phụ trách">
           <Input
             value={form.assignee}
             onChange={(e) => handleChange("assignee", e.target.value)}
-            placeholder="Tên người phụ trách..."
-            className="h-9 border-slate-200"
+            placeholder="VD: CN. Trần Thị B"
+            className="h-10 border-slate-200"
           />
         </FormDrawerField>
 
@@ -239,18 +239,18 @@ export default function MocTienDoFormModal({
             max={100}
             value={form.progress}
             onChange={(e) => handleChange("progress", e.target.value)}
-            className="h-9 border-slate-200"
+            className="h-10 border-slate-200"
           />
         </FormDrawerField>
       </FormDrawerSection>
 
-      <FormDrawerSection>
+      <FormDrawerSection title="Kế hoạch và trạng thái">
         <FormDrawerField label="Ngày bắt đầu dự kiến">
           <Input
             type="date"
             value={form.plannedStartDate}
             onChange={(e) => handleChange("plannedStartDate", e.target.value)}
-            className="h-9 border-slate-200"
+            className="h-10 border-slate-200"
           />
         </FormDrawerField>
 
@@ -259,18 +259,16 @@ export default function MocTienDoFormModal({
             type="date"
             value={form.plannedEndDate}
             onChange={(e) => handleChange("plannedEndDate", e.target.value)}
-            className="h-9 border-slate-200"
+            className="h-10 border-slate-200"
           />
         </FormDrawerField>
-      </FormDrawerSection>
 
-      <FormDrawerSection>
         <FormDrawerField label="Hạn chót">
           <Input
             type="date"
             value={form.deadline}
             onChange={(e) => handleChange("deadline", e.target.value)}
-            className="h-9 border-slate-200"
+            className="h-10 border-slate-200"
           />
         </FormDrawerField>
 
@@ -279,7 +277,7 @@ export default function MocTienDoFormModal({
             value={form.status}
             onValueChange={(v) => v && handleChange("status", v)}
           >
-            <SelectTrigger className="h-9 border-slate-200">
+            <SelectTrigger className="h-10 border-slate-200">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -291,13 +289,13 @@ export default function MocTienDoFormModal({
         </FormDrawerField>
       </FormDrawerSection>
 
-      <FormDrawerSection>
+      <FormDrawerSection title="Rủi ro và phát sinh">
         <FormDrawerField label="Mức độ rủi ro">
           <Select
             value={form.risk}
             onValueChange={(v) => v && handleChange("risk", v)}
           >
-            <SelectTrigger className="h-9 border-slate-200">
+            <SelectTrigger className="h-10 border-slate-200">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -313,7 +311,7 @@ export default function MocTienDoFormModal({
             value={form.hasIssue}
             onValueChange={(v) => v && handleChange("hasIssue", v)}
           >
-            <SelectTrigger className="h-9 border-slate-200">
+            <SelectTrigger className="h-10 border-slate-200">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -322,15 +320,25 @@ export default function MocTienDoFormModal({
             </SelectContent>
           </Select>
         </FormDrawerField>
+        {form.hasIssue === "Có" && (
+          <FormDrawerField label="Lý do phát sinh" colSpan={2}>
+            <Input
+              value={form.issueReason}
+              onChange={(e) => handleChange("issueReason", e.target.value)}
+              placeholder="VD: Thiếu dữ liệu hồ sơ bệnh án, chờ xác nhận của khoa..."
+              className="h-10 border-slate-200"
+            />
+          </FormDrawerField>
+        )}
       </FormDrawerSection>
 
-      <FormDrawerSection>
+      <FormDrawerSection title="Thực tế và ghi chú">
         <FormDrawerField label="Ngày bắt đầu thực tế">
           <Input
             type="date"
             value={form.actualStartDate}
             onChange={(e) => handleChange("actualStartDate", e.target.value)}
-            className="h-9 border-slate-200"
+            className="h-10 border-slate-200"
           />
         </FormDrawerField>
 
@@ -339,30 +347,19 @@ export default function MocTienDoFormModal({
             type="date"
             value={form.actualEndDate}
             onChange={(e) => handleChange("actualEndDate", e.target.value)}
-            className="h-9 border-slate-200"
+            className="h-10 border-slate-200"
+          />
+        </FormDrawerField>
+
+        <FormDrawerField label="Ghi chú" colSpan={2}>
+          <textarea
+            value={form.notes}
+            onChange={(e) => handleChange("notes", e.target.value)}
+            placeholder="Ghi chú tình trạng xử lý, rủi ro hoặc tài liệu bàn giao."
+            className="min-h-20 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
           />
         </FormDrawerField>
       </FormDrawerSection>
-
-      {form.hasIssue === "Có" && (
-        <FormDrawerField label="Lý do phát sinh" colSpan={2}>
-          <Input
-            value={form.issueReason}
-            onChange={(e) => handleChange("issueReason", e.target.value)}
-            placeholder="Mô tả vấn đề phát sinh..."
-            className="h-9 border-slate-200"
-          />
-        </FormDrawerField>
-      )}
-
-      <FormDrawerField label="Ghi chú" colSpan={2}>
-        <textarea
-          value={form.notes}
-          onChange={(e) => handleChange("notes", e.target.value)}
-          placeholder="Nhập ghi chú..."
-          className="h-16 w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 resize-none"
-        />
-      </FormDrawerField>
     </FormDrawer>
   );
 }

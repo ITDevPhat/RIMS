@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Rms.Infrastructure.Persistence.Entities;
@@ -43,7 +43,7 @@ public partial class ProjectMilestone
 
     public long? DeletedBy { get; set; }
 
-    public byte[] RowVersion { get; set; } = null!;
+    public long RowVersion { get; set; } = 1;
 
     public virtual User? CreatedByNavigation { get; set; }
 

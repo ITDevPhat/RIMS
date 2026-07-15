@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Rms.Infrastructure.Persistence.Entities;
@@ -76,6 +76,33 @@ public partial class RmsDbContext : DbContext
 
     public virtual DbSet<VUserNotificationInbox> VUserNotificationInboxes { get; set; }
 
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        IncrementConcurrencyVersions();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        IncrementConcurrencyVersions();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void IncrementConcurrencyVersions()
+    {
+        foreach (var entry in ChangeTracker.Entries().Where(x => x.State is EntityState.Added or EntityState.Modified))
+        {
+            var property = entry.Properties.FirstOrDefault(x => x.Metadata.Name == "RowVersion");
+            if (property is null)
+            {
+                continue;
+            }
+
+            var current = property.CurrentValue is long value ? value : 0L;
+            property.CurrentValue = entry.State == EntityState.Added ? Math.Max(current, 1L) : current + 1L;
+        }
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ActivityLog>(entity =>
@@ -109,12 +136,16 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.ModuleCode)
                 .HasMaxLength(100)
                 .HasColumnName("module_code");
-            entity.Property(e => e.NewValueJson).HasColumnName("new_value_json");
+            entity.Property(e => e.NewValueJson)
+                .HasColumnType("jsonb")
+                .HasColumnName("new_value_json");
             entity.Property(e => e.OccurredAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("occurred_at");
-            entity.Property(e => e.OldValueJson).HasColumnName("old_value_json");
+            entity.Property(e => e.OldValueJson)
+                .HasColumnType("jsonb")
+                .HasColumnName("old_value_json");
             entity.Property(e => e.RequestId)
                 .HasMaxLength(100)
                 .HasColumnName("request_id");
@@ -140,12 +171,16 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.ChangeType)
                 .HasMaxLength(20)
                 .HasColumnName("change_type");
-            entity.Property(e => e.NewValueJson).HasColumnName("new_value_json");
+            entity.Property(e => e.NewValueJson)
+                .HasColumnType("jsonb")
+                .HasColumnName("new_value_json");
             entity.Property(e => e.OccurredAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("occurred_at");
-            entity.Property(e => e.OldValueJson).HasColumnName("old_value_json");
+            entity.Property(e => e.OldValueJson)
+                .HasColumnType("jsonb")
+                .HasColumnName("old_value_json");
             entity.Property(e => e.PrimaryKeyValue)
                 .HasMaxLength(255)
                 .HasColumnName("primary_key_value");
@@ -174,7 +209,7 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.DepartmentId).HasColumnName("department_id");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.DeletedAt)
@@ -198,8 +233,8 @@ public partial class RmsDbContext : DbContext
                 .HasColumnName("is_active");
             entity.Property(e => e.ParentDepartmentId).HasColumnName("parent_department_id");
             entity.Property(e => e.RowVersion)
-                .IsRowVersion()
                 .IsConcurrencyToken()
+                .HasDefaultValue(1L)
                 .HasColumnName("row_version");
             entity.Property(e => e.SortOrder).HasColumnName("sort_order");
             entity.Property(e => e.UpdatedAt)
@@ -232,7 +267,7 @@ public partial class RmsDbContext : DbContext
                 .HasColumnName("color_class");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.Description)
                 .HasMaxLength(1000)
@@ -263,7 +298,7 @@ public partial class RmsDbContext : DbContext
                 .HasColumnName("ip_address");
             entity.Property(e => e.OccurredAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("occurred_at");
             entity.Property(e => e.Success).HasColumnName("success");
             entity.Property(e => e.UserAgent)
@@ -300,7 +335,7 @@ public partial class RmsDbContext : DbContext
                 .HasColumnName("is_active");
             entity.Property(e => e.LoginAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("login_at");
             entity.Property(e => e.LogoutAt)
                 .HasPrecision(0)
@@ -337,7 +372,7 @@ public partial class RmsDbContext : DbContext
                 .HasColumnName("category");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.DeletedAt)
                 .HasPrecision(0)
@@ -385,7 +420,7 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.NotificationRecipientId).HasColumnName("notification_recipient_id");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.DeliveredEmailAt)
                 .HasPrecision(0)
@@ -441,7 +476,7 @@ public partial class RmsDbContext : DbContext
                 .HasColumnName("condition_type");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.DeletedAt)
@@ -467,8 +502,8 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.RepeatIfOverdue).HasColumnName("repeat_if_overdue");
             entity.Property(e => e.RepeatIntervalDays).HasColumnName("repeat_interval_days");
             entity.Property(e => e.RowVersion)
-                .IsRowVersion()
                 .IsConcurrencyToken()
+                .HasDefaultValue(1L)
                 .HasColumnName("row_version");
             entity.Property(e => e.RuleCode)
                 .HasMaxLength(100)
@@ -505,13 +540,14 @@ public partial class RmsDbContext : DbContext
                 .HasColumnName("auto_resolve_when_completed");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.DailyScanTime)
                 .HasPrecision(0)
                 .HasDefaultValue(new TimeOnly(7, 0, 0))
                 .HasColumnName("daily_scan_time");
             entity.Property(e => e.DeadlineReminderDaysJson)
+                .HasColumnType("jsonb")
                 .HasDefaultValue("[7,3,1,0]")
                 .HasColumnName("deadline_reminder_days_json");
             entity.Property(e => e.EnableEmailNotification).HasColumnName("enable_email_notification");
@@ -522,28 +558,32 @@ public partial class RmsDbContext : DbContext
                 .HasDefaultValue(true)
                 .HasColumnName("enable_system_notification");
             entity.Property(e => e.EthicsReminderDaysJson)
+                .HasColumnType("jsonb")
                 .HasDefaultValue("[90,30,7]")
                 .HasColumnName("ethics_reminder_days_json");
             entity.Property(e => e.OverdueRepeatDays)
                 .HasDefaultValue(1)
                 .HasColumnName("overdue_repeat_days");
             entity.Property(e => e.ProgressReportReminderDaysJson)
+                .HasColumnType("jsonb")
                 .HasDefaultValue("[7,3,1]")
                 .HasColumnName("progress_report_reminder_days_json");
             entity.Property(e => e.ProjectEndReminderDaysJson)
+                .HasColumnType("jsonb")
                 .HasDefaultValue("[30,14,7]")
                 .HasColumnName("project_end_reminder_days_json");
             entity.Property(e => e.RepeatIfOverdue)
                 .HasDefaultValue(true)
                 .HasColumnName("repeat_if_overdue");
             entity.Property(e => e.RowVersion)
-                .IsRowVersion()
                 .IsConcurrencyToken()
+                .HasDefaultValue(1L)
                 .HasColumnName("row_version");
             entity.Property(e => e.ScopeType)
                 .HasMaxLength(50)
                 .HasColumnName("scope_type");
             entity.Property(e => e.TrainingEventReminderDaysJson)
+                .HasColumnType("jsonb")
                 .HasDefaultValue("[7,3,1,0]")
                 .HasColumnName("training_event_reminder_days_json");
             entity.Property(e => e.UpdatedAt)
@@ -573,7 +613,7 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.BodyTemplate).HasColumnName("body_template");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.DefaultPriority)
@@ -591,8 +631,8 @@ public partial class RmsDbContext : DbContext
                 .HasMaxLength(100)
                 .HasColumnName("notification_type");
             entity.Property(e => e.RowVersion)
-                .IsRowVersion()
                 .IsConcurrencyToken()
+                .HasDefaultValue(1L)
                 .HasColumnName("row_version");
             entity.Property(e => e.TemplateCode)
                 .HasMaxLength(100)
@@ -626,7 +666,7 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.TokenId).HasColumnName("token_id");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.ExpiresAt)
@@ -667,7 +707,7 @@ public partial class RmsDbContext : DbContext
                 .HasColumnName("action_name");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.Description)
                 .HasMaxLength(1000)
@@ -683,7 +723,7 @@ public partial class RmsDbContext : DbContext
                 .HasColumnName("module_name");
             entity.Property(e => e.PermissionCode)
                 .HasMaxLength(201)
-                .HasComputedColumnSql("(CONVERT([nvarchar](201),([module_code]+N'.')+[action_code]))", true)
+                .HasComputedColumnSql("module_code || '.' || action_code", stored: true)
                 .HasColumnName("permission_code");
         });
 
@@ -703,7 +743,7 @@ public partial class RmsDbContext : DbContext
                 .HasColumnName("completed_at");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.DeadlineDescription).HasColumnName("deadline_description");
@@ -731,8 +771,8 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.ProjectId).HasColumnName("project_id");
             entity.Property(e => e.ResponsibleUserId).HasColumnName("responsible_user_id");
             entity.Property(e => e.RowVersion)
-                .IsRowVersion()
                 .IsConcurrencyToken()
+                .HasDefaultValue(1L)
                 .HasColumnName("row_version");
             entity.Property(e => e.UpdatedAt)
                 .HasPrecision(0)
@@ -795,7 +835,7 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.ProjectId).HasColumnName("project_id");
             entity.Property(e => e.UploadedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("uploaded_at");
             entity.Property(e => e.UploadedBy).HasColumnName("uploaded_by");
             entity.Property(e => e.VersionLabel)
@@ -829,14 +869,14 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.ProjectMemberId).HasColumnName("project_member_id");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.IsActive)
                 .HasDefaultValue(true)
                 .HasColumnName("is_active");
             entity.Property(e => e.JoinedAt)
-                .HasDefaultValueSql("(CONVERT([date],sysutcdatetime()))")
+                .HasDefaultValueSql("CURRENT_DATE")
                 .HasColumnName("joined_at");
             entity.Property(e => e.LeftAt).HasColumnName("left_at");
             entity.Property(e => e.MemberRole)
@@ -875,7 +915,7 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.CompletedDate).HasColumnName("completed_date");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.DeletedAt)
@@ -906,8 +946,8 @@ public partial class RmsDbContext : DbContext
                 .HasColumnName("priority_level");
             entity.Property(e => e.ProjectId).HasColumnName("project_id");
             entity.Property(e => e.RowVersion)
-                .IsRowVersion()
                 .IsConcurrencyToken()
+                .HasDefaultValue(1L)
                 .HasColumnName("row_version");
             entity.Property(e => e.UpdatedAt)
                 .HasPrecision(0)
@@ -951,7 +991,7 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.ActualStartDate).HasColumnName("actual_start_date");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.DeadlineDate).HasColumnName("deadline_date");
@@ -982,8 +1022,8 @@ public partial class RmsDbContext : DbContext
                 .HasColumnName("progress_percent");
             entity.Property(e => e.ProjectId).HasColumnName("project_id");
             entity.Property(e => e.RowVersion)
-                .IsRowVersion()
                 .IsConcurrencyToken()
+                .HasDefaultValue(1L)
                 .HasColumnName("row_version");
             entity.Property(e => e.SortOrder).HasColumnName("sort_order");
             entity.Property(e => e.UpdatedAt)
@@ -1028,7 +1068,7 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.ActualStartDate).HasColumnName("actual_start_date");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.CurrentPhaseName)
@@ -1091,8 +1131,8 @@ public partial class RmsDbContext : DbContext
                 .HasDefaultValue("low")
                 .HasColumnName("risk_level");
             entity.Property(e => e.RowVersion)
-                .IsRowVersion()
                 .IsConcurrencyToken()
+                .HasDefaultValue(1L)
                 .HasColumnName("row_version");
             entity.Property(e => e.SponsorId).HasColumnName("sponsor_id");
             entity.Property(e => e.SponsorNameText)
@@ -1133,7 +1173,7 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.RoleId).HasColumnName("role_id");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.DeletedAt)
@@ -1154,8 +1194,8 @@ public partial class RmsDbContext : DbContext
                 .HasMaxLength(255)
                 .HasColumnName("role_name");
             entity.Property(e => e.RowVersion)
-                .IsRowVersion()
                 .IsConcurrencyToken()
+                .HasDefaultValue(1L)
                 .HasColumnName("row_version");
             entity.Property(e => e.UpdatedAt)
                 .HasPrecision(0)
@@ -1174,7 +1214,7 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.RolePermissionId).HasColumnName("role_permission_id");
             entity.Property(e => e.AssignedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("assigned_at");
             entity.Property(e => e.AssignedBy).HasColumnName("assigned_by");
             entity.Property(e => e.IsAllowed)
@@ -1219,7 +1259,7 @@ public partial class RmsDbContext : DbContext
                 .HasColumnName("contact_phone");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.DeletedAt)
@@ -1230,8 +1270,8 @@ public partial class RmsDbContext : DbContext
                 .HasDefaultValue(true)
                 .HasColumnName("is_active");
             entity.Property(e => e.RowVersion)
-                .IsRowVersion()
                 .IsConcurrencyToken()
+                .HasDefaultValue(1L)
                 .HasColumnName("row_version");
             entity.Property(e => e.SponsorCode)
                 .HasMaxLength(100)
@@ -1267,7 +1307,7 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.SettingId).HasColumnName("setting_id");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.Description)
@@ -1278,8 +1318,8 @@ public partial class RmsDbContext : DbContext
                 .HasColumnName("is_active");
             entity.Property(e => e.IsPublic).HasColumnName("is_public");
             entity.Property(e => e.RowVersion)
-                .IsRowVersion()
                 .IsConcurrencyToken()
+                .HasDefaultValue(1L)
                 .HasColumnName("row_version");
             entity.Property(e => e.SettingGroup)
                 .HasMaxLength(100)
@@ -1323,7 +1363,7 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.CategoryId).HasColumnName("category_id");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.DeletedAt)
@@ -1368,8 +1408,8 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.PlannedDate).HasColumnName("planned_date");
             entity.Property(e => e.ResponsibleUserId).HasColumnName("responsible_user_id");
             entity.Property(e => e.RowVersion)
-                .IsRowVersion()
                 .IsConcurrencyToken()
+                .HasDefaultValue(1L)
                 .HasColumnName("row_version");
             entity.Property(e => e.StartTime)
                 .HasPrecision(0)
@@ -1412,13 +1452,17 @@ public partial class RmsDbContext : DbContext
                 .HasColumnName("action_type");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.EventId).HasColumnName("event_id");
-            entity.Property(e => e.NewValueJson).HasColumnName("new_value_json");
+            entity.Property(e => e.NewValueJson)
+                .HasColumnType("jsonb")
+                .HasColumnName("new_value_json");
             entity.Property(e => e.Note).HasColumnName("note");
-            entity.Property(e => e.OldValueJson).HasColumnName("old_value_json");
+            entity.Property(e => e.OldValueJson)
+                .HasColumnType("jsonb")
+                .HasColumnName("old_value_json");
 
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.TrainingEventLogs)
                 .HasForeignKey(d => d.CreatedBy)
@@ -1446,7 +1490,7 @@ public partial class RmsDbContext : DbContext
                 .HasColumnName("checked_in_at");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.DepartmentId).HasColumnName("department_id");
@@ -1500,7 +1544,7 @@ public partial class RmsDbContext : DbContext
                 .HasColumnName("avatar_url");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.DeletedAt)
@@ -1543,8 +1587,8 @@ public partial class RmsDbContext : DbContext
                 .HasMaxLength(50)
                 .HasColumnName("phone_number");
             entity.Property(e => e.RowVersion)
-                .IsRowVersion()
                 .IsConcurrencyToken()
+                .HasDefaultValue(1L)
                 .HasColumnName("row_version");
             entity.Property(e => e.Title)
                 .HasMaxLength(255)
@@ -1578,7 +1622,7 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.AutoMarkReadOnOpen).HasColumnName("auto_mark_read_on_open");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.EnableEmailNotification).HasColumnName("enable_email_notification");
             entity.Property(e => e.EnableInAppNotification)
@@ -1619,7 +1663,7 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.UserRoleId).HasColumnName("user_role_id");
             entity.Property(e => e.AssignedAt)
                 .HasPrecision(0)
-                .HasDefaultValueSql("(sysutcdatetime())")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("assigned_at");
             entity.Property(e => e.AssignedBy).HasColumnName("assigned_by");
             entity.Property(e => e.IsActive)
@@ -1771,3 +1815,4 @@ public partial class RmsDbContext : DbContext
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
 }
+

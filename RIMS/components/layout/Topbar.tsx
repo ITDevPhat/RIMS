@@ -36,6 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth-context";
 import { useThemeMode, type ThemeMode } from "@/lib/theme-mode";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 interface TopbarProps {
@@ -127,15 +128,33 @@ export default function Topbar({
     setPasswordSaved(false);
     if (passwordForm.next.length < 6) {
       setPasswordError("Mật khẩu mới phải có ít nhất 6 ký tự.");
+      toast.warning("Mật khẩu mới phải có ít nhất 6 ký tự.");
       return;
     }
     if (passwordForm.next !== passwordForm.confirm) {
       setPasswordError("Xác nhận mật khẩu mới không khớp.");
+      toast.error("Xác nhận mật khẩu mới không khớp.");
       return;
     }
     setPasswordError("");
     setPasswordSaved(true);
     setPasswordForm({ current: "", next: "", confirm: "" });
+    toast.success("Đã cập nhật mật khẩu.");
+  };
+
+  const saveProfile = () => {
+    setProfileSaved(true);
+    toast.success("Đã lưu thông tin cá nhân.");
+  };
+
+  const saveAccount = () => {
+    setAccountSaved(true);
+    toast.success("Đã lưu cài đặt tài khoản.");
+  };
+
+  const handleLogout = () => {
+    toast.info("Đang đăng xuất...");
+    onLogout();
   };
 
   return (
@@ -225,7 +244,7 @@ export default function Topbar({
 
               <DropdownMenuSeparator />
 
-              <DropdownMenuItem onClick={onLogout} className="cursor-pointer gap-2.5 text-sm text-red-600 focus:text-red-600 focus:bg-red-50">
+              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer gap-2.5 text-sm text-red-600 focus:text-red-600 focus:bg-red-50">
                 <LogOut className="h-4 w-4" />
                 Đăng xuất
               </DropdownMenuItem>
@@ -262,7 +281,7 @@ export default function Topbar({
           {profileSaved && <p className="text-sm font-medium text-emerald-600">Đã lưu thông tin cá nhân.</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setProfileOpen(false)}>Đóng</Button>
-            <Button onClick={() => setProfileSaved(true)}>Lưu thay đổi</Button>
+            <Button onClick={saveProfile}>Lưu thay đổi</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -317,7 +336,7 @@ export default function Topbar({
           {accountSaved && <p className="text-sm font-medium text-emerald-600">Đã lưu cài đặt tài khoản.</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setAccountOpen(false)}>Đóng</Button>
-            <Button onClick={() => setAccountSaved(true)}>Lưu cài đặt</Button>
+            <Button onClick={saveAccount}>Lưu cài đặt</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

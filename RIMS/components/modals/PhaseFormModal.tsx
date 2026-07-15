@@ -160,31 +160,31 @@ export default function PhaseFormModal({ open, onClose, phase, projectId, nextOr
         </div>
       )}
 
-      <FormDrawerField label="Tên giai đoạn" required colSpan={2}>
-        <Input
-          value={form.name}
-          onChange={(e) => handleChange("name", e.target.value)}
-          placeholder="Nhập tên giai đoạn..."
-          className="h-9 border-slate-200"
-        />
-      </FormDrawerField>
+      <FormDrawerSection title="Thông tin giai đoạn">
+        <FormDrawerField label="Tên giai đoạn" required colSpan={2}>
+          <Input
+            value={form.name}
+            onChange={(e) => handleChange("name", e.target.value)}
+            placeholder="VD: Thu thập số liệu"
+            className="h-10 border-slate-200"
+          />
+        </FormDrawerField>
 
-      <FormDrawerField label="Mô tả" colSpan={2}>
-        <textarea
-          value={form.description}
-          onChange={(e) => handleChange("description", e.target.value)}
-          placeholder="Mô tả giai đoạn..."
-          className="h-20 w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 resize-none"
-        />
-      </FormDrawerField>
+        <FormDrawerField label="Mô tả" colSpan={2}>
+          <textarea
+            value={form.description}
+            onChange={(e) => handleChange("description", e.target.value)}
+            placeholder="Mô tả mục tiêu, đầu việc chính và phạm vi của giai đoạn."
+            className="min-h-24 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          />
+        </FormDrawerField>
 
-      <FormDrawerSection>
         <FormDrawerField label="Người phụ trách">
           <Input
             value={form.assignee}
             onChange={(e) => handleChange("assignee", e.target.value)}
-            placeholder="Tên người phụ trách..."
-            className="h-9 border-slate-200"
+            placeholder="VD: ThS. Nguyễn Văn A"
+            className="h-10 border-slate-200"
           />
         </FormDrawerField>
 
@@ -195,18 +195,18 @@ export default function PhaseFormModal({ open, onClose, phase, projectId, nextOr
             max={100}
             value={form.progress}
             onChange={(e) => handleChange("progress", e.target.value)}
-            className="h-9 border-slate-200"
+            className="h-10 border-slate-200"
           />
         </FormDrawerField>
       </FormDrawerSection>
 
-      <FormDrawerSection>
+      <FormDrawerSection title="Kế hoạch và trạng thái">
         <FormDrawerField label="Ngày bắt đầu dự kiến">
           <Input
             type="date"
             value={form.plannedStartDate}
             onChange={(e) => handleChange("plannedStartDate", e.target.value)}
-            className="h-9 border-slate-200"
+            className="h-10 border-slate-200"
           />
         </FormDrawerField>
 
@@ -215,24 +215,22 @@ export default function PhaseFormModal({ open, onClose, phase, projectId, nextOr
             type="date"
             value={form.plannedEndDate}
             onChange={(e) => handleChange("plannedEndDate", e.target.value)}
-            className="h-9 border-slate-200"
+            className="h-10 border-slate-200"
           />
         </FormDrawerField>
-      </FormDrawerSection>
 
-      <FormDrawerSection>
         <FormDrawerField label="Hạn chót">
           <Input
             type="date"
             value={form.deadline}
             onChange={(e) => handleChange("deadline", e.target.value)}
-            className="h-9 border-slate-200"
+            className="h-10 border-slate-200"
           />
         </FormDrawerField>
 
         <FormDrawerField label="Trạng thái" required>
           <Select value={form.status} onValueChange={(v) => v && handleChange("status", v)}>
-            <SelectTrigger className="h-9 border-slate-200">
+            <SelectTrigger className="h-10 border-slate-200">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -244,13 +242,13 @@ export default function PhaseFormModal({ open, onClose, phase, projectId, nextOr
         </FormDrawerField>
       </FormDrawerSection>
 
-      <FormDrawerSection>
+      <FormDrawerSection title="Thực tế và ghi chú">
         <FormDrawerField label="Ngày bắt đầu thực tế">
           <Input
             type="date"
             value={form.actualStartDate}
             onChange={(e) => handleChange("actualStartDate", e.target.value)}
-            className="h-9 border-slate-200"
+            className="h-10 border-slate-200"
           />
         </FormDrawerField>
 
@@ -259,19 +257,19 @@ export default function PhaseFormModal({ open, onClose, phase, projectId, nextOr
             type="date"
             value={form.actualEndDate}
             onChange={(e) => handleChange("actualEndDate", e.target.value)}
-            className="h-9 border-slate-200"
+            className="h-10 border-slate-200"
+          />
+        </FormDrawerField>
+
+        <FormDrawerField label="Ghi chú" colSpan={2}>
+          <textarea
+            value={form.notes}
+            onChange={(e) => handleChange("notes", e.target.value)}
+            placeholder="Ghi chú vấn đề phát sinh, điểm cần theo dõi hoặc thông tin bàn giao."
+            className="min-h-20 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
           />
         </FormDrawerField>
       </FormDrawerSection>
-
-      <FormDrawerField label="Ghi chú" colSpan={2}>
-        <textarea
-          value={form.notes}
-          onChange={(e) => handleChange("notes", e.target.value)}
-          placeholder="Nhập ghi chú..."
-          className="h-16 w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 resize-none"
-        />
-      </FormDrawerField>
     </FormDrawer>
   );
 }

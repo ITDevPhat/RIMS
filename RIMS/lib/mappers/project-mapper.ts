@@ -9,8 +9,11 @@ export function mapApiProjectToUi(project: ApiResearchProject): ResearchProject 
     code: project.projectCode,
     name: project.projectTitle,
     description: project.description ?? "",
+    departmentId: project.departmentId ?? null,
     department: project.departmentName ?? "Chưa phân khoa",
+    principalInvestigatorId: project.principalInvestigatorId ?? null,
     pi: project.principalInvestigatorName ?? "Chưa phân công",
+    sponsorId: project.sponsorId ?? null,
     sponsor: project.sponsorName ?? "Chưa có",
     researchType: project.researchType ?? "Khác",
     protocolNumber: project.protocolNumber ?? "",
@@ -24,6 +27,7 @@ export function mapApiProjectToUi(project: ApiResearchProject): ResearchProject 
     health: mapHealthStatus(project.riskLevel),
     currentPhase: project.currentPhaseName ?? "Chưa bắt đầu",
     nearestDeadline: project.nearestDeadlineDate ?? null,
+    notes: project.notes ?? null,
   };
 }
 
@@ -33,8 +37,11 @@ export function mapGanttProjectToUi(project: DashboardGanttProjectDto): Research
     code: project.projectCode,
     name: project.projectTitle,
     description: "",
+    departmentId: null,
     department: project.departmentName ?? "Chưa phân khoa",
+    principalInvestigatorId: null,
     pi: project.principalInvestigatorName ?? "Chưa phân công",
+    sponsorId: null,
     sponsor: project.sponsorName ?? "Chưa có",
     researchType: "",
     protocolNumber: "",
@@ -48,5 +55,6 @@ export function mapGanttProjectToUi(project: DashboardGanttProjectDto): Research
     health: mapHealthStatus(project.healthStatus),
     currentPhase: project.phases.find((p) => p.phaseStatus === "in_progress")?.phaseName ?? project.phases[0]?.phaseName ?? "Chưa bắt đầu",
     nearestDeadline: project.phases.find((p) => p.plannedEndDate)?.plannedEndDate ?? null,
+    notes: null,
   };
 }

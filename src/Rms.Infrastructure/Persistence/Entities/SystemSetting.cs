@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Rms.Infrastructure.Persistence.Entities;
@@ -31,5 +31,5 @@ public partial class SystemSetting
 
     public long? UpdatedBy { get; set; }
 
-    public byte[] RowVersion { get; set; } = null!;
+    public long RowVersion { get; set; } = 1;
 }

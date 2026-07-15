@@ -167,43 +167,50 @@ export default function DanhSachSuKien({
 
       {/* Table or Card View */}
       {viewMode === "table" ? (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-          <table className="w-full text-sm">
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+          <table className="w-full table-fixed text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Mã</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Tên sự kiện</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Ngày dự kiến</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Loại</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Khoa/phòng</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Trạng thái</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Thao tác</th>
+                <th className="w-[10%] px-3 py-3 text-left font-semibold text-slate-700">Mã</th>
+                <th className="w-[26%] px-3 py-3 text-left font-semibold text-slate-700">Tên sự kiện</th>
+                <th className="w-[12%] px-3 py-3 text-left font-semibold text-slate-700">Ngày dự kiến</th>
+                <th className="w-[12%] px-3 py-3 text-left font-semibold text-slate-700">Loại</th>
+                <th className="w-[18%] px-3 py-3 text-left font-semibold text-slate-700">Khoa/phòng</th>
+                <th className="w-[12%] px-3 py-3 text-left font-semibold text-slate-700">Trạng thái</th>
+                <th className="w-[10%] px-3 py-3 text-right font-semibold text-slate-700">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map((h) => (
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-12 text-center text-sm text-slate-400">
+                    Không có sự kiện đào tạo phù hợp.
+                  </td>
+                </tr>
+              ) : filtered.map((h) => (
                 <tr key={h.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 text-slate-600 font-mono text-[11px]">{h.ma}</td>
-                  <td className="px-4 py-3 font-medium text-slate-800 max-w-xs truncate">{h.ten}</td>
-                  <td className="px-4 py-3 text-slate-600">{h.ngayDuKien}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3 align-top text-slate-600 font-mono text-[11px] whitespace-normal break-words">{h.ma}</td>
+                  <td className="px-3 py-3 align-top font-medium text-slate-800 whitespace-normal break-words">{h.ten}</td>
+                  <td className="px-3 py-3 align-top text-slate-600">{h.ngayDuKien}</td>
+                  <td className="px-3 py-3 align-top">
                     <Badge variant="outline" className="text-[10px]">
                       {h.loai}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-slate-600 text-[11px]">{h.khoaPhong}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3 align-top text-slate-600 text-[11px] whitespace-normal break-words">{h.khoaPhong}</td>
+                  <td className="px-3 py-3 align-top">
                     <span className={cn("text-[10px] font-semibold px-2 py-1 rounded inline-block", statusColor(h.trangThai))}>
                       {h.trangThai}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
+                  <td className="px-3 py-3 align-top whitespace-nowrap">
+                    <div className="flex flex-nowrap items-center justify-end gap-1">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => onViewEvent(h)}
-                        className="h-7 w-7 p-0"
+                        className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50"
+                        title="Xem chi tiết"
                       >
                         <Eye className="h-3.5 w-3.5" />
                       </Button>
@@ -212,6 +219,7 @@ export default function DanhSachSuKien({
                         size="sm"
                         onClick={() => onEditEvent(h)}
                         className="h-7 w-7 p-0"
+                        title="Sửa sự kiện"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
@@ -220,6 +228,7 @@ export default function DanhSachSuKien({
                         size="sm"
                         onClick={() => onDeleteEvent(h.id)}
                         className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        title="Xóa sự kiện"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>

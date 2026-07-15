@@ -36,7 +36,7 @@ import { useThemeMode, type ThemeMode } from "@/lib/theme-mode";
 import { cn } from "@/lib/utils";
 import UserManagementTab from "@/components/admin/UserManagementTab";
 import RoleManagementTab from "@/components/admin/RoleManagementTab";
-import { adminApi, type ApiAdminRole, type ApiRolePermissionMatrix, type ApiSetting } from "@/lib/api/admin-api";
+import { adminApi, type ApiAdminRole, type ApiPermission, type ApiRolePermissionMatrix, type ApiSetting } from "@/lib/api/admin-api";
 import { auditApi, type ApiAuditLog } from "@/lib/api/audit-api";
 import { notificationApi, type ApiNotificationRule, type ApiNotificationSettings } from "@/lib/api/notification-api";
 
@@ -575,11 +575,15 @@ function RolesTab() {
 
 function PermissionsTab() {
   const [roles, setRoles] = useState<ApiAdminRole[]>([]);
+  const [permissions, setPermissions] = useState<ApiPermission[]>([]);
   const [selectedRoleId, setSelectedRoleId] = useState("");
   const [matrix, setMatrix] = useState<ApiRolePermissionMatrix | null>(null);
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<Set<number>>(new Set());
+  const [editingPermission, setEditingPermission] = useState<ApiPermission | null>(null);
+  const [permissionForm, setPermissionForm] = useState({ moduleName: "", actionName: "", description: "", isActive: true });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingPermission, setSavingPermission] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
 
@@ -587,9 +591,13 @@ function PermissionsTab() {
     setLoading(true);
     setError("");
     try {
-      const result = await adminApi.getRoles({ pageSize: 100 });
-      setRoles(result.items);
-      setSelectedRoleId((current) => current || String(result.items[0]?.roleId ?? ""));
+      const [roleResult, permissionResult] = await Promise.all([
+        adminApi.getRoles({ pageSize: 100 }),
+        adminApi.getPermissions({ pageSize: 500 }),
+      ]);
+      setRoles(roleResult.items);
+      setPermissions(permissionResult.items);
+      setSelectedRoleId((current) => current || String(roleResult.items[0]?.roleId ?? ""));
     } catch (loadError) {
       setError(getErrorMessage(loadError, "Không tải được danh sách vai trò."));
       setRoles([]);
@@ -654,6 +662,38 @@ function PermissionsTab() {
     }
   };
 
+  const openPermissionEdit = (permission: ApiPermission) => {
+    setEditingPermission(permission);
+    setPermissionForm({
+      moduleName: permission.moduleName,
+      actionName: permission.actionName,
+      description: permission.description ?? "",
+      isActive: permission.isActive,
+    });
+  };
+
+  const handleSavePermission = async () => {
+    if (!editingPermission) return;
+    setSavingPermission(true);
+    setError("");
+    setSaved("");
+    try {
+      const updated = await adminApi.updatePermission(editingPermission.permissionId, {
+        moduleName: permissionForm.moduleName.trim(),
+        actionName: permissionForm.actionName.trim(),
+        description: permissionForm.description.trim() || null,
+        isActive: permissionForm.isActive,
+      });
+      setPermissions((current) => current.map((item) => item.permissionId === updated.permissionId ? updated : item));
+      setEditingPermission(null);
+      setSaved(`Đã cập nhật quyền ${updated.permissionCode}.`);
+    } catch (saveError) {
+      setError(getErrorMessage(saveError, "Không cập nhật được quyền hạn."));
+    } finally {
+      setSavingPermission(false);
+    }
+  };
+
   return (
     <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <CardHeader>
@@ -663,10 +703,12 @@ function PermissionsTab() {
       <CardContent className="space-y-4">
         {loading && <div className="rounded-lg border border-slate-200 p-4 text-sm text-slate-500">Đang tải phân quyền...</div>}
         {error && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">{error}</div>}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
           <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">Chọn vai trò</label>
           <Select value={selectedRoleId} onValueChange={(value) => value && setSelectedRoleId(value)}>
-            <SelectTrigger className="h-9 w-72"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-9 w-80 text-left">
+              <span className="truncate">{roles.find((item) => String(item.roleId) === selectedRoleId)?.roleName ?? "Chọn vai trò"}</span>
+            </SelectTrigger>
             <SelectContent>
               {roles.map((item) => <SelectItem key={item.roleId} value={String(item.roleId)}>{item.roleName}</SelectItem>)}
             </SelectContent>
@@ -677,7 +719,7 @@ function PermissionsTab() {
             <TableRow className="bg-slate-50 dark:bg-slate-950">
               <TableHead className="px-3 py-2 text-[10px] font-semibold uppercase text-slate-500">Phân hệ</TableHead>
               {(matrix?.modules[0]?.actions ?? []).map((action) => (
-                <TableHead key={action} className="px-3 py-2 text-center text-[10px] font-semibold uppercase text-slate-500">{action}</TableHead>
+                <TableHead key={action.permissionId} className="px-3 py-2 text-center text-[10px] font-semibold uppercase text-slate-500">{action.actionName}</TableHead>
               ))}
             </TableRow>
           </TableHeader>
@@ -707,7 +749,53 @@ function PermissionsTab() {
           <Button onClick={() => void handleSave()} disabled={!matrix || saving || loading}>{saving ? "Đang lưu..." : "Lưu phân quyền"}</Button>
           {saved && <span className="text-sm font-medium text-emerald-600">{saved}</span>}
         </div>
+        <div className="rounded-lg border border-slate-200">
+          <div className="border-b border-slate-200 px-4 py-3">
+            <h3 className="text-sm font-bold text-slate-800">Danh sách quyền hạn</h3>
+            <p className="text-xs text-slate-500">Chỉnh sửa tên hiển thị, mô tả và trạng thái quyền hiện có.</p>
+          </div>
+          <Table className="w-full table-fixed">
+            <TableHeader>
+              <TableRow className="bg-slate-50">
+                {["Mã quyền", "Phân hệ", "Hành động", "Mô tả", "Trạng thái", "Thao tác"].map((head) => <TableHead key={head} className="px-3 py-2 text-[10px] font-semibold uppercase text-slate-500">{head}</TableHead>)}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {permissions.map((permission) => (
+                <TableRow key={permission.permissionId}>
+                  <TableCell className="px-3 py-3 font-mono text-xs break-words">{permission.permissionCode}</TableCell>
+                  <TableCell className="px-3 py-3 text-sm font-medium text-slate-800 break-words">{permission.moduleName}</TableCell>
+                  <TableCell className="px-3 py-3 text-sm text-slate-700 break-words">{permission.actionName}</TableCell>
+                  <TableCell className="px-3 py-3 text-xs text-slate-500 break-words">{permission.description || "—"}</TableCell>
+                  <TableCell className="px-3 py-3"><Badge className={permission.isActive ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-600 border border-slate-200"}>{permission.isActive ? "Đang bật" : "Đang tắt"}</Badge></TableCell>
+                  <TableCell className="px-3 py-3 text-right"><Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openPermissionEdit(permission)}><Pencil className="h-3.5 w-3.5" /></Button></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
+      <Dialog open={!!editingPermission} onOpenChange={(open) => !open && setEditingPermission(null)}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader><DialogTitle>Cập nhật quyền hạn</DialogTitle></DialogHeader>
+          {editingPermission && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-semibold uppercase text-slate-500">Mã quyền</p>
+                <p className="mt-1 font-mono text-sm font-bold text-slate-800">{editingPermission.permissionCode}</p>
+              </div>
+              <label className="space-y-1.5 text-xs font-semibold text-slate-600">Tên phân hệ<Input value={permissionForm.moduleName} onChange={(e) => setPermissionForm((current) => ({ ...current, moduleName: e.target.value }))} /></label>
+              <label className="space-y-1.5 text-xs font-semibold text-slate-600">Tên hành động<Input value={permissionForm.actionName} onChange={(e) => setPermissionForm((current) => ({ ...current, actionName: e.target.value }))} /></label>
+              <label className="sm:col-span-2 space-y-1.5 text-xs font-semibold text-slate-600">Mô tả<Input value={permissionForm.description} onChange={(e) => setPermissionForm((current) => ({ ...current, description: e.target.value }))} /></label>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={permissionForm.isActive} onChange={(e) => setPermissionForm((current) => ({ ...current, isActive: e.target.checked }))} /> Quyền đang bật</label>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" disabled={savingPermission} onClick={() => setEditingPermission(null)}>Hủy</Button>
+            <Button disabled={savingPermission} onClick={() => void handleSavePermission()}>{savingPermission ? "Đang lưu..." : "Lưu quyền"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

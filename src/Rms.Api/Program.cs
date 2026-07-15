@@ -145,10 +145,7 @@ if (app.Environment.IsDevelopment())
     await seeder.SeedAsync();
 }
 
-if (!app.Environment.IsDevelopment())
-{
-    app.UseHttpsRedirection();
-}
+app.UseHttpsRedirection();
 
 app.UseCors("Frontend");
 app.UseAuthentication();

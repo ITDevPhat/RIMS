@@ -22,29 +22,40 @@ public sealed class NotificationScannerBackgroundService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            try
+            while (!stoppingToken.IsCancellationRequested)
             {
-                var enabled = _configuration.GetValue("NotificationScanner:Enabled", false);
-                var runHour = Math.Clamp(_configuration.GetValue("NotificationScanner:RunHour", 7), 0, 23);
-                var now = DateTime.UtcNow;
-                var today = DateOnly.FromDateTime(now);
-                if (enabled && now.Hour == runHour && _lastRunDate != today)
+                try
                 {
-                    using var scope = _serviceProvider.CreateScope();
-                    var scanner = scope.ServiceProvider.GetRequiredService<INotificationScannerService>();
-                    var result = await scanner.ScanAsync(stoppingToken);
-                    _lastRunDate = today;
-                    _logger.LogInformation("Notification scanner created {NotificationCount} notifications for {RecipientCount} recipients.", result.CreatedNotifications, result.CreatedRecipients);
+                    var enabled = _configuration.GetValue("NotificationScanner:Enabled", false);
+                    var runHour = Math.Clamp(_configuration.GetValue("NotificationScanner:RunHour", 7), 0, 23);
+                    var now = DateTime.UtcNow;
+                    var today = DateOnly.FromDateTime(now);
+                    if (enabled && now.Hour == runHour && _lastRunDate != today)
+                    {
+                        using var scope = _serviceProvider.CreateScope();
+                        var scanner = scope.ServiceProvider.GetRequiredService<INotificationScannerService>();
+                        var result = await scanner.ScanAsync(stoppingToken);
+                        _lastRunDate = today;
+                        _logger.LogInformation("Notification scanner created {NotificationCount} notifications for {RecipientCount} recipients.", result.CreatedNotifications, result.CreatedRecipients);
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Notification scanner failed.");
-            }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Notification scanner failed.");
+                }
 
-            await Task.Delay(TimeSpan.FromMinutes(30), stoppingToken);
+                await Task.Delay(TimeSpan.FromMinutes(30), stoppingToken);
+            }
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // Normal shutdown path.
         }
     }
 }

@@ -52,10 +52,13 @@ export interface ResearchProject {
   code: string;
   name: string;
   description: string;
+  departmentId?: number | null;
   department: string;      // Khoa/phòng
+  principalInvestigatorId?: number | null;
   pi: string;              // Chủ nhiệm đề tài
   principalInvestigator?: string;
   managerName?: string;
+  sponsorId?: number | null;
   sponsor: string;         // Nhà tài trợ
   researchType: string;    // Loại nghiên cứu
   protocolNumber: string;
@@ -72,6 +75,7 @@ export interface ResearchProject {
   riskLevel?: RiskLevel;
   currentPhase: string;
   nearestDeadline: string | null;
+  notes?: string | null;
 }
 
 export interface ResearchPhase {

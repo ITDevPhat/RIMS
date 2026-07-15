@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Rms.Infrastructure.Persistence.Entities;
@@ -33,7 +33,7 @@ public partial class Department
 
     public long? DeletedBy { get; set; }
 
-    public byte[] RowVersion { get; set; } = null!;
+    public long RowVersion { get; set; } = 1;
 
     public virtual ICollection<Department> InverseParentDepartment { get; set; } = new List<Department>();
 

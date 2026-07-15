@@ -19,8 +19,14 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<JwtOptions>(configuration.GetSection("Jwt"));
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException("Không tìm thấy ConnectionStrings:DefaultConnection.");
+        }
+
         services.AddDbContext<RmsDbContext>(options =>
-            options.UseSqlServer(configuration.GetConnectionString("RmsDatabase")));
+            options.UseNpgsql(connectionString));
 
         services.AddScoped<IPasswordService, PasswordService>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();

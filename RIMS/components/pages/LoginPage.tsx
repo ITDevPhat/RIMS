@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Microscope, Eye, EyeOff, Lock, User, AlertCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
@@ -23,15 +24,18 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
     setError("");
     if (!email.trim() || !password.trim()) {
       setError("Vui lòng nhập đầy đủ email và mật khẩu.");
+      toast.warning("Vui lòng nhập đầy đủ email và mật khẩu.");
       return;
     }
     setLoading(true);
     const ok = await login(email.trim(), password, remember);
     setLoading(false);
     if (ok) {
+      toast.success("Đăng nhập thành công.");
       onLoginSuccess();
     } else {
       setError("Email hoặc mật khẩu không đúng. Vui lòng thử lại.");
+      toast.error("Email hoặc mật khẩu không đúng.");
     }
   };
 

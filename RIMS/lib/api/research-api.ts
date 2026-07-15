@@ -33,6 +33,7 @@ export interface ApiProjectPhase {
   projectTitle: string;
   phaseName: string;
   description?: string | null;
+  responsibleUserId?: number | null;
   responsibleUserName?: string | null;
   plannedStartDate?: string | null;
   plannedEndDate?: string | null;
@@ -55,6 +56,7 @@ export interface ApiProjectMilestone {
   milestoneName: string;
   description?: string | null;
   dueDate: string;
+  responsibleUserId?: number | null;
   responsibleUserName?: string | null;
   milestoneStatus: string;
   priorityLevel: string;

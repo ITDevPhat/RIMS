@@ -23,10 +23,17 @@ public sealed class HealthController : ApiControllerBase
     }
 
     [HttpGet("db")]
+    [HttpGet("database")]
     public async Task<IActionResult> Db(CancellationToken cancellationToken)
     {
         var canConnect = await _dbContext.Database.CanConnectAsync(cancellationToken);
         var userCount = await _dbContext.Users.CountAsync(cancellationToken);
-        return OkResponse(new { canConnect, database = _dbContext.Database.GetDbConnection().Database, userCount });
+        return OkResponse(new
+        {
+            success = canConnect,
+            message = canConnect ? "Kết nối Neon PostgreSQL thành công." : "Không thể kết nối Neon PostgreSQL.",
+            database = _dbContext.Database.GetDbConnection().Database,
+            userCount
+        });
     }
 }

@@ -18,15 +18,28 @@ public sealed class DashboardService : IDashboardService, IAuditQueryService
     public async Task<ResearchOverviewDto> GetResearchOverviewAsync(int year, CancellationToken cancellationToken = default)
     {
         var selectedYear = NormalizeYear(year);
+        var yearStart = new DateOnly(selectedYear, 1, 1);
+        var yearEnd = new DateOnly(selectedYear, 12, 31);
+        var createdStart = new DateTime(selectedYear, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var createdEnd = createdStart.AddYears(1);
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var dueSoonEnd = today.AddDays(7);
         var ethicsEnd = today.AddDays(30);
 
         var projects = await ProjectGraph()
             .Where(x => x.DeletedAt == null
-                && (x.PlannedStartDate != null && x.PlannedStartDate.Value.Year == selectedYear
-                    || x.PlannedEndDate != null && x.PlannedEndDate.Value.Year == selectedYear
-                    || x.PlannedStartDate == null && x.PlannedEndDate == null && x.CreatedAt.Year == selectedYear))
+                && (
+                    (
+                        (x.PlannedStartDate != null || x.PlannedEndDate != null)
+                        && (x.PlannedStartDate ?? x.PlannedEndDate) <= yearEnd
+                        && (x.PlannedEndDate ?? x.PlannedStartDate) >= yearStart
+                    )
+                    || x.ProjectPhases.Any(p => p.DeletedAt == null
+                        && (p.PlannedStartDate != null || p.PlannedEndDate != null)
+                        && (p.PlannedStartDate ?? p.PlannedEndDate) <= yearEnd
+                        && (p.PlannedEndDate ?? p.PlannedStartDate) >= yearStart)
+                    || (x.PlannedStartDate == null && x.PlannedEndDate == null && x.CreatedAt >= createdStart && x.CreatedAt < createdEnd)
+                ))
             .ToListAsync(cancellationToken);
 
         var projectIds = projects.Select(x => x.ProjectId).ToList();

@@ -24,13 +24,9 @@ import {
   Building2,
   FlaskConical,
   Shield,
-  FileText,
-  AlertTriangle,
   Pencil,
   Plus,
-  Clock,
   TrendingUp,
-  BookOpen,
   CheckCircle2,
   Circle,
   XCircle,
@@ -274,7 +270,6 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
               { value: "giai-doan", label: "Giai đoạn" },
               { value: "gantt", label: "Gantt" },
               { value: "han-chot", label: "Hạn chót" },
-              { value: "tai-lieu", label: "Tài liệu" },
               { value: "nhat-ky", label: "Nhật ký" },
             ].map((tab) => (
               <TabsTrigger
@@ -498,44 +493,6 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
                 ))}
               </div>
             )}
-          </TabsContent>
-
-          {/* ── Tài liệu tab ────────────────────────────────────────────────── */}
-          <TabsContent value="tai-lieu" className="mt-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-slate-700">Tài liệu đính kèm</h3>
-              <Button size="sm" variant="outline" className="gap-1.5 border-slate-200 text-xs h-8">
-                <Plus className="h-3.5 w-3.5" /> Tải lên tài liệu
-              </Button>
-            </div>
-            <div className="space-y-2">
-              {[
-                { name: "Đề cương nghiên cứu v2.1.pdf", size: "2.4 MB", date: "05/03/2026", type: "PDF" },
-                { name: "Phiếu phê duyệt IRB.pdf", size: "1.1 MB", date: "28/04/2026", type: "PDF" },
-                { name: "Đề cương DC-NC-2026-001 v1.0.docx", size: "890 KB", date: "01/02/2026", type: "DOCX" },
-                { name: "Bảng thu thập số liệu.xlsx", size: "345 KB", date: "01/07/2026", type: "XLSX" },
-              ].map((doc) => (
-                <Card key={doc.name} className="border-slate-200 shadow-sm">
-                  <CardContent className="p-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className={cn(
-                        "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded text-[9px] font-bold text-white",
-                        doc.type === "PDF" ? "bg-red-500" : doc.type === "DOCX" ? "bg-blue-500" : "bg-emerald-500"
-                      )}>
-                        {doc.type}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-800 truncate">{doc.name}</p>
-                        <p className="text-[10px] text-slate-400">{doc.size} &mdash; {doc.date}</p>
-                      </div>
-                      <Button size="sm" variant="ghost" className="h-7 text-xs text-blue-600 hover:bg-blue-50 px-2 flex-shrink-0">
-                        Tải về
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
           </TabsContent>
 
           {/* ── Nhật ký tab ─────────────────────────────────────────────────── */}

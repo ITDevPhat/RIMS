@@ -26,28 +26,72 @@ import {
   FlaskConical,
   Activity,
   AlertTriangle,
+  CalendarRange,
   Clock,
   TrendingUp,
   Shield,
   Search,
-  CalendarX2,
   Eye,
-  ChevronRight,
 } from "lucide-react";
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
-const TODAY = new Date("2026-07-03");
-const YEAR_START = new Date("2026-01-01");
-const YEAR_END = new Date("2026-12-31T23:59:59");
-const TOTAL_MS = YEAR_END.getTime() - YEAR_START.getTime();
+const TODAY = new Date();
+type TimeScope = "quarter" | "half" | "year" | "custom";
+
+interface TimelineRange {
+  start: Date;
+  end: Date;
+  label: string;
+  shortLabel: string;
+}
 
 function parseDate(s: string): Date {
   const [y, m, d] = s.split("-").map(Number);
   return new Date(y, m - 1, d);
 }
 
-function dateToPct(date: Date): number {
-  return Math.min(100, Math.max(0, ((date.getTime() - YEAR_START.getTime()) / TOTAL_MS) * 100));
+function getTimelineRange(year: number, scope: TimeScope, segment: number, customStart?: string, customEnd?: string): TimelineRange {
+  if (scope === "custom" && customStart && customEnd) {
+    const first = parseDate(customStart);
+    const second = parseDate(customEnd);
+    const start = first <= second ? first : second;
+    const end = first <= second ? second : first;
+    return {
+      start,
+      end: new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59),
+      label: `${start.toLocaleDateString("vi-VN")} - ${end.toLocaleDateString("vi-VN")}`,
+      shortLabel: "Tùy chỉnh",
+    };
+  }
+  if (scope === "quarter") {
+    const startMonth = (segment - 1) * 3;
+    return {
+      start: new Date(year, startMonth, 1),
+      end: new Date(year, startMonth + 3, 0, 23, 59, 59),
+      label: `Quý ${segment}/${year}`,
+      shortLabel: `Q${segment}`,
+    };
+  }
+  if (scope === "half") {
+    const startMonth = segment === 1 ? 0 : 6;
+    return {
+      start: new Date(year, startMonth, 1),
+      end: new Date(year, startMonth + 6, 0, 23, 59, 59),
+      label: `${segment === 1 ? "Nửa đầu năm" : "Nửa cuối năm"} ${year}`,
+      shortLabel: segment === 1 ? "H1" : "H2",
+    };
+  }
+  return {
+    start: new Date(year, 0, 1),
+    end: new Date(year, 11, 31, 23, 59, 59),
+    label: `Năm ${year}`,
+    shortLabel: String(year),
+  };
+}
+
+function dateToPct(date: Date, range: TimelineRange): number {
+  const totalMs = range.end.getTime() - range.start.getTime();
+  return Math.min(100, Math.max(0, ((date.getTime() - range.start.getTime()) / totalMs) * 100));
 }
 
 function fmtShort(s: string): string {
@@ -105,14 +149,36 @@ function EthicsBadge({ status }: { status: EthicsStatus }) {
 // ─── Month columns ────────────────────────────────────────────────────────────
 const MONTH_SHORT = ["T1","T2","T3","T4","T5","T6","T7","T8","T9","T10","T11","T12"];
 
-function monthColumns() {
-  return MONTH_SHORT.map((label, i) => {
-    const start = new Date(2026, i, 1);
-    const end = i < 11 ? new Date(2026, i + 1, 1) : YEAR_END;
-    const leftPct = dateToPct(start);
-    const widthPct = dateToPct(end) - leftPct;
-    return { label, leftPct, widthPct };
-  });
+function monthColumns(range: TimelineRange) {
+  const columns = [];
+  const cursor = new Date(range.start.getFullYear(), range.start.getMonth(), 1);
+  while (cursor <= range.end) {
+    const i = cursor.getMonth();
+    const start = new Date(cursor);
+    const end = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    const leftPct = dateToPct(start, range);
+    const widthPct = dateToPct(end, range) - leftPct;
+    columns.push({ label: MONTH_SHORT[i], leftPct, widthPct });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  return columns;
+}
+
+function overlapsRange(startValue: string | null | undefined, endValue: string | null | undefined, range: TimelineRange) {
+  if (!startValue && !endValue) return false;
+  const start = startValue ? parseDate(startValue) : parseDate(endValue!);
+  const end = endValue ? parseDate(endValue) : start;
+  return start <= range.end && end >= range.start;
+}
+
+function clampPhasePosition(startValue: string, endValue: string, range: TimelineRange) {
+  const start = parseDate(startValue);
+  const end = parseDate(endValue);
+  const clampedStart = start < range.start ? range.start : start;
+  const clampedEnd = end > range.end ? range.end : end;
+  const leftPct = dateToPct(clampedStart, range);
+  const widthPct = dateToPct(clampedEnd, range) - leftPct;
+  return { leftPct, widthPct };
 }
 
 // ─── Phase bar ────────────────────────────────────────────────────────────────
@@ -149,6 +215,11 @@ interface TongQuanTienDoProps {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
+  const [selectedYear, setSelectedYear] = useState(2026);
+  const [timeScope, setTimeScope] = useState<TimeScope>("year");
+  const [timeSegment, setTimeSegment] = useState(1);
+  const [customStartDate, setCustomStartDate] = useState("2025-06-01");
+  const [customEndDate, setCustomEndDate] = useState("2026-06-30");
   const [overview, setOverview] = useState<ResearchOverviewDto | null>(null);
   const [deadlineOverview, setDeadlineOverview] = useState<DashboardDeadlinesDto | null>(null);
   const [projects, setProjects] = useState<ResearchProject[]>([]);
@@ -162,22 +233,66 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
   const [filterStatus, setFilterStatus] = useState("Tất cả");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const todayPct = dateToPct(TODAY);
-  const columns = monthColumns();
+  const range = useMemo(
+    () => getTimelineRange(selectedYear, timeScope, timeSegment, customStartDate, customEndDate),
+    [customEndDate, customStartDate, selectedYear, timeScope, timeSegment]
+  );
+  const todayPct = dateToPct(TODAY, range);
+  const showToday = TODAY >= range.start && TODAY <= range.end;
+  const columns = useMemo(() => monthColumns(range), [range]);
+  const availableYears = useMemo(() => Array.from({ length: 7 }, (_, index) => selectedYear - 3 + index), [selectedYear]);
+  const dashboardYears = useMemo(() => {
+    const startYear = range.start.getFullYear();
+    const endYear = range.end.getFullYear();
+    return Array.from({ length: endYear - startYear + 1 }, (_, index) => startYear + index);
+  }, [range.end, range.start]);
+  const segmentOptions = timeScope === "quarter"
+    ? [1, 2, 3, 4].map((value) => ({ value, label: `Quý ${value}` }))
+    : timeScope === "half"
+      ? [{ value: 1, label: "Nửa đầu năm" }, { value: 2, label: "Nửa cuối năm" }]
+      : [{ value: 1, label: "Cả năm" }];
+  const handleScopeChange = (scope: TimeScope) => {
+    setTimeScope(scope);
+    setTimeSegment(1);
+    if (scope === "custom") {
+      setSelectedYear(parseDate(customStartDate).getFullYear());
+    }
+  };
+  const handleCustomStartChange = (value: string) => {
+    setCustomStartDate(value);
+    if (value) setSelectedYear(parseDate(value).getFullYear());
+  };
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const [research, deadlineData] = await Promise.all([
-        dashboardApi.getResearchOverview(2026),
+      const [researchResults, deadlineData] = await Promise.all([
+        Promise.all(dashboardYears.map((year) => dashboardApi.getResearchOverview(year))),
         dashboardApi.getDeadlines(30),
       ]);
-      setOverview(research);
+      const mergedProjects = Array.from(
+        new Map(researchResults.flatMap((item) => item.ganttProjects).map((project) => [project.projectId, project])).values()
+      );
+      const mergedOverview: ResearchOverviewDto = {
+        totalProjects: mergedProjects.length,
+        activeProjects: researchResults.reduce((sum, item) => sum + item.activeProjects, 0),
+        dueSoonCount: researchResults.reduce((sum, item) => sum + item.dueSoonCount, 0),
+        overdueCount: researchResults.reduce((sum, item) => sum + item.overdueCount, 0),
+        averageProgress: mergedProjects.length > 0
+          ? mergedProjects.reduce((sum, project) => sum + project.progressPercent, 0) / mergedProjects.length
+          : 0,
+        ethicsExpiringCount: researchResults.reduce((sum, item) => sum + item.ethicsExpiringCount, 0),
+        projectHealthSummary: researchResults.flatMap((item) => item.projectHealthSummary),
+        upcomingDeadlines: researchResults.flatMap((item) => item.upcomingDeadlines),
+        projectsNeedAttention: researchResults.flatMap((item) => item.projectsNeedAttention),
+        ganttProjects: mergedProjects,
+      };
+      setOverview(mergedOverview);
       setDeadlineOverview(deadlineData);
-      setProjects(research.ganttProjects.map(mapGanttProjectToUi));
+      setProjects(mergedProjects.map(mapGanttProjectToUi));
       setPhases(
-        research.ganttProjects.flatMap((project) =>
+        mergedProjects.flatMap((project) =>
           project.phases.map((phase, index) => mapDashboardPhaseToUi(phase, String(project.projectId), index + 1))
         )
       );
@@ -193,23 +308,25 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dashboardYears]);
 
   useEffect(() => {
     void loadDashboard();
   }, [loadDashboard]);
 
-  // KPIs
-  const total = overview?.totalProjects ?? 0;
-  const ongoing = overview?.activeProjects ?? 0;
-  const soonDue = overview?.dueSoonCount ?? 0;
-  const overdue = overview?.overdueCount ?? 0;
-  const avgProgress = Math.round(overview?.averageProgress ?? 0);
-  const ethicsExpiring = overview?.ethicsExpiringCount ?? 0;
+  const timeScopedProjects = useMemo(() => {
+    return projects.filter((project) => {
+      const projectPhases = phases.filter((phase) => phase.researchId === project.id);
+      if (projectPhases.length > 0) {
+        return projectPhases.some((phase) => overlapsRange(phase.plannedStartDate, phase.plannedEndDate, range));
+      }
+      return overlapsRange(project.startDate, project.plannedEndDate, range);
+    });
+  }, [phases, projects, range]);
 
   // Filtered projects
   const filteredProjects = useMemo(() => {
-    return projects.filter((p) => {
+    return timeScopedProjects.filter((p) => {
       if (filterDept !== "Tất cả" && p.department !== filterDept) return false;
       if (filterSponsor !== "Tất cả" && p.sponsor !== filterSponsor) return false;
       if (filterEthics !== "Tất cả" && p.ethicsStatus !== filterEthics) return false;
@@ -220,12 +337,23 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
       }
       return true;
     });
-  }, [projects, filterDept, filterSponsor, filterEthics, filterStatus, searchQuery]);
+  }, [timeScopedProjects, filterDept, filterSponsor, filterEthics, filterStatus, searchQuery]);
+
+  // KPIs
+  const total = timeScopedProjects.length;
+  const ongoing = timeScopedProjects.filter((project) => project.status === "Đang thực hiện").length;
+  const periodDeadlines = deadlines.filter((deadline) => overlapsRange(deadline.dueDate, deadline.dueDate, range));
+  const soonDue = periodDeadlines.filter((deadline) => deadline.daysRemaining >= 0 && deadline.daysRemaining <= 30).length;
+  const overdue = periodDeadlines.filter((deadline) => deadline.daysRemaining < 0).length;
+  const avgProgress = timeScopedProjects.length > 0
+    ? Math.round(timeScopedProjects.reduce((sum, project) => sum + project.progress, 0) / timeScopedProjects.length)
+    : Math.round(overview?.averageProgress ?? 0);
+  const ethicsExpiring = deadlineOverview?.ethicsExpiring.filter((item) => overlapsRange(item.ethicsExpiryDate, item.ethicsExpiryDate, range)).length ?? 0;
 
   // Side panels
-  const soonDeadlines = deadlines.filter((d) => d.daysRemaining >= 0 && d.daysRemaining <= 30).slice(0, 5);
-  const overdueItems = deadlines.filter((d) => d.daysRemaining < 0).slice(0, 4);
-  const ethicsItems = deadlineOverview?.ethicsExpiring.slice(0, 4) ?? [];
+  const soonDeadlines = periodDeadlines.filter((d) => d.daysRemaining >= 0 && d.daysRemaining <= 30).slice(0, 5);
+  const overdueItems = periodDeadlines.filter((d) => d.daysRemaining < 0).slice(0, 4);
+  const ethicsItems = deadlineOverview?.ethicsExpiring.filter((item) => overlapsRange(item.ethicsExpiryDate, item.ethicsExpiryDate, range)).slice(0, 4) ?? [];
 
   const priorityColor = (priority: string) => ({
     critical: "text-red-600 bg-red-50 border-red-200",
@@ -239,13 +367,115 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
     <div className="flex flex-col min-h-full">
       {/* ── Page header ─────────────────────────────────────────────────────── */}
       <div className="border-b border-slate-200 bg-white px-8 py-5">
-        <h1 className="text-lg font-bold text-slate-800">Tổng quan tiến độ nghiên cứu</h1>
-        <p className="mt-0.5 text-sm text-slate-500">
-          Theo dõi tiến độ, giai đoạn và hạn chót của các đề tài nghiên cứu khoa học trong bệnh viện.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-lg font-bold text-slate-800">Tổng quan tiến độ nghiên cứu</h1>
+            <p className="mt-0.5 text-sm text-slate-500">
+              Theo dõi tiến độ, giai đoạn và hạn chót của các đề tài nghiên cứu khoa học trong bệnh viện.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
+            <CalendarRange className="h-4 w-4 text-blue-600" />
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-600">Đang xem</p>
+              <p className="text-sm font-bold text-slate-800">{range.label}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 px-8 py-6 space-y-6">
+        <Card className="border-slate-200 shadow-sm">
+          <CardContent className="grid gap-4 p-4 xl:grid-cols-[300px_1fr_340px]">
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Năm làm việc</label>
+              <div className="space-y-2">
+                <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+                  {availableYears.map((year) => (
+                    <button
+                      key={year}
+                      type="button"
+                      onClick={() => {
+                        setSelectedYear(year);
+                        if (timeScope === "custom") {
+                          setCustomStartDate(`${year}-01-01`);
+                          setCustomEndDate(`${year}-12-31`);
+                        }
+                      }}
+                      className={cn(
+                        "flex-1 rounded-md px-2 py-1.5 text-xs font-semibold transition",
+                        selectedYear === year ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:bg-white"
+                      )}
+                    >
+                      {year}
+                    </button>
+                  ))}
+                </div>
+                <Input
+                  type="number"
+                  value={selectedYear}
+                  onChange={(event) => {
+                    const year = Number(event.target.value);
+                    if (Number.isFinite(year)) setSelectedYear(year);
+                  }}
+                  className="h-9 text-sm"
+                  min={2000}
+                  max={2100}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Chế độ xem</label>
+              <div className="grid gap-2 sm:grid-cols-2 2xl:grid-cols-4">
+                {[
+                  { value: "quarter" as TimeScope, label: "Theo quý", desc: "3 tháng" },
+                  { value: "half" as TimeScope, label: "Nửa năm", desc: "6 tháng" },
+                  { value: "year" as TimeScope, label: "Cả năm", desc: "12 tháng" },
+                  { value: "custom" as TimeScope, label: "Tùy chỉnh", desc: "Chọn ngày" },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => handleScopeChange(option.value)}
+                    className={cn(
+                      "rounded-lg border px-3 py-2 text-left transition hover:bg-slate-50",
+                      timeScope === option.value ? "border-blue-300 bg-blue-50 text-blue-700 ring-2 ring-blue-100" : "border-slate-200 bg-white text-slate-700"
+                    )}
+                  >
+                    <span className="block text-sm font-bold">{option.label}</span>
+                    <span className="text-[11px] opacity-70">{option.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Khoảng thời gian</label>
+              {timeScope === "custom" ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <Input type="date" value={customStartDate} onChange={(event) => handleCustomStartChange(event.target.value)} className="h-10 text-sm" />
+                  <Input type="date" value={customEndDate} onChange={(event) => setCustomEndDate(event.target.value)} className="h-10 text-sm" />
+                </div>
+              ) : (
+                <Select value={String(timeSegment)} onValueChange={(value) => setTimeSegment(Number(value))}>
+                  <SelectTrigger className="h-10 w-full text-left text-sm border-slate-200">
+                    <span className="truncate">{segmentOptions.find((item) => item.value === timeSegment)?.label ?? range.shortLabel}</span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {segmentOptions.map((item) => (
+                      <SelectItem key={item.value} value={String(item.value)}>{item.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <p className="mt-2 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                {range.start.toLocaleDateString("vi-VN")} - {range.end.toLocaleDateString("vi-VN")}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
         {loading && (
           <Card className="border-slate-200 shadow-sm">
             <CardContent className="p-4 text-sm text-slate-500">Đang tải dữ liệu tổng quan...</CardContent>
@@ -350,7 +580,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
             <Card className="border-slate-200 shadow-sm overflow-hidden">
               <CardHeader className="px-5 py-3.5 border-b border-slate-100 bg-slate-50">
                 <CardTitle className="text-sm font-semibold text-slate-700">
-                  Gantt tiến độ đề tài — 2026
+                  Gantt tiến độ đề tài — {range.label}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
@@ -375,7 +605,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                         </div>
                       ))}
                       {/* Today line */}
-                      <div className="absolute top-0 h-full w-0.5 bg-slate-800 z-10 opacity-40" style={{ left: `${todayPct}%` }} />
+                      {showToday && <div className="absolute top-0 h-full w-0.5 bg-slate-800 z-10 opacity-40" style={{ left: `${todayPct}%` }} />}
                     </div>
                   </div>
 
@@ -430,24 +660,21 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                           {/* Right: phase bars */}
                           <div className="flex-1 relative py-3 px-1 min-w-0">
                             {/* Today line */}
-                            <div className="absolute top-0 h-full w-0.5 bg-slate-800 opacity-20 z-10" style={{ left: `${todayPct}%` }} />
+                            {showToday && <div className="absolute top-0 h-full w-0.5 bg-slate-800 opacity-20 z-10" style={{ left: `${todayPct}%` }} />}
                             {/* Month grid */}
                             {columns.map((col) => (
                               <div key={col.label} className="absolute top-0 h-full w-px bg-slate-100" style={{ left: `${col.leftPct}%` }} />
                             ))}
                             {/* Phase bars stacked */}
                             <div className="relative h-full space-y-0.5">
-                              {projectPhases.map((phase) => {
-                                const pStart = parseDate(phase.plannedStartDate);
-                                const pEnd = parseDate(phase.plannedEndDate);
-                                const left = dateToPct(pStart);
-                                const width = dateToPct(pEnd) - left;
+                              {projectPhases.filter((phase) => overlapsRange(phase.plannedStartDate, phase.plannedEndDate, range)).map((phase) => {
+                                const position = clampPhasePosition(phase.plannedStartDate, phase.plannedEndDate, range);
                                 const tooltip = `${phase.order}. ${phase.name}\nTT: ${phase.status} | ${phase.progress}%\n${fmtShort(phase.plannedStartDate)} – ${fmtShort(phase.plannedEndDate)}`;
                                 return (
                                   <div key={phase.id} className="relative h-4">
                                     <PhaseBar
-                                      left={left}
-                                      width={width}
+                                      left={position.leftPct}
+                                      width={position.widthPct}
                                       color={phaseBarColor(phase.status)}
                                       tooltip={tooltip}
                                     />
