@@ -15,7 +15,16 @@ export interface PagedResult<T> {
 
 export type QueryParams = Record<string, string | number | boolean | null | undefined>;
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000/api";
+const configuredApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+if (!configuredApiBaseUrl && process.env.NODE_ENV === "production") {
+  throw new Error("Missing NEXT_PUBLIC_API_BASE_URL.");
+}
+
+const rawApiBaseUrl = configuredApiBaseUrl ?? "http://localhost:8080";
+const normalizedApiBaseUrl = rawApiBaseUrl.trim().replace(/\/+$/, "");
+const API_BASE_URL = normalizedApiBaseUrl.endsWith("/api")
+  ? normalizedApiBaseUrl
+  : `${normalizedApiBaseUrl}/api`;
 const TOKEN_KEY = "rms.accessToken";
 const USER_KEY = "rms.user";
 

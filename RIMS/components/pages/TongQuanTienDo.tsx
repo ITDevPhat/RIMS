@@ -150,17 +150,33 @@ function EthicsBadge({ status }: { status: EthicsStatus }) {
 const MONTH_SHORT = ["T1","T2","T3","T4","T5","T6","T7","T8","T9","T10","T11","T12"];
 
 function monthColumns(range: TimelineRange) {
-  const columns = [];
-  const cursor = new Date(range.start.getFullYear(), range.start.getMonth(), 1);
-  while (cursor <= range.end) {
-    const i = cursor.getMonth();
-    const start = new Date(cursor);
-    const end = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
-    const leftPct = dateToPct(start, range);
-    const widthPct = dateToPct(end, range) - leftPct;
-    columns.push({ label: MONTH_SHORT[i], leftPct, widthPct });
-    cursor.setMonth(cursor.getMonth() + 1);
+  const columns: Array<{ key: string; label: string; leftPct: number; widthPct: number }> = [];
+  const startMonthIndex = range.start.getFullYear() * 12 + range.start.getMonth();
+  const endMonthIndex = range.end.getFullYear() * 12 + range.end.getMonth();
+  const crossesYear = range.start.getFullYear() !== range.end.getFullYear();
+
+  for (let monthIndex = startMonthIndex; monthIndex <= endMonthIndex; monthIndex += 1) {
+    const year = Math.floor(monthIndex / 12);
+    const month = monthIndex % 12;
+    const monthStart = new Date(year, month, 1);
+    const monthEnd = new Date(year, month + 1, 1);
+    const visibleStart = monthStart < range.start ? range.start : monthStart;
+    const visibleEnd = monthEnd > range.end ? range.end : monthEnd;
+    const leftPct = dateToPct(visibleStart, range);
+    const widthPct = Math.max(0, dateToPct(visibleEnd, range) - leftPct);
+
+    if (widthPct <= 0) {
+      continue;
+    }
+
+    columns.push({
+      key: `${year}-${String(month + 1).padStart(2, "0")}`,
+      label: crossesYear ? `${MONTH_SHORT[month]}/${year}` : MONTH_SHORT[month],
+      leftPct,
+      widthPct,
+    });
   }
+
   return columns;
 }
 
@@ -386,11 +402,11 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
 
       <div className="flex-1 px-8 py-6 space-y-6">
         <Card className="border-slate-200 shadow-sm">
-          <CardContent className="grid gap-4 p-4 xl:grid-cols-[300px_1fr_340px]">
-            <div>
+          <CardContent className="grid gap-4 p-4 xl:grid-cols-[minmax(360px,440px)_1fr_380px]">
+            <div className="min-w-0">
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Năm làm việc</label>
               <div className="space-y-2">
-                <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+                <div className="grid grid-cols-7 gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
                   {availableYears.map((year) => (
                     <button
                       key={year}
@@ -403,7 +419,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                         }
                       }}
                       className={cn(
-                        "flex-1 rounded-md px-2 py-1.5 text-xs font-semibold transition",
+                        "h-8 min-w-0 rounded-md px-1 text-xs font-semibold transition",
                         selectedYear === year ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:bg-white"
                       )}
                     >
@@ -572,21 +588,104 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
           </CardContent>
         </Card>
 
-        {/* ── Main content: Gantt + Side panels ──────────────────────────────── */}
-        <div className="flex gap-5 items-start">
+        {/* ── Deadline summary panels ───────────────────────────────────────── */}
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="border-slate-200 shadow-sm">
+            <CardHeader className="px-4 py-3 border-b border-slate-100">
+              <CardTitle className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                <Clock className="h-3.5 w-3.5 text-amber-500" />
+                Hạn chót sắp tới (30 ngày)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="max-h-52 overflow-y-auto p-0 divide-y divide-slate-100">
+              {soonDeadlines.length === 0 ? (
+                <p className="px-4 py-3 text-xs text-slate-400">Không có hạn chót sắp tới.</p>
+              ) : (
+                soonDeadlines.map((d) => (
+                  <div key={d.id} className="px-4 py-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-semibold text-slate-700 truncate">{d.researchCode}</p>
+                        <p className="text-[9px] text-slate-500 truncate">{d.type}</p>
+                      </div>
+                      <span className={cn("flex-shrink-0 rounded border px-1.5 py-0.5 text-[9px] font-bold", priorityColor(d.priority))}>
+                        {d.daysRemaining}N
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-[9px] text-slate-400 truncate">{d.assignee}</p>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
 
-          {/* ── Multi-project Gantt ──────────────────────────────────────────── */}
-          <div className="flex-1 min-w-0">
-            <Card className="border-slate-200 shadow-sm overflow-hidden">
+          <Card className="border-red-100 shadow-sm">
+            <CardHeader className="px-4 py-3 border-b border-red-100 bg-red-50/50">
+              <CardTitle className="flex items-center gap-2 text-xs font-semibold text-red-700">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Mục quá hạn
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="max-h-52 overflow-y-auto p-0 divide-y divide-red-50">
+              {overdueItems.length === 0 ? (
+                <p className="px-4 py-3 text-xs text-slate-400">Không có mục quá hạn.</p>
+              ) : (
+                overdueItems.map((d) => (
+                  <div key={d.id} className="px-4 py-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-semibold text-red-700 truncate">{d.researchCode}</p>
+                        <p className="text-[9px] text-slate-500 truncate">{d.type}</p>
+                      </div>
+                      <span className="flex-shrink-0 rounded border border-red-200 bg-red-50 px-1.5 py-0.5 text-[9px] font-bold text-red-600">
+                        +{Math.abs(d.daysRemaining)}N
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-[9px] text-slate-400 truncate">{d.assignee}</p>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-purple-100 shadow-sm">
+            <CardHeader className="px-4 py-3 border-b border-purple-100 bg-purple-50/50">
+              <CardTitle className="flex items-center gap-2 text-xs font-semibold text-purple-700">
+                <Shield className="h-3.5 w-3.5" />
+                Đạo đức sắp hết hạn
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="max-h-52 overflow-y-auto p-0 divide-y divide-purple-50">
+              {ethicsItems.length === 0 ? (
+                <p className="px-4 py-3 text-xs text-slate-400">Không có hồ sơ đạo đức sắp hết hạn.</p>
+              ) : (
+                ethicsItems.map((p) => (
+                  <div key={p.projectId} className="px-4 py-2.5">
+                    <p className="text-[10px] font-semibold text-purple-700 truncate">{p.projectCode}</p>
+                    <p className="text-[9px] text-slate-500 truncate">{p.principalInvestigatorName ?? "Chưa phân công"}</p>
+                    <div className="mt-0.5 flex items-center gap-1.5">
+                      <EthicsBadge status="Sắp hết hạn" />
+                      <span className="text-[9px] text-slate-400">HH: {fmtShort(p.ethicsExpiryDate)}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ── Multi-project Gantt ──────────────────────────────────────────── */}
+        <div className="min-w-0">
+          <Card className="border-slate-200 shadow-sm overflow-hidden">
               <CardHeader className="px-5 py-3.5 border-b border-slate-100 bg-slate-50">
                 <CardTitle className="text-sm font-semibold text-slate-700">
                   Gantt tiến độ đề tài — {range.label}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto pb-2">
                   {/* ── Header: month row ───────────────────────────────────── */}
-                  <div className="flex border-b border-slate-200 bg-slate-50 min-w-[800px]">
+                  <div className="flex border-b border-slate-200 bg-slate-50 min-w-[1400px]">
                     {/* Left info column */}
                     <div className="w-64 flex-shrink-0 border-r border-slate-200 px-4 py-2">
                       <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
@@ -597,11 +696,11 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                     <div className="flex-1 relative h-7 overflow-hidden">
                       {columns.map((col) => (
                         <div
-                          key={col.label}
+                          key={col.key}
                           className="absolute top-0 h-full flex items-center justify-center border-l border-slate-200 first:border-l-0"
                           style={{ left: `${col.leftPct}%`, width: `${col.widthPct}%` }}
                         >
-                          <span className="text-[9px] font-medium text-slate-400 truncate px-0.5">{col.label}</span>
+                          <span className="text-[9px] font-medium text-slate-400 truncate px-0.5 leading-none">{col.label}</span>
                         </div>
                       ))}
                       {/* Today line */}
@@ -619,7 +718,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                         <div
                           key={project.id}
                           className={cn(
-                            "flex border-b border-slate-100 last:border-0 min-w-[800px]",
+                            "flex min-w-[1400px] border-b border-slate-100 last:border-0",
                             idx % 2 === 0 ? "bg-white" : "bg-slate-50/30"
                           )}
                         >
@@ -663,7 +762,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                             {showToday && <div className="absolute top-0 h-full w-0.5 bg-slate-800 opacity-20 z-10" style={{ left: `${todayPct}%` }} />}
                             {/* Month grid */}
                             {columns.map((col) => (
-                              <div key={col.label} className="absolute top-0 h-full w-px bg-slate-100" style={{ left: `${col.leftPct}%` }} />
+                              <div key={col.key} className="absolute top-0 h-full w-px bg-slate-100" style={{ left: `${col.leftPct}%` }} />
                             ))}
                             {/* Phase bars stacked */}
                             <div className="relative h-full space-y-0.5">
@@ -709,97 +808,6 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
             </Card>
           </div>
 
-          {/* ── Right side panels ────────────────────────────────────────────── */}
-          <div className="w-72 flex-shrink-0 space-y-4">
-
-            {/* Upcoming deadlines */}
-            <Card className="border-slate-200 shadow-sm">
-              <CardHeader className="px-4 py-3 border-b border-slate-100">
-                <CardTitle className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-                  <Clock className="h-3.5 w-3.5 text-amber-500" />
-                  Hạn chót sắp tới (30 ngày)
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0 divide-y divide-slate-100">
-                {soonDeadlines.length === 0 ? (
-                  <p className="px-4 py-3 text-xs text-slate-400">Không có hạn chót sắp tới.</p>
-                ) : (
-                  soonDeadlines.map((d) => (
-                    <div key={d.id} className="px-4 py-2.5">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[10px] font-semibold text-slate-700 truncate">{d.researchCode}</p>
-                          <p className="text-[9px] text-slate-500 truncate">{d.type}</p>
-                        </div>
-                        <span className={cn("flex-shrink-0 rounded border px-1.5 py-0.5 text-[9px] font-bold", priorityColor(d.priority))}>
-                          {d.daysRemaining}N
-                        </span>
-                      </div>
-                      <p className="mt-0.5 text-[9px] text-slate-400">{d.assignee}</p>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Overdue */}
-            <Card className="border-red-100 shadow-sm">
-              <CardHeader className="px-4 py-3 border-b border-red-100 bg-red-50/50">
-                <CardTitle className="flex items-center gap-2 text-xs font-semibold text-red-700">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  Mục quá hạn
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0 divide-y divide-red-50">
-                {overdueItems.length === 0 ? (
-                  <p className="px-4 py-3 text-xs text-slate-400">Không có mục quá hạn.</p>
-                ) : (
-                  overdueItems.map((d) => (
-                    <div key={d.id} className="px-4 py-2.5">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[10px] font-semibold text-red-700 truncate">{d.researchCode}</p>
-                          <p className="text-[9px] text-slate-500 truncate">{d.type}</p>
-                        </div>
-                        <span className="flex-shrink-0 rounded border border-red-200 bg-red-50 px-1.5 py-0.5 text-[9px] font-bold text-red-600">
-                          +{Math.abs(d.daysRemaining)}N
-                        </span>
-                      </div>
-                      <p className="mt-0.5 text-[9px] text-slate-400">{d.assignee}</p>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Ethics expiring */}
-            <Card className="border-purple-100 shadow-sm">
-              <CardHeader className="px-4 py-3 border-b border-purple-100 bg-purple-50/50">
-                <CardTitle className="flex items-center gap-2 text-xs font-semibold text-purple-700">
-                  <Shield className="h-3.5 w-3.5" />
-                  Đạo đức sắp hết hạn
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0 divide-y divide-purple-50">
-                {ethicsItems.length === 0 ? (
-                  <p className="px-4 py-3 text-xs text-slate-400">Không có hồ sơ đạo đức sắp hết hạn.</p>
-                ) : (
-                  ethicsItems.map((p) => (
-                    <div key={p.projectId} className="px-4 py-2.5">
-                      <p className="text-[10px] font-semibold text-purple-700 truncate">{p.projectCode}</p>
-                      <p className="text-[9px] text-slate-500 truncate">{p.principalInvestigatorName ?? "Chưa phân công"}</p>
-                      <div className="mt-0.5 flex items-center gap-1.5">
-                        <EthicsBadge status="Sắp hết hạn" />
-                        <span className="text-[9px] text-slate-400">HH: {fmtShort(p.ethicsExpiryDate)}</span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-
-          </div>
-        </div>
       </div>
     </div>
   );

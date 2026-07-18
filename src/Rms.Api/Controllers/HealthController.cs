@@ -19,7 +19,12 @@ public sealed class HealthController : ApiControllerBase
     [HttpGet]
     public IActionResult Get()
     {
-        return OkResponse(new { status = "healthy", utcNow = DateTime.UtcNow });
+        return OkResponse(new
+        {
+            service = "RMS API",
+            status = "healthy",
+            timestamp = DateTimeOffset.UtcNow
+        });
     }
 
     [HttpGet("db")]
@@ -27,11 +32,20 @@ public sealed class HealthController : ApiControllerBase
     public async Task<IActionResult> Db(CancellationToken cancellationToken)
     {
         var canConnect = await _dbContext.Database.CanConnectAsync(cancellationToken);
+        if (!canConnect)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                success = false,
+                message = "Không thể kết nối Neon PostgreSQL."
+            });
+        }
+
         var userCount = await _dbContext.Users.CountAsync(cancellationToken);
         return OkResponse(new
         {
-            success = canConnect,
-            message = canConnect ? "Kết nối Neon PostgreSQL thành công." : "Không thể kết nối Neon PostgreSQL.",
+            success = true,
+            message = "Kết nối Neon PostgreSQL thành công.",
             database = _dbContext.Database.GetDbConnection().Database,
             userCount
         });

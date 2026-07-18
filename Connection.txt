@@ -1,7 +1,7 @@
-postgresql://neondb_owner:npg_DsilpKu79eBd@ep-spring-pond-aownqszf-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+postgresql://<USER>:<PASSWORD>@<NEON_POOLER_HOST>/<DATABASE>?sslmode=require&channel_binding=require
 
 
-"Host=ep-spring-pond-aownqszf-pooler.c-2.ap-southeast-1.aws.neon.tech; Database=neondb; Username=neondb_owner; Password=npg_DsilpKu79eBd; SSL Mode=VerifyFull; Channel Binding=Require;"
+"Host=<NEON_POOLER_HOST>; Database=<DATABASE>; Username=<USER>; Password=<PASSWORD>; SSL Mode=VerifyFull; Channel Binding=Require;"
 
 
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=ep-spring-pond-aownqszf-pooler.c-2.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=npg_DsilpKu79eBd;SSL Mode=Require;Trust Server Certificate=true" --project src/Rms.Api
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=<NEON_POOLER_HOST>;Port=5432;Database=<DATABASE>;Username=<USER>;Password=<PASSWORD>;SSL Mode=Require;Trust Server Certificate=true" --project src/Rms.Api

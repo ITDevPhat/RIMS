@@ -32,7 +32,7 @@ public sealed class JwtTokenService : IJwtTokenService
         claims.AddRange(user.Roles.Select(role => new Claim(ClaimTypes.Role, role.RoleCode)));
         claims.AddRange(user.Permissions.Select(permission => new Claim("permission", permission)));
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.EffectiveSigningKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken(
             issuer: _options.Issuer,

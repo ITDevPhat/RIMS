@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: rims-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: Jwt__Key
+        sync: false
+      - key: Jwt__Issuer
+        value: RMS
+      - key: Jwt__Audience
+        value: RMS.Admin
+      - key: Swagger__Enabled
+        value: "true"
+      - key: Database__MigrateOnStartup
+        value: "true"
+      - key: Seed__DemoData
+        value: "false"
+      - key: Cors__AllowedOrigins__0
+        value: http://localhost:3000
