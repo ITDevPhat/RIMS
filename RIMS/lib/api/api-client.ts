@@ -20,7 +20,7 @@ if (!configuredApiBaseUrl && process.env.NODE_ENV === "production") {
   throw new Error("Missing NEXT_PUBLIC_API_BASE_URL.");
 }
 
-const rawApiBaseUrl = configuredApiBaseUrl ?? "http://localhost:8080";
+const rawApiBaseUrl = configuredApiBaseUrl ?? "http://localhost:5000";
 const normalizedApiBaseUrl = rawApiBaseUrl.trim().replace(/\/+$/, "");
 const API_BASE_URL = normalizedApiBaseUrl.endsWith("/api")
   ? normalizedApiBaseUrl
@@ -125,9 +125,43 @@ async function request<T>(method: string, path: string, body?: unknown, params?:
   return payload.data;
 }
 
+async function download(path: string, params?: QueryParams): Promise<{ blob: Blob; fileName: string | null }> {
+  const headers = new Headers();
+  const token = getStoredToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  const response = await fetch(buildUrl(path, params), {
+    method: "GET",
+    headers,
+  });
+
+  if (response.status === 401) {
+    clearStoredSession();
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("rms:unauthorized"));
+  }
+
+  if (!response.ok) {
+    throw new ApiError("Không tải được tệp xuất.", response.status);
+  }
+
+  return {
+    blob: await response.blob(),
+    fileName: parseContentDispositionFileName(response.headers.get("Content-Disposition")),
+  };
+}
+
+function parseContentDispositionFileName(value: string | null) {
+  if (!value) return null;
+  const utf8Match = /filename\*=UTF-8''([^;]+)/i.exec(value);
+  if (utf8Match?.[1]) return decodeURIComponent(utf8Match[1].replace(/"/g, ""));
+  const asciiMatch = /filename="?([^";]+)"?/i.exec(value);
+  return asciiMatch?.[1] ?? null;
+}
+
 export const apiClient = {
   get: <T>(path: string, params?: QueryParams) => request<T>("GET", path, undefined, params),
   post: <T>(path: string, body?: unknown, params?: QueryParams) => request<T>("POST", path, body, params),
   put: <T>(path: string, body?: unknown, params?: QueryParams) => request<T>("PUT", path, body, params),
   delete: <T>(path: string, params?: QueryParams) => request<T>("DELETE", path, undefined, params),
+  download,
 };

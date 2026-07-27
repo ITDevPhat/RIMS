@@ -6,6 +6,7 @@ using Rms.Application.Admin;
 using Rms.Application.Auth;
 using Rms.Application.Dashboard;
 using Rms.Application.Notifications;
+using Rms.Application.Reports;
 using Rms.Application.Research;
 using Rms.Application.Training;
 using Rms.Infrastructure.Options;
@@ -37,6 +38,8 @@ public static class DependencyInjection
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IAccountPreferenceService, AccountPreferenceService>();
         services.AddScoped<IResearchService, ResearchService>();
+        services.AddScoped<IProjectTimelineQueryService, ProjectTimelineQueryService>();
+        services.AddScoped<IProjectGanttExcelService, ProjectGanttExcelService>();
         services.AddScoped<ITrainingService, TrainingService>();
         services.AddScoped<DashboardService>();
         services.AddScoped<IDashboardService>(provider => provider.GetRequiredService<DashboardService>());

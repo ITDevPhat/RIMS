@@ -54,6 +54,7 @@ public sealed class ResearchService : IResearchService
     public async Task<ResearchProjectOverviewDto> GetProjectOverviewAsync(long id, CancellationToken cancellationToken = default)
     {
         var project = await ProjectGraph()
+            .AsSplitQuery()
             .Include(x => x.ProjectPhases)
             .Include(x => x.ProjectMilestones)
             .FirstOrDefaultAsync(x => x.ProjectId == id && x.DeletedAt == null, cancellationToken);

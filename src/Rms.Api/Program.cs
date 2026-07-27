@@ -18,8 +18,11 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(port))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+}
 
 builder.Host.UseSerilog((context, services, configuration) =>
 {
@@ -86,7 +89,8 @@ builder.Services.AddCors(options =>
 
         policy.WithOrigins(configuredOrigins)
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .WithExposedHeaders("Content-Disposition");
     });
 });
 
@@ -184,7 +188,11 @@ if (migrateOnStartup || seedDemoData)
     }
 }
 
-app.UseHttpsRedirection();
+if (!string.IsNullOrWhiteSpace(builder.Configuration["HTTPS_PORT"]) ||
+    !string.IsNullOrWhiteSpace(builder.Configuration["ASPNETCORE_HTTPS_PORT"]))
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseCors("Frontend");
 app.UseAuthentication();

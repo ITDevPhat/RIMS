@@ -119,6 +119,7 @@ export const researchApi = {
   getProjects: (filters?: QueryParams) => apiClient.get<PagedResult<ApiResearchProject>>("/research-projects", filters),
   getProject: (id: string | number) => apiClient.get<ApiResearchProject>(`/research-projects/${id}`),
   getProjectOverview: (id: string | number) => apiClient.get<unknown>(`/research-projects/${id}/overview`),
+  downloadGanttExcel: (id: string | number, filters?: QueryParams) => apiClient.download(`/reports/projects/${id}/gantt.xlsx`, filters),
   createProject: (payload: unknown) => apiClient.post<ApiResearchProject>("/research-projects", payload),
   updateProject: (id: string | number, payload: unknown) => apiClient.put<ApiResearchProject>(`/research-projects/${id}`, payload),
   deleteProject: (id: string | number) => apiClient.delete<null>(`/research-projects/${id}`),

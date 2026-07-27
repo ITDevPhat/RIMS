@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/lib/toast";
 import type { DeadlineItem, ResearchMilestone, ResearchPhase, ResearchProject, PhaseStatus, EthicsStatus, ProjectHealth } from "@/lib/types";
 import GiaiDoanGanttChart from "@/components/gantt/GiaiDoanGanttChart";
 import PhaseFormModal from "@/components/modals/PhaseFormModal";
@@ -20,6 +21,7 @@ import {
   ArrowLeft,
   Activity,
   Calendar,
+  Download,
   User,
   Building2,
   FlaskConical,
@@ -117,6 +119,7 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
   const [activityLog, setActivityLog] = useState<ApiAuditLog[]>([]);
   const [detailLoading, setDetailLoading] = useState(true);
   const [detailError, setDetailError] = useState("");
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   const loadDetail = useCallback(async () => {
     setDetailLoading(true);
@@ -194,6 +197,33 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
     await loadDetail();
   };
 
+  const handleExportExcel = async () => {
+    if (exportingExcel) return;
+    setExportingExcel(true);
+    try {
+      const { blob, fileName } = await researchApi.downloadGanttExcel(currentProject.id, {
+        includeActual: true,
+        includeMilestones: true,
+        includeDeadlines: true,
+        timeScale: "auto",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = fileName ?? `TienDo_${currentProject.code}.xlsx`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success({ title: "Đã xuất Excel", description: anchor.download });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Không xuất được báo cáo Excel.";
+      toast.error({ title: "Không xuất được Excel", description: message });
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
   return (
     <div>
       {/* ── Back + Header ───────────────────────────────────────────────────── */}
@@ -217,12 +247,22 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
             </h1>
             <p className="mt-1 text-xs text-slate-500">{currentProject.department} &mdash; {currentProject.pi}</p>
           </div>
-          <Button
-            variant="outline"
-            className="flex-shrink-0 gap-1.5 border-slate-200 text-slate-600 text-xs h-8"
-          >
-            <Pencil className="h-3.5 w-3.5" /> Chỉnh sửa
-          </Button>
+          <div className="flex flex-shrink-0 items-center gap-2">
+            <Button
+              variant="outline"
+              className="gap-1.5 border-slate-200 text-slate-600 text-xs h-8"
+              onClick={handleExportExcel}
+              disabled={exportingExcel}
+            >
+              <Download className="h-3.5 w-3.5" /> {exportingExcel ? "Đang xuất..." : "Xuất Excel"}
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-1.5 border-slate-200 text-slate-600 text-xs h-8"
+            >
+              <Pencil className="h-3.5 w-3.5" /> Chỉnh sửa
+            </Button>
+          </div>
         </div>
       </div>
 

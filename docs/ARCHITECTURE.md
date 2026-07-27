@@ -48,7 +48,7 @@ Schemas:
 - `notify`
 - `audit`
 
-EF Core dùng database-first. Database schema là source of truth.
+EF Core dùng PostgreSQL qua Npgsql. EF migrations trong `src/Rms.Infrastructure/Persistence/Migrations/PostgreSql/` là source of truth cho schema hiện tại.
 
 ## Request Flow
 
@@ -59,7 +59,7 @@ Frontend UI
   -> Application service interface
   -> Infrastructure service
   -> RmsDbContext
-  -> SQL Server RMS
+  -> PostgreSQL RMS
 ```
 
 ## Auth Flow
@@ -89,7 +89,7 @@ Authorization: Bearer <JWT_TOKEN>
 
 ## Notification Flow
 
-Notification database schema exists under `notify`. Full backend notification service/scanner is still future phase. Frontend notification UI currently uses mock notification data.
+Notification database schema exists under `notify`. Backend notification services, rules, scanner, and controllers are implemented; some frontend notification UI areas may still rely on mock data until fully wired to API clients.
 
 ## Audit Flow
 
