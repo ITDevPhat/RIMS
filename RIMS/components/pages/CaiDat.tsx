@@ -196,12 +196,12 @@ export default function CaiDat() {
 
   return (
     <div className="min-h-full overflow-x-hidden bg-slate-50 dark:bg-slate-950">
-      <div className="border-b border-slate-200 bg-white px-8 py-5 dark:border-slate-800 dark:bg-slate-950">
+      <div className="border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8 py-5 dark:border-slate-800 dark:bg-slate-950">
         <h1 className="text-lg font-bold text-slate-800 dark:text-slate-100">Cài đặt hệ thống</h1>
         <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">Quản lý cài đặt hệ thống, người dùng, vai trò và quyền hạn</p>
       </div>
 
-      <div className="px-8 py-6">
+      <div className="px-4 sm:px-6 lg:px-8 py-6">
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as SettingsTab)} className="min-w-0">
           <div className="overflow-x-auto pb-1">
             <TabsList className="h-auto min-w-max justify-start rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900">

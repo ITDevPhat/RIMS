@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import {
   TrendingUp, Calendar, Users, CheckCircle2, XCircle, BarChart3,
 } from "lucide-react";
-import { computeMonthlySummary, type HoiNghi } from "@/lib/mock-dao-tao";
+import { computeMonthlySummary, type HoiNghi } from "@/lib/constants/training";
 
 interface ThongKeNamProps {
   selectedYear: number;

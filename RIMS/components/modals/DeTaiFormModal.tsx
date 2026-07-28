@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { DEPARTMENTS, SPONSORS } from "@/lib/mock-data";
+import { DEPARTMENTS, SPONSORS } from "@/lib/constants/research";
 import type { ResearchProject } from "@/lib/types";
 
 export interface DeTaiFormData {

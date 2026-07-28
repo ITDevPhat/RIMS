@@ -20,7 +20,7 @@ import {
   type LoaiHoatDong,
   type LoaiKeHoach,
   type TrangThaiHoiNghi,
-} from "@/lib/mock-dao-tao";
+} from "@/lib/constants/training";
 
 interface HoiNghiFormModalProps {
   open: boolean;

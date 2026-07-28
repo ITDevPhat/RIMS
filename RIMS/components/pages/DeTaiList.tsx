@@ -24,7 +24,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   DEPARTMENTS,
   SPONSORS,
-} from "@/lib/mock-data";
+} from "@/lib/constants/research";
 import type { ResearchProject, EthicsStatus, ProjectHealth } from "@/lib/types";
 import { Search, Plus, Eye, Pencil, Trash2, Filter, ArrowUpDown } from "lucide-react";
 import DeTaiFormModal, { type DeTaiFormData } from "@/components/modals/DeTaiFormModal";
@@ -84,6 +84,7 @@ function StatusBadge({ status }: { status: string }) {
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface DeTaiListProps {
   onViewDetail: (project: ResearchProject) => void;
+  initialSearch?: string;
 }
 
 type SortKey =
@@ -138,7 +139,7 @@ function mapHealthToApi(health?: ProjectHealth) {
   return "low";
 }
 
-function buildProjectPayload(data: DeTaiFormData, existing?: ResearchProject | null) {
+export function buildProjectPayload(data: DeTaiFormData, existing?: ResearchProject | null) {
   return {
     projectTitle: data.name.trim(),
     description: data.description.trim() || null,
@@ -171,11 +172,11 @@ function getSortValue(project: ResearchProject, key: SortKey) {
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-export default function DeTaiList({ onViewDetail }: DeTaiListProps) {
+export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiListProps) {
   const [projects, setProjects] = useState<ResearchProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [filterDept, setFilterDept] = useState("Tất cả");
   const [filterSponsor, setFilterSponsor] = useState("Tất cả");
   const [filterStatus, setFilterStatus] = useState("Tất cả");
@@ -302,7 +303,7 @@ export default function DeTaiList({ onViewDetail }: DeTaiListProps) {
   return (
     <div>
       {/* ── Page header ─────────────────────────────────────────────────────── */}
-      <div className="border-b border-slate-200 bg-white px-8 py-5 flex items-center justify-between">
+      <div className="border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold text-slate-800">Đề tài nghiên cứu</h1>
           <p className="mt-0.5 text-sm text-slate-500">Quản lý danh sách các đề tài nghiên cứu — thay thế Excel theo dõi.</p>
@@ -313,7 +314,7 @@ export default function DeTaiList({ onViewDetail }: DeTaiListProps) {
         </Button>
       </div>
 
-      <div className="px-8 py-6 space-y-4">
+      <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-4">
         {loading && (
           <Card className="border-slate-200 shadow-sm">
             <CardContent className="p-4 text-sm text-slate-500">Đang tải danh sách đề tài...</CardContent>
@@ -397,7 +398,7 @@ export default function DeTaiList({ onViewDetail }: DeTaiListProps) {
         {/* Table */}
         <Card className="border-slate-200 shadow-sm overflow-hidden">
           <CardContent className="p-0">
-              <Table className="w-full table-fixed">
+              <Table className="min-w-[1000px] w-full">
                 <TableHeader>
                   <TableRow className="bg-slate-50 hover:bg-slate-50 border-b border-slate-200">
                     {columns.map((column) => (

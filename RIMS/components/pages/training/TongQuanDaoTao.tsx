@@ -5,10 +5,9 @@ import {
   TrendingUp, Calendar, Users, CheckCircle2, XCircle, BarChart3,
 } from "lucide-react";
 import {
-  mockHoiNghiByYear,
   computeMonthlySummary,
   type HoiNghi,
-} from "@/lib/mock-dao-tao";
+} from "@/lib/constants/training";
 
 interface TongQuanDaoTaoProps {
   selectedYear: number;

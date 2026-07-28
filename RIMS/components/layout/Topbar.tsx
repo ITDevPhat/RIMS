@@ -38,11 +38,17 @@ import { useAuth } from "@/lib/auth-context";
 import { useThemeMode, type ThemeMode } from "@/lib/theme-mode";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { authApi } from "@/lib/api/auth-api";
+import { adminApi } from "@/lib/api/admin-api";
+import type { PageKey } from "./Sidebar";
 
 interface TopbarProps {
   sidebarCollapsed: boolean;
   onToggleSidebar: () => void;
   onOpenProfile: () => void;
+  onOpenNotifications: () => void;
+  onNavigate: (page: PageKey) => void;
+  onSearchProjects: (query: string) => void;
   onLogout: () => void;
 }
 
@@ -87,27 +93,20 @@ function ToggleRow({
 export default function Topbar({
   sidebarCollapsed,
   onToggleSidebar,
-  onOpenProfile: _onOpenProfile,
+  onOpenProfile,
+  onOpenNotifications,
+  onNavigate,
+  onSearchProjects,
   onLogout,
 }: TopbarProps) {
   const { user } = useAuth();
   const { mode, setMode } = useThemeMode();
   const [searchValue, setSearchValue] = useState("");
-  const [profileOpen, setProfileOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
-  const [profileSaved, setProfileSaved] = useState(false);
   const [accountSaved, setAccountSaved] = useState(false);
   const [passwordSaved, setPasswordSaved] = useState(false);
   const [passwordError, setPasswordError] = useState("");
-  const [profileForm, setProfileForm] = useState({
-    fullName: "Quản trị viên Bệnh viện",
-    email: "admin@hospital.vn",
-    username: "admin",
-    title: "Quản trị hệ thống",
-    department: "Phòng Quản lý Nghiên cứu Khoa học",
-    phone: "0909 123 456",
-  });
   const [accountPrefs, setAccountPrefs] = useState({
     language: "Tiếng Việt",
     inApp: true,
@@ -124,7 +123,7 @@ export default function Topbar({
 
   if (!user) return null;
 
-  const updatePassword = () => {
+  const updatePassword = async () => {
     setPasswordSaved(false);
     if (passwordForm.next.length < 6) {
       setPasswordError("Mật khẩu mới phải có ít nhất 6 ký tự.");
@@ -137,19 +136,29 @@ export default function Topbar({
       return;
     }
     setPasswordError("");
-    setPasswordSaved(true);
-    setPasswordForm({ current: "", next: "", confirm: "" });
-    toast.success("Đã cập nhật mật khẩu.");
+    try {
+      await authApi.changePassword({ currentPassword: passwordForm.current, newPassword: passwordForm.next, confirmPassword: passwordForm.confirm });
+      setPasswordSaved(true);
+      setPasswordForm({ current: "", next: "", confirm: "" });
+      toast.success("Mật khẩu đã được cập nhật.");
+    } catch { setPasswordError("Không thể cập nhật mật khẩu. Vui lòng kiểm tra mật khẩu hiện tại."); toast.error("Không thể cập nhật mật khẩu."); }
   };
 
-  const saveProfile = () => {
-    setProfileSaved(true);
-    toast.success("Đã lưu thông tin cá nhân.");
+  const openAccountPreferences = async () => {
+    setAccountOpen(true); setAccountSaved(false);
+    try {
+      const prefs = await adminApi.getAccountPreferences();
+      setMode(prefs.appearanceMode);
+      setAccountPrefs({ language: prefs.languageCode, inApp: prefs.enableInAppNotification, email: prefs.enableEmailNotification, researchReminder: prefs.receiveDeadlineNotification, trainingReminder: prefs.receiveTrainingNotification, autoRead: prefs.autoMarkReadOnOpen });
+    } catch { toast.error("Không tải được cài đặt tài khoản."); }
   };
 
-  const saveAccount = () => {
-    setAccountSaved(true);
-    toast.success("Đã lưu cài đặt tài khoản.");
+  const saveAccount = async () => {
+    setAccountSaved(false);
+    try {
+      await adminApi.updateAccountPreferences({ appearanceMode: mode, languageCode: accountPrefs.language, enableInAppNotification: accountPrefs.inApp, enableEmailNotification: accountPrefs.email, receiveDeadlineNotification: accountPrefs.researchReminder, receiveTrainingNotification: accountPrefs.trainingReminder, receiveEthicsNotification: accountPrefs.researchReminder, autoMarkReadOnOpen: accountPrefs.autoRead });
+      setAccountSaved(true); toast.success("Cài đặt tài khoản đã được lưu.");
+    } catch { toast.error("Không thể lưu cài đặt tài khoản."); }
   };
 
   const handleLogout = () => {
@@ -185,6 +194,7 @@ export default function Topbar({
               type="text"
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && searchValue.trim()) onSearchProjects(searchValue.trim()); }}
               placeholder="Tìm kiếm đề tài, module..."
               className="h-8 w-56 rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-xs text-slate-700 outline-none transition placeholder:text-slate-400 focus:w-72 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
             />
@@ -192,7 +202,7 @@ export default function Topbar({
         </div>
 
         <div className="flex items-center gap-2">
-          <NotificationDropdown />
+          <NotificationDropdown onViewAll={onOpenNotifications} onNavigate={onNavigate} />
 
           <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg px-2 py-1 outline-none transition hover:bg-slate-100 dark:hover:bg-slate-900">
@@ -206,7 +216,7 @@ export default function Topbar({
               <ChevronDown className="hidden h-3.5 w-3.5 flex-shrink-0 text-slate-400 md:block" />
             </DropdownMenuTrigger>
 
-            <DropdownMenuContent className="w-72" align="end" sideOffset={6}>
+            <DropdownMenuContent className="w-[calc(100vw-2rem)] sm:w-72" align="end" sideOffset={6}>
               <div className="px-3 py-3">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white shadow">
@@ -228,11 +238,11 @@ export default function Topbar({
               <DropdownMenuSeparator />
 
               <DropdownMenuGroup>
-                <DropdownMenuItem onClick={() => setProfileOpen(true)} className="cursor-pointer gap-2.5 text-sm">
+                <DropdownMenuItem onClick={onOpenProfile} className="cursor-pointer gap-2.5 text-sm">
                   <User className="h-4 w-4 text-slate-400" />
                   Thông tin cá nhân
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setAccountOpen(true)} className="cursor-pointer gap-2.5 text-sm">
+                <DropdownMenuItem onClick={() => void openAccountPreferences()} className="cursor-pointer gap-2.5 text-sm">
                   <Settings className="h-4 w-4 text-slate-400" />
                   Cài đặt tài khoản
                 </DropdownMenuItem>
@@ -252,39 +262,6 @@ export default function Topbar({
           </DropdownMenu>
         </div>
       </header>
-
-      <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Thông tin cá nhân</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[
-              { key: "fullName", label: "Họ và tên" },
-              { key: "email", label: "Email", readOnly: true },
-              { key: "username", label: "Tên đăng nhập", readOnly: true },
-              { key: "title", label: "Chức vụ" },
-              { key: "department", label: "Khoa/Phòng" },
-              { key: "phone", label: "Số điện thoại" },
-            ].map((field) => (
-              <label key={field.key} className="space-y-1 text-xs font-medium text-slate-600">
-                <span>{field.label}</span>
-                <Input
-                  value={profileForm[field.key as keyof typeof profileForm]}
-                  readOnly={field.readOnly}
-                  onChange={(e) => setProfileForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                  className={cn("h-9", field.readOnly && "bg-slate-50 text-slate-500")}
-                />
-              </label>
-            ))}
-          </div>
-          {profileSaved && <p className="text-sm font-medium text-emerald-600">Đã lưu thông tin cá nhân.</p>}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setProfileOpen(false)}>Đóng</Button>
-            <Button onClick={saveProfile}>Lưu thay đổi</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={accountOpen} onOpenChange={setAccountOpen}>
         <DialogContent className="sm:max-w-xl">
@@ -336,7 +313,7 @@ export default function Topbar({
           {accountSaved && <p className="text-sm font-medium text-emerald-600">Đã lưu cài đặt tài khoản.</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setAccountOpen(false)}>Đóng</Button>
-            <Button onClick={saveAccount}>Lưu cài đặt</Button>
+            <Button onClick={() => void saveAccount()}>Lưu cài đặt</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -361,10 +338,10 @@ export default function Topbar({
             </label>
           </div>
           {passwordError && <p className="text-sm font-medium text-red-600">{passwordError}</p>}
-          {passwordSaved && <p className="text-sm font-medium text-emerald-600">Đã cập nhật mật khẩu.</p>}
+          {passwordSaved && <p className="text-sm font-medium text-emerald-600">Mật khẩu đã được cập nhật.</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setPasswordOpen(false)}>Hủy</Button>
-            <Button onClick={updatePassword}>Cập nhật mật khẩu</Button>
+            <Button onClick={() => void updatePassword()}>Cập nhật mật khẩu</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

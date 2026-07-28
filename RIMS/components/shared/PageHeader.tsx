@@ -24,7 +24,7 @@ export default function PageHeader({
   return (
     <div
       className={cn(
-        "border-b border-slate-200 bg-white px-8 py-5",
+        "border-b border-slate-200 bg-white px-4 py-5 sm:px-6 lg:px-8",
         className
       )}
     >
@@ -50,7 +50,7 @@ export default function PageHeader({
           ))}
         </nav>
       )}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900 text-balance">
             {title}
@@ -59,7 +59,7 @@ export default function PageHeader({
             <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>
           )}
         </div>
-        {actions && <div className="flex items-center gap-2">{actions}</div>}
+        {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
     </div>
   );

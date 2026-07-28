@@ -10,6 +10,10 @@ import {
   GraduationCap,
   Settings,
   Microscope,
+  Bell,
+  FileClock,
+  BarChart3,
+  X,
 } from "lucide-react";
 import {
   Tooltip,
@@ -25,6 +29,9 @@ export type PageKey =
   | "moc-tien-do"
   | "han-chot"
   | "mang-dao-tao"
+  | "thong-bao"
+  | "nhat-ky"
+  | "bao-cao"
   | "cai-dat";
 
 interface SidebarItem {
@@ -40,6 +47,9 @@ const sidebarItems: SidebarItem[] = [
   { key: "moc-tien-do", label: "Mốc tiến độ", icon: Target },
   { key: "han-chot", label: "Hạn chót", icon: CalendarX2 },
   { key: "mang-dao-tao", label: "Mảng đào tạo", icon: GraduationCap },
+  { key: "thong-bao", label: "Thông báo", icon: Bell },
+  { key: "nhat-ky", label: "Nhật ký hệ thống", icon: FileClock },
+  { key: "bao-cao", label: "Báo cáo", icon: BarChart3 },
   { key: "cai-dat", label: "Cài đặt", icon: Settings },
 ];
 
@@ -47,19 +57,24 @@ interface SidebarProps {
   activePage: PageKey;
   onNavigate: (page: PageKey) => void;
   collapsed: boolean;
+  mobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export default function Sidebar({
   activePage,
   onNavigate,
   collapsed,
+  mobileOpen = false,
+  onCloseMobile,
 }: SidebarProps) {
   return (
     <TooltipProvider delay={120}>
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 flex h-screen flex-col overflow-hidden border-r border-slate-200 bg-white shadow-sm transition-[width] duration-200 dark:border-slate-800 dark:bg-slate-950",
-          collapsed ? "w-[76px]" : "w-[260px]"
+          "fixed left-0 top-0 z-50 flex h-screen w-[260px] flex-col overflow-hidden border-r border-slate-200 bg-white shadow-sm transition-transform duration-200 dark:border-slate-800 dark:bg-slate-950 md:z-40 md:translate-x-0",
+          mobileOpen ? "translate-x-0" : "-translate-x-full",
+          collapsed ? "md:w-[76px]" : "md:w-[260px]"
         )}
       >
         {/* Brand */}
@@ -83,6 +98,9 @@ export default function Sidebar({
               </div>
             </div>
           )}
+          <button type="button" onClick={onCloseMobile} className="ml-auto rounded-lg p-2 text-slate-500 hover:bg-slate-100 md:hidden" aria-label="Đóng menu">
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         {/* Navigation */}
@@ -101,7 +119,7 @@ export default function Sidebar({
             const menuButton = (
               <button
                 type="button"
-                onClick={() => onNavigate(item.key)}
+                onClick={() => { onNavigate(item.key); onCloseMobile?.(); }}
                 className={cn(
                   "group relative flex h-11 items-center overflow-hidden rounded-xl transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-200",
                   collapsed

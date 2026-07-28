@@ -64,14 +64,14 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
       {/* Login card */}
       <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white shadow-xl">
-        <div className="border-b border-slate-100 px-8 py-6">
+        <div className="border-b border-slate-100 px-4 sm:px-6 lg:px-8 py-6">
           <h2 className="text-lg font-bold text-slate-800">Đăng nhập hệ thống</h2>
           <p className="mt-1 text-xs leading-relaxed text-slate-500">
             Hệ thống quản lý và theo dõi tiến độ nghiên cứu khoa học bệnh viện
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-8 py-6 flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-4">
           {/* Email field */}
           <div className="flex flex-col gap-1.5">
             <label htmlFor="email" className="text-xs font-semibold text-slate-600">

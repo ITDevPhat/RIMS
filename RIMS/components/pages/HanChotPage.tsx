@@ -100,12 +100,12 @@ export default function HanChotPage() {
 
   return (
     <div>
-      <div className="border-b border-slate-200 bg-white px-8 py-5">
+      <div className="border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8 py-5">
         <h1 className="text-lg font-bold text-slate-800">Hạn chót & Cảnh báo</h1>
         <p className="mt-0.5 text-sm text-slate-500">Theo dõi hạn chót của đề tài, giai đoạn và mốc tiến độ từ backend RMS.</p>
       </div>
 
-      <div className="space-y-6 px-8 py-6">
+      <div className="space-y-6 px-4 sm:px-6 lg:px-8 py-6">
         {loading && <Card><CardContent className="p-4 text-sm text-slate-500">Đang tải hạn chót...</CardContent></Card>}
         {error && <Card className="border-red-200 bg-red-50"><CardContent className="flex items-center justify-between p-4 text-sm font-medium text-red-700">{error}<Button size="sm" variant="outline" onClick={() => void loadData()}>Thử lại</Button></CardContent></Card>}
 

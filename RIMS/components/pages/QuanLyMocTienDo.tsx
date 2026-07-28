@@ -135,7 +135,7 @@ export default function QuanLyMocTienDo() {
 
   return (
     <div>
-      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-8 py-5">
+      <div className="flex flex-col items-start gap-3 border-b border-slate-200 bg-white sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 lg:px-8 py-5">
         <div>
           <h1 className="text-lg font-bold text-slate-800">Mốc tiến độ</h1>
           <p className="mt-0.5 text-sm text-slate-500">Quản lý các mốc tiến độ trong từng giai đoạn nghiên cứu.</p>
@@ -143,7 +143,7 @@ export default function QuanLyMocTienDo() {
         <Button onClick={() => { setEditingMs(null); setModalOpen(true); }} className="gap-2 bg-blue-600 text-white hover:bg-blue-700"><Plus className="h-4 w-4" /> Thêm mốc tiến độ</Button>
       </div>
 
-      <div className="space-y-5 px-8 py-6">
+      <div className="space-y-5 px-4 sm:px-6 lg:px-8 py-6">
         {loading && <Card><CardContent className="p-4 text-sm text-slate-500">Đang tải mốc tiến độ...</CardContent></Card>}
         {error && <Card className="border-red-200 bg-red-50"><CardContent className="flex items-center justify-between p-4 text-sm font-medium text-red-700">{error}<Button size="sm" variant="outline" onClick={() => void loadData()}>Thử lại</Button></CardContent></Card>}
         {actionError && <Card className="border-red-200 bg-red-50"><CardContent className="p-4 text-sm font-medium text-red-700">{actionError}</CardContent></Card>}
@@ -187,7 +187,7 @@ export default function QuanLyMocTienDo() {
             <p className="text-xs text-slate-500">Theo dõi deadline, rủi ro, phát sinh và trạng thái của từng mốc.</p>
           </div>
           <CardContent className="p-0">
-            <Table className="w-full table-fixed">
+            <Table className="min-w-[1000px] w-full">
               <TableHeader><TableRow className="bg-slate-50">{["TT", "Tên mốc", "Giai đoạn", "Người phụ trách", "Hạn chót", "Tiến độ", "Rủi ro", "Trạng thái", "Phát sinh", "Thao tác"].map((head) => <TableHead key={head} className="px-2 py-2.5 text-[10px] font-semibold uppercase text-slate-500 whitespace-normal">{head}</TableHead>)}</TableRow></TableHeader>
               <TableBody>
                 {visibleMilestones.length === 0 ? (

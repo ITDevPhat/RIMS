@@ -19,7 +19,7 @@ import {
   TRANG_THAI_OPTIONS,
   LOAI_KE_HOACH_OPTIONS,
   type HoiNghi,
-} from "@/lib/mock-dao-tao";
+} from "@/lib/constants/training";
 
 interface DanhSachSuKienProps {
   conferences: HoiNghi[];
@@ -66,16 +66,24 @@ export default function DanhSachSuKien({
     });
   }, [conferences, searchText, filterMonth, filterStatus, filterType, filterDept]);
 
+  const exportFilteredCsv = () => {
+    const escape = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+    const rows = [["Mã", "Tên sự kiện", "Ngày dự kiến", "Ngày thực tế", "Loại", "Kế hoạch", "Khoa/phòng", "Phụ trách", "Địa điểm", "Trạng thái"], ...filtered.map((item) => [item.ma, item.ten, item.ngayDuKien, item.ngayThucTe ?? "", item.loai, item.loaiKeHoach, item.khoaPhong, item.nguoiPhuTrach, item.diaDiem, item.trangThai])];
+    const blob = new Blob(["\uFEFF" + rows.map((row) => row.map(escape).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob); const link = document.createElement("a");
+    link.href = url; link.download = `training-events-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}.csv`; link.click(); URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-4">
       {/* Top bar */}
-      <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col items-start gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
           <Button onClick={onAddEvent} className="h-10 min-w-[150px] gap-2 rounded-lg px-4 py-2">
             <Plus className="h-5 w-5" />
             Thêm sự kiện
           </Button>
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={exportFilteredCsv}>
             <Download className="h-4 w-4" />
             Xuất Excel
           </Button>
@@ -167,8 +175,8 @@ export default function DanhSachSuKien({
 
       {/* Table or Card View */}
       {viewMode === "table" ? (
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <table className="w-full table-fixed text-sm">
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+          <table className="min-w-[1000px] w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
                 <th className="w-[10%] px-3 py-3 text-left font-semibold text-slate-700">Mã</th>

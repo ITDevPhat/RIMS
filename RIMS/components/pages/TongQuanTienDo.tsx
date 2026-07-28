@@ -16,7 +16,7 @@ import {
 import {
   DEPARTMENTS,
   SPONSORS,
-} from "@/lib/mock-data";
+} from "@/lib/constants/research";
 import type { ResearchProject, ResearchPhase, DeadlineItem, PhaseStatus, EthicsStatus } from "@/lib/types";
 import { dashboardApi, type DashboardDeadlinesDto, type ResearchOverviewDto } from "@/lib/api/dashboard-api";
 import { mapGanttProjectToUi } from "@/lib/mappers/project-mapper";
@@ -382,7 +382,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
   return (
     <div className="flex flex-col min-h-full">
       {/* ── Page header ─────────────────────────────────────────────────────── */}
-      <div className="border-b border-slate-200 bg-white px-8 py-5">
+      <div className="border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8 py-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-lg font-bold text-slate-800">Tổng quan tiến độ nghiên cứu</h1>
@@ -400,7 +400,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
         </div>
       </div>
 
-      <div className="flex-1 px-8 py-6 space-y-6">
+      <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         <Card className="border-slate-200 shadow-sm">
           <CardContent className="grid gap-4 p-4 xl:grid-cols-[minmax(360px,440px)_1fr_380px]">
             <div className="min-w-0">

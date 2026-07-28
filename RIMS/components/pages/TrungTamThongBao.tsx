@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Check, X, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { Notification } from "@/lib/mock-notifications";
+import type { Notification } from "@/lib/types/notification";
 import { notificationApi } from "@/lib/api/notification-api";
 import { mapApiNotificationToUi } from "@/lib/mappers/notification-mapper";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ export default function TrungTamThongBao() {
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const loadNotifications = useCallback(async () => {
     setLoading(true);
@@ -46,16 +47,23 @@ export default function TrungTamThongBao() {
   });
 
   const handleMarkAsRead = async (id: string) => {
-    await notificationApi.markRead(id);
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+    setBusyId(id); setError("");
+    try {
+      await notificationApi.markRead(id);
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+      setSelectedNotification((prev) => prev?.id === id ? { ...prev, read: true } : prev);
+    } catch { setError("Không thể đánh dấu thông báo đã đọc."); }
+    finally { setBusyId(null); }
   };
 
   const handleDelete = async (id: string) => {
-    await notificationApi.deleteNotification(id);
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-    setSelectedNotification(null);
+    setBusyId(id); setError("");
+    try {
+      await notificationApi.deleteNotification(id);
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      setSelectedNotification(null);
+    } catch { setError("Không thể xóa thông báo."); }
+    finally { setBusyId(null); }
   };
 
   const getPriorityColor = (priority: string) => {
@@ -99,14 +107,14 @@ export default function TrungTamThongBao() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Page Header */}
-      <div className="border-b border-slate-200 bg-white px-8 py-6">
+      <div className="border-b border-slate-200 bg-white px-4 py-6 sm:px-6 lg:px-8">
         <h1 className="text-2xl font-bold text-slate-800">Trung Tâm Thông Báo</h1>
         <p className="mt-2 text-sm text-slate-600">Quản lý và theo dõi các thông báo hệ thống</p>
       </div>
 
-      <div className="flex gap-6 px-8 py-6 max-w-6xl mx-auto">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:flex-row lg:px-8">
         {/* Sidebar Filters */}
-        <div className="w-48 flex-shrink-0">
+        <div className="w-full flex-shrink-0 lg:w-48">
           <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-2 sticky top-20">
             <div className="flex items-center gap-2 px-2 py-2 text-sm font-semibold text-slate-700">
               <Filter className="h-4 w-4" />
@@ -166,7 +174,7 @@ export default function TrungTamThongBao() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <span className="text-xs font-semibold text-slate-700">Độ Ưu Tiên</span>
                   <Badge className={cn("mt-1 text-xs", getPriorityColor(selectedNotification.priority))}>
@@ -190,6 +198,7 @@ export default function TrungTamThongBao() {
                   <Button
                     variant="outline"
                     onClick={() => void handleMarkAsRead(selectedNotification.id)}
+                    disabled={busyId === selectedNotification.id}
                     className="gap-2"
                   >
                     <Check className="h-4 w-4" />
@@ -199,6 +208,7 @@ export default function TrungTamThongBao() {
                 <Button
                   variant="outline"
                   onClick={() => void handleDelete(selectedNotification.id)}
+                  disabled={busyId === selectedNotification.id}
                   className="gap-2 text-red-600 hover:bg-red-50"
                 >
                   <X className="h-4 w-4" />

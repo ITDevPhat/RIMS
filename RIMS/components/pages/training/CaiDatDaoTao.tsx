@@ -6,7 +6,7 @@ import {
   KHOA_PHONG_OPTIONS,
   TRANG_THAI_OPTIONS,
   LOAI_KE_HOACH_OPTIONS,
-} from "@/lib/mock-dao-tao";
+} from "@/lib/constants/training";
 
 export default function CaiDatDaoTao() {
   return (

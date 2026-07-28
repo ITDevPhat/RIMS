@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { HoiNghi } from "@/lib/mock-dao-tao";
+import type { HoiNghi } from "@/lib/constants/training";
 import { trainingApi } from "@/lib/api/training-api";
 import { mapApiTrainingEventToUi } from "@/lib/mappers/training-event-mapper";
 import TrainingModuleNav from "@/components/layout/TrainingModuleNav";
@@ -128,7 +128,7 @@ export default function MangDaoTaoPage() {
       />
 
       {/* Page header */}
-      <div className="border-b border-slate-200 bg-white px-8 py-5">
+      <div className="border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8 py-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 shadow-sm">
@@ -174,7 +174,7 @@ export default function MangDaoTaoPage() {
       <TrainingModuleNav activeTab={activeTab} onTabChange={setActiveTab} />
 
       {/* Content Area */}
-      <div className="px-8 py-6">
+      <div className="px-4 sm:px-6 lg:px-8 py-6">
         {loading && (
           <div className="mb-4 rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
             Đang tải dữ liệu đào tạo...
