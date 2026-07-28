@@ -15,6 +15,9 @@ import HanChotPage from "@/components/pages/HanChotPage";
 import MangDaoTaoPage from "@/components/pages/MangDaoTaoPage";
 import ThongTinCaNhan from "@/components/pages/ThongTinCaNhan";
 import CaiDat from "@/components/pages/CaiDat";
+import TrungTamThongBao from "@/components/pages/TrungTamThongBao";
+import NhatKyHeThong from "@/components/pages/NhatKyHeThong";
+import BaoCao from "@/components/pages/BaoCao";
 import type { ResearchProject } from "@/lib/types";
 
 // Inner app — can read auth context
@@ -23,6 +26,7 @@ function AppInner() {
   const [activePage, setActivePage] = useState<PageKey>("tong-quan");
   const [selectedProject, setSelectedProject] = useState<ResearchProject | null>(null);
   const [showProfile, setShowProfile] = useState(false);
+  const [projectSearch, setProjectSearch] = useState("");
 
   // Sync logout
   const handleLogout = async () => {
@@ -81,7 +85,7 @@ function AppInner() {
       case "tong-quan":
         return <TongQuanTienDo onViewDetail={handleViewDetail} />;
       case "de-tai":
-        return <DeTaiList onViewDetail={handleViewDetail} />;
+        return <DeTaiList onViewDetail={handleViewDetail} initialSearch={projectSearch} />;
       case "giai-doan":
         return <QuanLyGiaiDoan />;
       case "moc-tien-do":
@@ -90,6 +94,12 @@ function AppInner() {
         return <HanChotPage />;
       case "mang-dao-tao":
         return <MangDaoTaoPage />;
+      case "thong-bao":
+        return <TrungTamThongBao />;
+      case "nhat-ky":
+        return <NhatKyHeThong />;
+      case "bao-cao":
+        return <BaoCao onOpenProjects={() => handleSidebarNavigate("de-tai")} />;
       case "cai-dat":
         return <CaiDat />;
       default:
@@ -102,6 +112,8 @@ function AppInner() {
       activePage={activePage}
       onNavigate={handleSidebarNavigate}
       onOpenProfile={() => setShowProfile(true)}
+      onOpenNotifications={() => handleSidebarNavigate("thong-bao")}
+      onSearchProjects={(query) => { setProjectSearch(query); handleSidebarNavigate("de-tai"); }}
       onLogout={handleLogout}
     >
       {renderContent()}

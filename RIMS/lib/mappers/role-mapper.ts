@@ -1,5 +1,5 @@
 import type { ApiAdminRole, ApiPermission } from "@/lib/api/admin-api";
-import type { Permission, Role } from "@/lib/mock-admin-data";
+import type { Permission, Role } from "@/lib/types/admin";
 
 export function mapApiRoleToUi(role: ApiAdminRole): Role {
   return {

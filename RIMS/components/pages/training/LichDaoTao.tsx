@@ -7,7 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { HoiNghi } from "@/lib/mock-dao-tao";
+import type { HoiNghi } from "@/lib/constants/training";
 
 interface LichDaoTaoProps {
   selectedYear: number;

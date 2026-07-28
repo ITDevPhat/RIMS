@@ -10,6 +10,8 @@ import { toast } from "@/lib/toast";
 import type { DeadlineItem, ResearchMilestone, ResearchPhase, ResearchProject, PhaseStatus, EthicsStatus, ProjectHealth } from "@/lib/types";
 import GiaiDoanGanttChart from "@/components/gantt/GiaiDoanGanttChart";
 import PhaseFormModal from "@/components/modals/PhaseFormModal";
+import DeTaiFormModal, { type DeTaiFormData } from "@/components/modals/DeTaiFormModal";
+import { buildProjectPayload } from "@/components/pages/DeTaiList";
 import { auditApi, type ApiAuditLog } from "@/lib/api/audit-api";
 import { projectDeadlineApi, projectMilestoneApi, projectPhaseApi, researchApi } from "@/lib/api/research-api";
 import type { ProjectPhasePayload } from "@/lib/api/research-api";
@@ -120,6 +122,14 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
   const [detailLoading, setDetailLoading] = useState(true);
   const [detailError, setDetailError] = useState("");
   const [exportingExcel, setExportingExcel] = useState(false);
+  const [projectEditOpen, setProjectEditOpen] = useState(false);
+
+  const handleProjectSave = async (data: DeTaiFormData) => {
+    await researchApi.updateProject(currentProject.id, buildProjectPayload(data, currentProject));
+    const refreshed = await researchApi.getProject(currentProject.id);
+    setCurrentProject(mapApiProjectToUi(refreshed));
+    toast.success("Đã cập nhật đề tài.");
+  };
 
   const loadDetail = useCallback(async () => {
     setDetailLoading(true);
@@ -227,14 +237,14 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
   return (
     <div>
       {/* ── Back + Header ───────────────────────────────────────────────────── */}
-      <div className="border-b border-slate-200 bg-white px-8 py-4">
+      <div className="border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8 py-4">
         <button
           onClick={onBack}
           className="mb-3 flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Quay lại danh sách đề tài
         </button>
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="inline-flex items-center rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 border border-blue-100">
@@ -247,7 +257,7 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
             </h1>
             <p className="mt-1 text-xs text-slate-500">{currentProject.department} &mdash; {currentProject.pi}</p>
           </div>
-          <div className="flex flex-shrink-0 items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               className="gap-1.5 border-slate-200 text-slate-600 text-xs h-8"
@@ -259,6 +269,7 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
             <Button
               variant="outline"
               className="gap-1.5 border-slate-200 text-slate-600 text-xs h-8"
+              onClick={() => setProjectEditOpen(true)}
             >
               <Pencil className="h-3.5 w-3.5" /> Chỉnh sửa
             </Button>
@@ -266,8 +277,10 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
         </div>
       </div>
 
+      <DeTaiFormModal open={projectEditOpen} mode="edit" project={currentProject} onOpenChange={setProjectEditOpen} onSave={handleProjectSave} />
+
       {/* ── KPI summary bar ──────────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-slate-100 px-8 py-3">
+      <div className="bg-white border-b border-slate-100 px-4 py-3 sm:px-6 lg:px-8">
         <div className="flex items-center gap-8 flex-wrap">
           {[
             { label: "Tiến độ tổng", value: `${currentProject.progress}%`, color: "text-blue-600" },
@@ -289,7 +302,7 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
       </div>
 
       {/* ── Tabs ────────────────────────────────────────────────────────────── */}
-      <div className="px-8 py-5">
+      <div className="px-4 py-5 sm:px-6 lg:px-8">
         {detailLoading && (
           <Card className="mb-4 border-slate-200 shadow-sm">
             <CardContent className="p-4 text-sm text-slate-500">Đang tải dữ liệu chi tiết đề tài...</CardContent>
@@ -324,7 +337,7 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
 
           {/* ── Tổng quan tab ───────────────────────────────────────────────── */}
           <TabsContent value="tong-quan" className="mt-5">
-            <div className="grid grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
               {/* Left: project info */}
               <Card className="border-slate-200 shadow-sm">
                 <CardHeader className="px-5 py-4 border-b border-slate-100">
@@ -402,7 +415,7 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
                 </Card>
 
                 {/* Phase summary mini-cards */}
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   {[
                     { label: "Tổng", value: phases.length, color: "text-slate-700" },
                     { label: "Hoàn thành", value: phaseDone, color: "text-emerald-600" },
@@ -458,7 +471,7 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
                             <span className="text-[10px] font-medium text-red-500">Trễ {phase.delayDays} ngày</span>
                           )}
                         </div>
-                        <div className="grid grid-cols-4 gap-3 text-[10px] text-slate-500 mb-2">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 text-[10px] text-slate-500 mb-2">
                           <span>Dự kiến: <span className="text-slate-700">{formatDate(phase.plannedStartDate)} – {formatDate(phase.plannedEndDate)}</span></span>
                           <span>Thực tế: <span className="text-slate-700">{formatDate(phase.actualStartDate)} – {formatDate(phase.actualEndDate)}</span></span>
                           <span>Hạn chót: <span className="text-red-500 font-medium">{formatDate(phase.deadline)}</span></span>

@@ -1,4 +1,4 @@
-import type { HoiNghi, LoaiHoatDong, LoaiKeHoach, TrangThaiHoiNghi } from "@/lib/mock-dao-tao";
+import type { HoiNghi, LoaiHoatDong, LoaiKeHoach, TrangThaiHoiNghi } from "@/lib/constants/training";
 import type { ApiTrainingEvent } from "@/lib/api/training-api";
 
 function mapEventType(type?: string | null): LoaiHoatDong {

@@ -1,7 +1,7 @@
 "use client";
 
 import { X, Calendar, MapPin, User, Building2, Users, FileText, Clock } from "lucide-react";
-import type { HoiNghi } from "@/lib/mock-dao-tao";
+import type { HoiNghi } from "@/lib/constants/training";
 
 interface HoiNghiDetailDrawerProps {
   hoiNghi: HoiNghi | null;

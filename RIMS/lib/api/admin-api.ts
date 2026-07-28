@@ -39,6 +39,17 @@ export interface ApiSetting {
   isActive: boolean;
 }
 
+export interface ApiAccountPreferences {
+  appearanceMode: "light" | "dark" | "system";
+  languageCode: string;
+  enableInAppNotification: boolean;
+  enableEmailNotification: boolean;
+  receiveDeadlineNotification: boolean;
+  receiveTrainingNotification: boolean;
+  receiveEthicsNotification: boolean;
+  autoMarkReadOnOpen: boolean;
+}
+
 export interface ApiRolePermissionAction {
   actionCode: string;
   actionName: string;
@@ -81,6 +92,6 @@ export const adminApi = {
   getSettings: (filters?: QueryParams) => apiClient.get<PagedResult<ApiSetting>>("/settings", filters),
   createSetting: (payload: unknown) => apiClient.post<ApiSetting>("/settings", payload),
   updateSetting: (key: string, payload: unknown) => apiClient.put<ApiSetting>(`/settings/${key}`, payload),
-  getAccountPreferences: () => apiClient.get<unknown>("/account/preferences"),
-  updateAccountPreferences: (payload: unknown) => apiClient.put<unknown>("/account/preferences", payload),
+  getAccountPreferences: () => apiClient.get<ApiAccountPreferences>("/account/preferences"),
+  updateAccountPreferences: (payload: ApiAccountPreferences) => apiClient.put<ApiAccountPreferences>("/account/preferences", payload),
 };

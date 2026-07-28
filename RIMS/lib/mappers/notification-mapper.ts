@@ -1,4 +1,4 @@
-import type { Notification, NotificationPriority, NotificationType } from "@/lib/mock-notifications";
+import type { Notification, NotificationPriority, NotificationType } from "@/lib/types/notification";
 import type { ApiNotification } from "@/lib/api/notification-api";
 
 function mapPriority(priority: string): NotificationPriority {
@@ -24,6 +24,7 @@ export function mapApiNotificationToUi(item: ApiNotification): Notification {
     priority: mapPriority(item.priorityLevel),
     timestamp: new Date(item.createdAt),
     read: item.isRead,
+    actionUrl: item.actionUrl ?? undefined,
     relatedObjectId: item.relatedEntityId ? String(item.relatedEntityId) : undefined,
     relatedObjectType: item.relatedEntityType?.includes("training") ? "conference" : "project",
     suggestedActions: item.actionLabel ? [{ label: item.actionLabel, action: item.actionUrl ?? "" }] : undefined,

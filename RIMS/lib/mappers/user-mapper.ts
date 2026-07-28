@@ -1,5 +1,5 @@
 import type { ApiAdminUser } from "@/lib/api/admin-api";
-import type { User, UserStatus } from "@/lib/mock-admin-data";
+import type { User, UserStatus } from "@/lib/types/admin";
 
 function mapStatus(status: string): UserStatus {
   if (status === "locked") return "locked";

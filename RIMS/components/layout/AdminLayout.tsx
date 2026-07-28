@@ -9,6 +9,8 @@ interface AdminLayoutProps {
   activePage: PageKey;
   onNavigate: (page: PageKey) => void;
   onOpenProfile: () => void;
+  onOpenNotifications: () => void;
+  onSearchProjects: (query: string) => void;
   onLogout: () => void;
   children: React.ReactNode;
 }
@@ -17,19 +19,18 @@ export default function AdminLayout({
   activePage,
   onNavigate,
   onOpenProfile,
+  onOpenNotifications,
+  onSearchProjects,
   onLogout,
   children,
 }: AdminLayoutProps) {
-  const [isNarrow, setIsNarrow] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     const syncLayout = () => {
       const narrow = window.innerWidth < 768;
-      setIsNarrow(narrow);
-      if (narrow) {
-        setCollapsed(true);
-      }
+      if (narrow) setMobileOpen(false);
     };
 
     syncLayout();
@@ -43,18 +44,25 @@ export default function AdminLayout({
         activePage={activePage}
         onNavigate={onNavigate}
         collapsed={collapsed}
+        mobileOpen={mobileOpen}
+        onCloseMobile={() => setMobileOpen(false)}
       />
+      {mobileOpen && <button type="button" aria-label="Đóng menu" className="fixed inset-0 z-40 bg-slate-950/40 md:hidden" onClick={() => setMobileOpen(false)} />}
 
       <div
         className={cn(
           "flex min-h-screen flex-col transition-all duration-200",
-          isNarrow ? "ml-[76px]" : collapsed ? "ml-[76px]" : "ml-[260px]"
+          "ml-0",
+          collapsed ? "md:ml-[76px]" : "md:ml-[260px]"
         )}
       >
         <Topbar
           sidebarCollapsed={collapsed}
-          onToggleSidebar={() => setCollapsed((v) => !v)}
+          onToggleSidebar={() => window.innerWidth < 768 ? setMobileOpen((v) => !v) : setCollapsed((v) => !v)}
           onOpenProfile={onOpenProfile}
+          onOpenNotifications={onOpenNotifications}
+          onNavigate={onNavigate}
+          onSearchProjects={onSearchProjects}
           onLogout={onLogout}
         />
 

@@ -192,7 +192,7 @@ export default function RoleManagementTab() {
       {actionError && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">{actionError}</div>}
 
       <div className="overflow-hidden rounded-lg border border-slate-200">
-        <Table className="w-full table-fixed">
+        <Table className="min-w-[1000px] w-full">
           <TableHeader className="bg-slate-50">
             <TableRow>
               {["Tên vai trò", "Mã", "Mô tả", "Người dùng", "Trạng thái", "Ngày tạo", "Hành động"].map((head) => <TableHead key={head} className="px-3 py-3 text-xs font-semibold text-slate-700">{head}</TableHead>)}

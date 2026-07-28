@@ -120,7 +120,7 @@ export default function QuanLyGiaiDoan() {
 
   return (
     <div>
-      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-8 py-5">
+      <div className="flex flex-col items-start gap-3 border-b border-slate-200 bg-white sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 lg:px-8 py-5">
         <div>
           <h1 className="text-lg font-bold text-slate-800">Giai đoạn</h1>
           <p className="mt-0.5 text-sm text-slate-500">Quản lý các giai đoạn của đề tài nghiên cứu.</p>
@@ -130,7 +130,7 @@ export default function QuanLyGiaiDoan() {
         </Button>
       </div>
 
-      <div className="space-y-5 px-8 py-6">
+      <div className="space-y-5 px-4 sm:px-6 lg:px-8 py-6">
         {loading && <Card><CardContent className="p-4 text-sm text-slate-500">Đang tải giai đoạn...</CardContent></Card>}
         {error && (
           <Card className="border-red-200 bg-red-50">
