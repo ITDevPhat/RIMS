@@ -100,13 +100,19 @@ public sealed class ProjectGanttExcelExportTests
         using var workbook = OpenSampleWorkbook();
         var sheet = workbook.Worksheet("Tiến độ dự án");
 
-        Assert.Equal("BÁO CÁO TIẾN ĐỘ DỰ ÁN", sheet.Cell(1, 1).GetString());
+        Assert.Equal("THÔNG TIN DỰ ÁN", sheet.Cell(1, 1).GetString());
+        Assert.Equal("BÁO CÁO TIẾN ĐỘ DỰ ÁN", sheet.Cell(1, 7).GetString());
         Assert.Equal("RIMS-001", sheet.Cell(2, 2).GetString());
-        Assert.Equal("Phụ trách", sheet.Cell(2, 3).GetString());
+        Assert.Equal("Tên đề tài", sheet.Cell(3, 1).GetString());
+        Assert.True(sheet.Cell(3, 2).Style.Font.Bold);
+        Assert.Equal("Chủ nhiệm", sheet.Cell(4, 1).GetString());
+        Assert.Equal("Khoa/Phòng", sheet.Cell(4, 3).GetString());
+        Assert.Equal("Nhà tài trợ", sheet.Cell(5, 3).GetString());
+        Assert.Equal("World Health Organization", sheet.Cell(5, 4).GetString());
+        Assert.Equal("Đang thực hiện", sheet.Cell(6, 4).GetString());
         Assert.DoesNotContain("PHỤ TRÁCH", Enumerable.Range(1, 6).Select(column => sheet.Cell(7, column).GetString()));
         Assert.DoesNotContain("WORK DAYS", Enumerable.Range(1, 6).Select(column => sheet.Cell(7, column).GetString()));
         Assert.DoesNotContain("TYPE / STATUS", Enumerable.Range(1, 6).Select(column => sheet.Cell(7, column).GetString()));
-        Assert.Equal("Thang thời gian", sheet.Cell(6, 1).GetString());
         Assert.Equal("Week 1\n01/01 - 07/01", sheet.Cell(7, 7).GetString());
         Assert.Equal("Week 2\n08/01 - 14/01", sheet.Cell(7, 14).GetString());
     }
@@ -150,6 +156,7 @@ public sealed class ProjectGanttExcelExportTests
             "Clinical Research",
             "Dr A",
             "Research Department",
+            "World Health Organization",
             new DateOnly(2026, 1, 1),
             new DateOnly(2026, 1, 31),
             null,

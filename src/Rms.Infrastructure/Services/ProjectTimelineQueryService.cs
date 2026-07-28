@@ -28,6 +28,7 @@ public sealed class ProjectTimelineQueryService : IProjectTimelineQueryService
                 x.ProjectTitle,
                 x.PrincipalInvestigator != null ? x.PrincipalInvestigator.FullName : null,
                 x.LeadDepartment != null ? x.LeadDepartment.DepartmentName : null,
+                x.Sponsor != null ? x.Sponsor.SponsorName : x.SponsorNameText,
                 x.PlannedStartDate,
                 x.PlannedEndDate,
                 x.ActualStartDate,
@@ -265,6 +266,7 @@ public sealed class ProjectTimelineQueryService : IProjectTimelineQueryService
             project.ProjectTitle,
             project.ProjectLeadName,
             project.DepartmentName,
+            project.SponsorName,
             project.PlannedStartDate,
             project.PlannedEndDate,
             project.ActualStartDate,
@@ -295,7 +297,7 @@ public sealed class ProjectTimelineQueryService : IProjectTimelineQueryService
         return current + 1;
     }
 
-    private sealed record ProjectProjection(long ProjectId, string ProjectCode, string ProjectTitle, string? ProjectLeadName, string? DepartmentName, DateOnly? PlannedStartDate, DateOnly? PlannedEndDate, DateOnly? ActualStartDate, DateOnly? ActualEndDate, decimal ProgressPercent, string Status, string RiskLevel, string HealthStatus);
+    private sealed record ProjectProjection(long ProjectId, string ProjectCode, string ProjectTitle, string? ProjectLeadName, string? DepartmentName, string? SponsorName, DateOnly? PlannedStartDate, DateOnly? PlannedEndDate, DateOnly? ActualStartDate, DateOnly? ActualEndDate, decimal ProgressPercent, string Status, string RiskLevel, string HealthStatus);
     private sealed record PhaseProjection(long PhaseId, string PhaseName, string? LeadName, DateOnly? PlannedStartDate, DateOnly? PlannedEndDate, DateOnly? DeadlineDate, DateOnly? ActualStartDate, DateOnly? ActualEndDate, decimal ProgressPercent, string Status, int SortOrder);
     private sealed record MilestoneProjection(long MilestoneId, long? PhaseId, string Name, string? LeadName, DateOnly DueDate, DateOnly? CompletedDate, string Status, string PriorityLevel);
     private sealed record DeadlineProjection(long DeadlineId, long? ProjectId, long? PhaseId, long? MilestoneId, string Title, string? LeadName, DateOnly DueDate, DateTime? CompletedAt, string Status, string PriorityLevel);
