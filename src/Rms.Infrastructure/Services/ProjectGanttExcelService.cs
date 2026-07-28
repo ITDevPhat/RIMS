@@ -43,6 +43,7 @@ public sealed class ProjectGanttExcelService : IProjectGanttExcelService
         BuildHeaders(worksheet, periods);
         var lastRow = RenderRows(worksheet, timeline, options, periods);
         ApplyLayout(worksheet, periods.Count, lastRow);
+        RestoreTimelineBarBorders(worksheet, periods.Count, lastRow);
 
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
@@ -52,25 +53,38 @@ public sealed class ProjectGanttExcelService : IProjectGanttExcelService
     private static void BuildMetadata(IXLWorksheet worksheet, ProjectTimelineDto timeline, int periodCount)
     {
         var lastColumn = Math.Max(FirstTimelineColumn + periodCount - 1, FirstTimelineColumn);
-        worksheet.Range(1, 1, 1, lastColumn).Merge();
-        worksheet.Cell(1, 1).Value = "BÁO CÁO TIẾN ĐỘ DỰ ÁN";
-        ApplyTitleStyle(worksheet.Cell(1, 1));
+        var informationTitle = worksheet.Range(1, 1, 1, 6);
+        informationTitle.Merge().Value = "THÔNG TIN DỰ ÁN";
+        ApplyTitleStyle(informationTitle.FirstCell());
+        var reportTitle = worksheet.Range(1, FirstTimelineColumn, 1, lastColumn);
+        reportTitle.Merge().Value = "BÁO CÁO TIẾN ĐỘ DỰ ÁN";
+        ApplyTitleStyle(reportTitle.FirstCell());
 
-        SetMetadata(worksheet, 2, 1, "Mã đề tài", timeline.ProjectCode);
-        SetMetadata(worksheet, 2, 3, "Phụ trách", timeline.ProjectLeadName);
-        SetMetadata(worksheet, 2, 5, "Khoa/Phòng", timeline.DepartmentName);
-        SetMetadata(worksheet, 3, 1, "Tên đề tài", timeline.ProjectTitle, valueEndColumn: 4);
-        SetMetadata(worksheet, 3, 5, "Trạng thái", timeline.Status);
-        SetMetadata(worksheet, 4, 1, "Bắt đầu dự kiến", timeline.PlannedStartDate);
-        SetMetadata(worksheet, 4, 3, "Kết thúc dự kiến", timeline.PlannedEndDate);
-        SetMetadata(worksheet, 4, 5, "Tiến độ", timeline.ProgressPercent / 100m, "0%");
-        SetMetadata(worksheet, 5, 1, "Bắt đầu thực tế", timeline.ActualStartDate);
-        SetMetadata(worksheet, 5, 3, "Kết thúc thực tế", timeline.ActualEndDate);
-        SetMetadata(worksheet, 5, 5, "Xuất lúc", timeline.GeneratedAt.ToString("dd/MM/yyyy HH:mm"));
-        SetMetadata(worksheet, 6, 1, "Thang thời gian", timeline.SelectedTimeScale.ToString());
-        SetMetadata(worksheet, 6, 3, "Khoảng xuất", $"{timeline.TimelineStart:dd/MM/yyyy} - {timeline.TimelineEnd:dd/MM/yyyy}");
-        SetMetadata(worksheet, 6, 5, "Sức khỏe/Rủi ro", $"{timeline.HealthStatus} / {timeline.RiskLevel}");
+        SetMetadata(worksheet, 2, 1, "Mã đề tài", timeline.ProjectCode, valueEndColumn: 6);
+        SetMetadata(worksheet, 3, 1, "Tên đề tài", timeline.ProjectTitle, valueEndColumn: 6);
+        worksheet.Range(3, 2, 3, 6).Style.Font.Bold = true;
+        SetMetadata(worksheet, 4, 1, "Chủ nhiệm", timeline.ProjectLeadName, valueEndColumn: 2);
+        SetMetadata(worksheet, 4, 3, "Khoa/Phòng", timeline.DepartmentName, valueEndColumn: 6);
+        SetMetadata(worksheet, 5, 1, "Thời gian dự kiến", FormatDateRange(timeline.PlannedStartDate, timeline.PlannedEndDate), valueEndColumn: 2);
+        SetMetadata(worksheet, 5, 3, "Nhà tài trợ", timeline.SponsorName, valueEndColumn: 6);
+        SetMetadata(worksheet, 6, 1, "Thời gian thực tế", FormatDateRange(timeline.ActualStartDate, timeline.ActualEndDate), valueEndColumn: 2);
+        SetMetadata(worksheet, 6, 3, "Trạng thái", TranslateStatus(timeline.Status), valueEndColumn: 6);
     }
+
+    private static string FormatDateRange(DateOnly? start, DateOnly? end) =>
+        $"{(start.HasValue ? start.Value.ToString("dd/MM/yyyy") : "Chưa có")} - {(end.HasValue ? end.Value.ToString("dd/MM/yyyy") : "Chưa có")}";
+
+    internal static string TranslateStatus(string? status) => status?.Trim().ToLowerInvariant() switch
+    {
+        "completed" or "complete" or "done" => "Hoàn thành",
+        "in_progress" or "in progress" or "ongoing" => "Đang thực hiện",
+        "not_started" or "not started" or "pending" => "Chưa bắt đầu",
+        "delayed" or "overdue" => "Trễ tiến độ",
+        "on_hold" or "on hold" => "Tạm dừng",
+        "cancelled" or "canceled" => "Đã hủy",
+        null or "" => "Chưa xác định",
+        _ => status
+    };
 
     private static void SetMetadata(IXLWorksheet worksheet, int row, int column, string label, object? value, string? numberFormat = null, int? valueEndColumn = null)
     {
@@ -137,8 +151,10 @@ public sealed class ProjectGanttExcelService : IProjectGanttExcelService
     private static int RenderRows(IXLWorksheet worksheet, ProjectTimelineDto timeline, ProjectTimelineExportOptions options, IReadOnlyList<ProjectTimelinePeriod> periods)
     {
         var rowIndex = FirstDataRow;
+        var renderedRows = new List<(ProjectTimelineRowDto Row, int StartRow, int EndRow)>();
         foreach (var row in timeline.Rows)
         {
+            var startRow = rowIndex;
             var usesActualRow = options.IncludeActual && !row.IsGroup && !row.IsMilestone && !row.IsDeadline;
             FillInfoCells(worksheet, rowIndex, row);
             ApplyRowBaseStyle(worksheet.Range(rowIndex, 1, rowIndex, FirstTimelineColumn + periods.Count - 1), row);
@@ -152,10 +168,51 @@ public sealed class ProjectGanttExcelService : IProjectGanttExcelService
                 RenderTimeline(worksheet, rowIndex, row, periods, useActualDates: true);
             }
 
+            renderedRows.Add((row, startRow, rowIndex));
             rowIndex++;
         }
 
+        MergeGroupDurationCells(worksheet, renderedRows);
+
         return Math.Max(rowIndex - 1, FirstDataRow);
+    }
+
+    private static void MergeGroupDurationCells(
+        IXLWorksheet worksheet,
+        IReadOnlyList<(ProjectTimelineRowDto Row, int StartRow, int EndRow)> renderedRows)
+    {
+        for (var index = 0; index < renderedRows.Count; index++)
+        {
+            var current = renderedRows[index];
+            // The project summary contains all phases, so merging it would overlap phase merges.
+            if (!current.Row.IsGroup || current.Row.HierarchyLevel == 0)
+            {
+                continue;
+            }
+
+            var endRow = current.EndRow;
+            for (var childIndex = index + 1; childIndex < renderedRows.Count; childIndex++)
+            {
+                if (renderedRows[childIndex].Row.HierarchyLevel <= current.Row.HierarchyLevel)
+                {
+                    break;
+                }
+
+                endRow = renderedRows[childIndex].EndRow;
+            }
+
+            if (endRow <= current.StartRow)
+            {
+                continue;
+            }
+
+            var duration = worksheet.Cell(current.StartRow, 5).Value;
+            var range = worksheet.Range(current.StartRow, 5, endRow, 5);
+            range.Merge();
+            range.FirstCell().Value = duration;
+            range.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+            range.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+        }
     }
 
     private static void FillInfoCells(IXLWorksheet worksheet, int rowIndex, ProjectTimelineRowDto row)
@@ -222,40 +279,39 @@ public sealed class ProjectGanttExcelService : IProjectGanttExcelService
         }
 
         var safeEnd = end.Value < start.Value ? start.Value : end.Value;
-        var totalPeriods = periods.Count(x => ProjectTimelineExportLogic.Overlaps(start.Value, safeEnd, x.Start, x.End));
-        var completedPeriods = useActualDates
-            ? totalPeriods
-            : (int)Math.Round(totalPeriods * (double)Math.Clamp(row.ProgressPercent, 0m, 100m) / 100d, MidpointRounding.AwayFromZero);
-        var filled = 0;
-
-        foreach (var (period, index) in periods.Select((value, index) => (value, index)))
+        var coveredPeriodIndexes = periods
+            .Select((period, index) => (period, index))
+            .Where(x => ProjectTimelineExportLogic.Overlaps(start.Value, safeEnd, x.period.Start, x.period.End))
+            .Select(x => x.index)
+            .ToList();
+        if (coveredPeriodIndexes.Count == 0)
         {
-            if (!ProjectTimelineExportLogic.Overlaps(start.Value, safeEnd, period.Start, period.End))
-            {
-                continue;
-            }
-
-            var cell = worksheet.Cell(rowIndex, FirstTimelineColumn + index);
-            if (row.IsOverdue && !useActualDates)
-            {
-                cell.Style.Fill.BackgroundColor = GanttExcelTheme.OverdueFill;
-            }
-            else if (useActualDates)
-            {
-                cell.Style.Fill.BackgroundColor = GanttExcelTheme.ActualFill;
-            }
-            else if (filled < completedPeriods)
-            {
-                cell.Style.Fill.BackgroundColor = GanttExcelTheme.CompletedFill;
-            }
-            else
-            {
-                cell.Style.Fill.BackgroundColor = GanttExcelTheme.PlannedFill;
-            }
-
-            filled++;
+            return;
         }
+
+        var fill = IsWarning(row) ? GanttExcelTheme.WarningFill : GanttExcelTheme.OnTrackFill;
+        foreach (var index in coveredPeriodIndexes)
+        {
+            var cell = worksheet.Cell(rowIndex, FirstTimelineColumn + index);
+            cell.Style.Fill.BackgroundColor = fill;
+        }
+
+        var bar = worksheet.Range(
+            rowIndex,
+            FirstTimelineColumn + coveredPeriodIndexes[0],
+            rowIndex,
+            FirstTimelineColumn + coveredPeriodIndexes[^1]);
+        bar.Style.Border.InsideBorder = XLBorderStyleValues.None;
+        bar.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
     }
+
+    private static bool IsWarning(ProjectTimelineRowDto row) =>
+        row.IsOverdue
+        || row.Status.Contains("delay", StringComparison.OrdinalIgnoreCase)
+        || row.Status.Contains("warning", StringComparison.OrdinalIgnoreCase)
+        || row.Status.Contains("overdue", StringComparison.OrdinalIgnoreCase)
+        || row.RiskLevel.Equals("high", StringComparison.OrdinalIgnoreCase)
+        || row.RiskLevel.Equals("critical", StringComparison.OrdinalIgnoreCase);
 
     private static void RenderMarker(IXLWorksheet worksheet, int rowIndex, ProjectTimelineRowDto row, IReadOnlyList<ProjectTimelinePeriod> periods)
     {
@@ -276,7 +332,7 @@ public sealed class ProjectGanttExcelService : IProjectGanttExcelService
         cell.Style.Font.Bold = true;
         cell.Style.Font.FontColor = XLColor.White;
         cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-        cell.Style.Fill.BackgroundColor = row.IsDeadline || row.IsOverdue ? GanttExcelTheme.DeadlineFill : GanttExcelTheme.MilestoneFill;
+        cell.Style.Fill.BackgroundColor = IsWarning(row) ? GanttExcelTheme.WarningFill : GanttExcelTheme.OnTrackFill;
         cell.Style.Border.OutsideBorder = XLBorderStyleValues.Medium;
     }
 
@@ -307,6 +363,33 @@ public sealed class ProjectGanttExcelService : IProjectGanttExcelService
         worksheet.PageSetup.FitToPages(1, 0);
         worksheet.PageSetup.SetRowsToRepeatAtTop(FirstHeaderRow, LastHeaderRow);
         worksheet.PageSetup.PrintAreas.Add(1, 1, lastRow, lastColumn);
+    }
+
+    private static void RestoreTimelineBarBorders(IXLWorksheet worksheet, int periodCount, int lastRow)
+    {
+        for (var row = FirstDataRow; row <= lastRow; row++)
+        {
+            var first = -1;
+            var last = -1;
+            for (var index = 0; index < periodCount; index++)
+            {
+                var color = worksheet.Cell(row, FirstTimelineColumn + index).Style.Fill.BackgroundColor;
+                if (color == GanttExcelTheme.OnTrackFill || color == GanttExcelTheme.WarningFill)
+                {
+                    first = first < 0 ? index : first;
+                    last = index;
+                }
+            }
+
+            if (first < 0)
+            {
+                continue;
+            }
+
+            var bar = worksheet.Range(row, FirstTimelineColumn + first, row, FirstTimelineColumn + last);
+            bar.Style.Border.InsideBorder = XLBorderStyleValues.None;
+            bar.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+        }
     }
 
     private static void ApplyTitleStyle(IXLCell cell)
@@ -453,4 +536,6 @@ internal static class GanttExcelTheme
     public static readonly XLColor DeadlineFill = XLColor.FromHtml("#ED7D31");
     public static readonly XLColor MissingFill = XLColor.FromHtml("#F8FAFC");
     public static readonly XLColor MissingText = XLColor.FromHtml("#64748B");
+    public static readonly XLColor OnTrackFill = XLColor.FromHtml("#70AD47");
+    public static readonly XLColor WarningFill = XLColor.FromHtml("#FFD966");
 }

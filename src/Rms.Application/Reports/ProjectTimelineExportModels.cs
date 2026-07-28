@@ -42,6 +42,7 @@ public sealed record ProjectTimelineDto(
     string ProjectTitle,
     string? ProjectLeadName,
     string? DepartmentName,
+    string? SponsorName,
     DateOnly? PlannedStartDate,
     DateOnly? PlannedEndDate,
     DateOnly? ActualStartDate,
