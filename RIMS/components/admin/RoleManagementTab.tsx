@@ -192,7 +192,7 @@ export default function RoleManagementTab() {
       {actionError && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">{actionError}</div>}
 
       <div className="overflow-hidden rounded-lg border border-slate-200">
-        <Table className="min-w-[1000px] w-full">
+        <Table className="w-max min-w-[900px]">
           <TableHeader className="bg-slate-50">
             <TableRow>
               {["Tên vai trò", "Mã", "Mô tả", "Người dùng", "Trạng thái", "Ngày tạo", "Hành động"].map((head) => <TableHead key={head} className="px-3 py-3 text-xs font-semibold text-slate-700">{head}</TableHead>)}
@@ -211,8 +211,8 @@ export default function RoleManagementTab() {
                 <TableCell className="px-3 py-3 align-top text-sm text-slate-600">{formatDate(role.createdAt)}</TableCell>
                 <TableCell className="px-3 py-3 align-top whitespace-nowrap">
                   <div className="flex flex-nowrap justify-end gap-1">
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Sửa" onClick={() => void openEdit(role)}><Edit2 className="h-3.5 w-3.5" /></Button>
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-600 hover:bg-red-50" title="Xóa" disabled={pendingRoleId === role.roleId || role.isSystem} onClick={() => void deleteRole(role)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Sửa" aria-label="Sửa" onClick={() => void openEdit(role)}><Edit2 className="h-3.5 w-3.5" /></Button>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-600 hover:bg-red-50" title="Xóa" aria-label="Xóa" disabled={pendingRoleId === role.roleId || role.isSystem} onClick={() => void deleteRole(role)}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </TableCell>
               </TableRow>

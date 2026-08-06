@@ -167,3 +167,23 @@
     @apply font-sans;
   }
 }
+
+/* Shared responsive layout safeguards. */
+@layer components {
+  .table-scroll-hint {
+    @apply hidden border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-medium text-slate-500;
+  }
+
+  [data-slot="table-container"]:focus-visible {
+    @apply outline-2 outline-offset-[-2px] outline-blue-500;
+  }
+
+  @container (max-width: 900px) {
+    .table-scroll-hint { display: block; }
+  }
+}
+
+@layer base {
+  main > *, main section, main article { min-width: 0; }
+  img, svg { max-width: 100%; }
+}

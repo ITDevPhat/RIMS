@@ -21,6 +21,7 @@ export default function TrainingModuleNav({ activeTab, onTabChange }: TrainingMo
       <div className="flex items-center gap-0 px-4">
         {TABS.map((tab) => (
           <button
+            type="button"
             key={tab.id}
             onClick={() => onTabChange(tab.id as typeof activeTab)}
             className={cn(

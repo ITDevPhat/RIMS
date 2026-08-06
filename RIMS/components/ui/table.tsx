@@ -4,17 +4,18 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+type TableProps = React.ComponentProps<"table"> & {
+  containerClassName?: string
+  scrollHint?: boolean
+}
+
+function Table({ className, containerClassName, scrollHint = true, ...props }: TableProps) {
   return (
-    <div
-      data-slot="table-container"
-      className="relative w-full overflow-x-auto"
-    >
-      <table
-        data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
-        {...props}
-      />
+    <div className="min-w-0 max-w-full">
+      {scrollHint && <p className="table-scroll-hint" aria-hidden="true">Vuốt ngang để xem thêm <span aria-hidden="true">→</span></p>}
+      <div data-slot="table-container" tabIndex={0} role="region" aria-label="Bảng dữ liệu có thể cuộn ngang" className={cn("relative w-full max-w-full overflow-x-auto overscroll-x-contain", containerClassName)}>
+        <table data-slot="table" className={cn("w-full caption-bottom text-sm", className)} {...props} />
+      </div>
     </div>
   )
 }
@@ -83,7 +84,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
+        "p-2 align-middle break-words whitespace-normal [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}

@@ -550,7 +550,7 @@ function NotificationRulesTab() {
                 <TableCell className="px-3 py-3"><Badge className={rule.isActive ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-600 border border-slate-200"}>{rule.isActive ? "Đang bật" : "Đang tắt"}</Badge></TableCell>
                 <TableCell className="px-3 py-3">
                   <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" className="h-7" disabled title="Chưa hỗ trợ chỉnh sửa quy tắc trong MVP">Sửa</Button>
+                    <Button size="sm" variant="ghost" className="h-7" disabled title="Chưa hỗ trợ chỉnh sửa quy tắc trong MVP" aria-label="Chưa hỗ trợ chỉnh sửa quy tắc trong MVP">Sửa</Button>
                     <Button size="sm" variant="outline" className="h-7" disabled={savingRuleId === rule.ruleId} onClick={() => void toggleRule(rule)}>
                       {savingRuleId === rule.ruleId ? "Đang lưu..." : rule.isActive ? "Tắt" : "Bật"}
                     </Button>
@@ -754,7 +754,7 @@ function PermissionsTab() {
             <h3 className="text-sm font-bold text-slate-800">Danh sách quyền hạn</h3>
             <p className="text-xs text-slate-500">Chỉnh sửa tên hiển thị, mô tả và trạng thái quyền hiện có.</p>
           </div>
-          <Table className="w-full table-fixed">
+          <Table className="w-max min-w-[960px]">
             <TableHeader>
               <TableRow className="bg-slate-50">
                 {["Mã quyền", "Phân hệ", "Hành động", "Mô tả", "Trạng thái", "Thao tác"].map((head) => <TableHead key={head} className="px-3 py-2 text-[10px] font-semibold uppercase text-slate-500">{head}</TableHead>)}

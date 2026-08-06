@@ -227,7 +227,7 @@ export default function UserManagementTab() {
       {actionError && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">{actionError}</div>}
 
       <div className="overflow-hidden rounded-lg border border-slate-200">
-        <Table className="min-w-[1000px] w-full">
+        <Table className="w-max min-w-[1120px]">
           <TableHeader className="bg-slate-50">
             <TableRow>
               {["Người dùng", "Email", "Chức vụ", "Vai trò", "Trạng thái", "Đăng nhập cuối", "Hành động"].map((head) => <TableHead key={head} className="px-3 py-3 text-xs font-semibold text-slate-700">{head}</TableHead>)}
@@ -251,13 +251,13 @@ export default function UserManagementTab() {
                 <TableCell className="px-3 py-3 align-top text-sm text-slate-600">{formatDate(user.lastLoginAt)}</TableCell>
                 <TableCell className="px-3 py-3 align-top whitespace-nowrap">
                   <div className="flex flex-nowrap justify-end gap-1">
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Sửa" onClick={() => openEdit(user)}><Edit2 className="h-3.5 w-3.5" /></Button>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Sửa" aria-label="Sửa" onClick={() => openEdit(user)}><Edit2 className="h-3.5 w-3.5" /></Button>
                     {user.accountStatus === "locked" ? (
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Mở khóa" disabled={pendingUserId === user.userId} onClick={() => void runUserAction(user, "Đã mở khóa người dùng", () => adminApi.unlockUser(user.userId))}><RotateCcw className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Mở khóa" aria-label="Mở khóa" disabled={pendingUserId === user.userId} onClick={() => void runUserAction(user, "Đã mở khóa người dùng", () => adminApi.unlockUser(user.userId))}><RotateCcw className="h-3.5 w-3.5" /></Button>
                     ) : (
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Khóa" disabled={pendingUserId === user.userId} onClick={() => void runUserAction(user, "Đã khóa người dùng", () => adminApi.lockUser(user.userId))}><Lock className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Khóa" aria-label="Khóa" disabled={pendingUserId === user.userId} onClick={() => void runUserAction(user, "Đã khóa người dùng", () => adminApi.lockUser(user.userId))}><Lock className="h-3.5 w-3.5" /></Button>
                     )}
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-600 hover:bg-red-50" title="Xóa" disabled={pendingUserId === user.userId} onClick={() => void runUserAction(user, "Đã xóa người dùng", () => adminApi.deleteUser(user.userId))}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-600 hover:bg-red-50" title="Xóa" aria-label="Xóa" disabled={pendingUserId === user.userId} onClick={() => void runUserAction(user, "Đã xóa người dùng", () => adminApi.deleteUser(user.userId))}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </TableCell>
               </TableRow>

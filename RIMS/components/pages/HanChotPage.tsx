@@ -171,7 +171,7 @@ export default function HanChotPage() {
             <p className="text-xs text-slate-500">Ưu tiên các hạn chót quá hạn, sắp đến hạn và hồ sơ đạo đức/pháp lý.</p>
           </div>
           <CardContent className="p-0">
-            <Table className="w-full table-fixed">
+            <Table className="w-max min-w-[1080px]">
               <TableHeader>
                 <TableRow className="bg-slate-50">{["Mã đề tài", "Tên đề tài", "Loại hạn chót", "Người phụ trách", "Ngày hạn", "Còn lại", "Trạng thái", "Thao tác"].map((head) => <TableHead key={head} className="px-2 py-2.5 text-[10px] font-semibold uppercase text-slate-500 whitespace-normal">{head}</TableHead>)}</TableRow>
               </TableHeader>
@@ -189,7 +189,7 @@ export default function HanChotPage() {
                     <TableCell className="px-2 py-3 align-top text-xs font-semibold text-slate-600 whitespace-normal break-words">{item.status}</TableCell>
                     <TableCell className="px-2 py-3 align-top whitespace-nowrap">
                       <div className="flex flex-nowrap justify-end gap-1">
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50" title="Xem chi tiết" onClick={() => setSelectedDeadline(item)}>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50" title="Xem chi tiết" aria-label="Xem chi tiết" onClick={() => setSelectedDeadline(item)}>
                           <Eye className="h-3 w-3" />
                         </Button>
                         <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" disabled={item.status === "Hoàn thành" || completingId === item.id} onClick={() => void handleMarkCompleted(item)}>
