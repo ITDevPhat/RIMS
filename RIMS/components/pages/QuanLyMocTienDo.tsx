@@ -187,7 +187,7 @@ export default function QuanLyMocTienDo() {
             <p className="text-xs text-slate-500">Theo dõi deadline, rủi ro, phát sinh và trạng thái của từng mốc.</p>
           </div>
           <CardContent className="p-0">
-            <Table className="min-w-[1000px] w-full">
+            <Table className="w-max min-w-[1320px]">
               <TableHeader><TableRow className="bg-slate-50">{["TT", "Tên mốc", "Giai đoạn", "Người phụ trách", "Hạn chót", "Tiến độ", "Rủi ro", "Trạng thái", "Phát sinh", "Thao tác"].map((head) => <TableHead key={head} className="px-2 py-2.5 text-[10px] font-semibold uppercase text-slate-500 whitespace-normal">{head}</TableHead>)}</TableRow></TableHeader>
               <TableBody>
                 {visibleMilestones.length === 0 ? (
@@ -207,14 +207,14 @@ export default function QuanLyMocTienDo() {
                       <TableCell className="px-2 py-3 align-top">{ms.hasIssue ? <span className="flex items-start gap-1 text-xs text-amber-600 whitespace-normal break-words"><AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" /> {ms.issueReason ?? "Có phát sinh"}</span> : <span className="text-xs text-slate-400">—</span>}</TableCell>
                       <TableCell className="px-2 py-3 align-top whitespace-nowrap">
                         <div className="flex flex-nowrap justify-end gap-1">
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50" title="Xem chi tiết" onClick={() => setViewingMs(ms)}><Eye className="h-3 w-3" /></Button>
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Sửa mốc tiến độ" onClick={() => { setEditingMs(ms); setModalOpen(true); }}><Pencil className="h-3 w-3" /></Button>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50" title="Xem chi tiết" aria-label="Xem chi tiết" onClick={() => setViewingMs(ms)}><Eye className="h-3 w-3" /></Button>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Sửa mốc tiến độ" aria-label="Sửa mốc tiến độ" onClick={() => { setEditingMs(ms); setModalOpen(true); }}><Pencil className="h-3 w-3" /></Button>
                           <Button
                             size="sm"
                             variant="ghost"
                             className="h-7 w-7 p-0 hover:text-red-500"
                             disabled={deletingMilestoneId === ms.id}
-                            title="Xóa mốc tiến độ"
+                            title="Xóa mốc tiến độ" aria-label="Xóa mốc tiến độ"
                             onClick={() => setMilestoneToDelete(ms)}
                           >
                             <Trash2 className="h-3 w-3" />

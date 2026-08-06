@@ -28,8 +28,11 @@ export default function AdminLayout({
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
+    const initialWidth = window.innerWidth;
+    if (initialWidth >= 768 && initialWidth < 1366) setCollapsed(true);
+
     const syncLayout = () => {
-      const narrow = window.innerWidth < 768;
+      const narrow = window.innerWidth < 1024;
       if (narrow) setMobileOpen(false);
     };
 
@@ -47,18 +50,18 @@ export default function AdminLayout({
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
       />
-      {mobileOpen && <button type="button" aria-label="Đóng menu" className="fixed inset-0 z-40 bg-slate-950/40 md:hidden" onClick={() => setMobileOpen(false)} />}
+      {mobileOpen && <button type="button" aria-label="Đóng menu" className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" onClick={() => setMobileOpen(false)} />}
 
       <div
         className={cn(
           "flex min-h-screen flex-col transition-all duration-200",
           "ml-0",
-          collapsed ? "md:ml-[76px]" : "md:ml-[260px]"
+          collapsed ? "lg:ml-[76px]" : "lg:ml-[260px]"
         )}
       >
         <Topbar
           sidebarCollapsed={collapsed}
-          onToggleSidebar={() => window.innerWidth < 768 ? setMobileOpen((v) => !v) : setCollapsed((v) => !v)}
+          onToggleSidebar={() => window.innerWidth < 1024 ? setMobileOpen((v) => !v) : setCollapsed((v) => !v)}
           onOpenProfile={onOpenProfile}
           onOpenNotifications={onOpenNotifications}
           onNavigate={onNavigate}
@@ -66,7 +69,7 @@ export default function AdminLayout({
           onLogout={onLogout}
         />
 
-        <main className="flex-1 overflow-x-hidden overflow-y-auto">{children}</main>
+        <main className="min-w-0 flex-1 overflow-x-clip overflow-y-auto [container-type:inline-size]">{children}</main>
       </div>
     </div>
   );

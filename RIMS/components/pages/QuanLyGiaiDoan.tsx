@@ -177,7 +177,7 @@ export default function QuanLyGiaiDoan() {
             <p className="text-xs text-slate-500">Theo dõi người phụ trách, mốc thời gian, tiến độ và trạng thái xử lý.</p>
           </div>
           <CardContent className="p-0">
-            <Table className="w-full table-fixed">
+            <Table className="w-max min-w-[1120px]">
               <TableHeader>
                 <TableRow className="bg-slate-50">
                   {["TT", "Tên giai đoạn", "Người phụ trách", "Bắt đầu DK", "Kết thúc DK", "Hạn chót", "Tiến độ", "Trạng thái", "Thao tác"].map((head) => (
@@ -200,14 +200,14 @@ export default function QuanLyGiaiDoan() {
                     <TableCell className="px-2 py-3 align-top"><PhaseBadge status={phase.status} /></TableCell>
                     <TableCell className="px-2 py-3 align-top whitespace-nowrap">
                       <div className="flex flex-nowrap justify-end gap-1">
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50" title="Xem chi tiết" onClick={() => setViewingPhase(phase)}><Eye className="h-3 w-3" /></Button>
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Sửa giai đoạn" onClick={() => { setEditingPhase(phase); setModalOpen(true); }}><Pencil className="h-3 w-3" /></Button>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50" title="Xem chi tiết" aria-label="Xem chi tiết" onClick={() => setViewingPhase(phase)}><Eye className="h-3 w-3" /></Button>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Sửa giai đoạn" aria-label="Sửa giai đoạn" onClick={() => { setEditingPhase(phase); setModalOpen(true); }}><Pencil className="h-3 w-3" /></Button>
                         <Button
                           size="sm"
                           variant="ghost"
                           className="h-7 w-7 p-0 hover:text-red-500"
                           disabled={deletingPhaseId === phase.id}
-                          title="Xóa giai đoạn"
+                          title="Xóa giai đoạn" aria-label="Xóa giai đoạn"
                           onClick={() => setPhaseToDelete(phase)}
                         >
                           <Trash2 className="h-3 w-3" />

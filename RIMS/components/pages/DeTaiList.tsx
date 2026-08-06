@@ -104,19 +104,19 @@ type SortKey =
 type SortDirection = "asc" | "desc";
 
 const columns: Array<{ label: string; key?: SortKey; className?: string }> = [
-  { label: "Mã", key: "code", className: "w-[7%]" },
-  { label: "Tên đề tài", key: "name", className: "w-[16%]" },
-  { label: "Khoa/phòng", key: "department", className: "w-[8%]" },
-  { label: "Chủ nhiệm", key: "pi", className: "w-[8%]" },
-  { label: "Tài trợ", key: "sponsor", className: "w-[7%]" },
-  { label: "Đề cương", key: "protocolNumber", className: "w-[7%]" },
-  { label: "Đạo đức", key: "ethicsStatus", className: "w-[8%]" },
-  { label: "Giai đoạn", key: "currentPhase", className: "w-[8%]" },
-  { label: "Tiến độ", key: "progress", className: "w-[7%]" },
-  { label: "Hạn chót", key: "nearestDeadline", className: "w-[7%]" },
-  { label: "Trạng thái", key: "status", className: "w-[7%]" },
-  { label: "Sức khỏe", key: "health", className: "w-[7%]" },
-  { label: "", className: "w-[8%]" },
+  { label: "Mã", key: "code", className: "sticky left-0 z-20 w-[130px] min-w-[130px] bg-slate-50" },
+  { label: "Tên đề tài", key: "name", className: "sticky left-[130px] z-20 w-[320px] min-w-[320px] bg-slate-50 shadow-[4px_0_6px_-5px_rgba(15,23,42,0.45)]" },
+  { label: "Khoa/phòng", key: "department", className: "w-[180px] min-w-[180px]" },
+  { label: "Chủ nhiệm", key: "pi", className: "w-[180px] min-w-[180px]" },
+  { label: "Tài trợ", key: "sponsor", className: "w-[170px] min-w-[170px]" },
+  { label: "Đề cương", key: "protocolNumber", className: "w-[130px] min-w-[130px]" },
+  { label: "Đạo đức", key: "ethicsStatus", className: "w-[130px] min-w-[130px]" },
+  { label: "Giai đoạn", key: "currentPhase", className: "w-[180px] min-w-[180px]" },
+  { label: "Tiến độ", key: "progress", className: "w-[110px] min-w-[110px]" },
+  { label: "Hạn chót", key: "nearestDeadline", className: "w-[110px] min-w-[110px]" },
+  { label: "Trạng thái", key: "status", className: "w-[130px] min-w-[130px]" },
+  { label: "Sức khỏe", key: "health", className: "w-[130px] min-w-[130px]" },
+  { label: "", className: "w-[120px] min-w-[120px]" },
 ];
 
 function mapEthicsToApi(status: string) {
@@ -301,9 +301,9 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
   const hasFilters = filterDept !== "Tất cả" || filterSponsor !== "Tất cả" || filterStatus !== "Tất cả" || filterEthics !== "Tất cả" || showOverdueOnly || !!searchQuery;
 
   return (
-    <div>
+    <div className="min-w-0">
       {/* ── Page header ─────────────────────────────────────────────────────── */}
-      <div className="border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
+      <div className="flex flex-col items-start gap-3 border-b border-slate-200 bg-white px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
         <div>
           <h1 className="text-lg font-bold text-slate-800">Đề tài nghiên cứu</h1>
           <p className="mt-0.5 text-sm text-slate-500">Quản lý danh sách các đề tài nghiên cứu — thay thế Excel theo dõi.</p>
@@ -338,7 +338,7 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
         {/* Filter bar */}
         <Card className="border-slate-200 shadow-sm">
           <CardContent className="p-3.5">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
               <div className="relative flex-1 min-w-44">
                 <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                 <Input
@@ -356,7 +356,7 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
                 { label: "Đạo đức", value: filterEthics, setter: setFilterEthics, options: ["Tất cả", "Không yêu cầu", "Chờ duyệt", "Đã duyệt", "Sắp hết hạn", "Hết hạn"] },
               ].map((f) => (
                 <Select key={f.label} value={f.value} onValueChange={(v) => v && f.setter(v)}>
-                  <SelectTrigger className="h-8 w-36 text-xs border-slate-200">
+                  <SelectTrigger className="min-h-9 w-full min-w-0 text-xs border-slate-200">
                     <SelectValue placeholder={f.label} />
                   </SelectTrigger>
                   <SelectContent>
@@ -368,7 +368,7 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
               ))}
 
               {/* Overdue toggle */}
-              <button
+              <button type="button"
                 onClick={() => setShowOverdueOnly((v) => !v)}
                 className={cn(
                   "flex items-center gap-1.5 rounded-md border px-3 h-8 text-xs font-medium transition-colors",
@@ -398,8 +398,8 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
         {/* Table */}
         <Card className="border-slate-200 shadow-sm overflow-hidden">
           <CardContent className="p-0">
-              <Table className="min-w-[1000px] w-full">
-                <TableHeader>
+              <Table className="w-max min-w-full" containerClassName="max-h-[70vh]">
+                <TableHeader className="sticky top-0 z-30">
                   <TableRow className="bg-slate-50 hover:bg-slate-50 border-b border-slate-200">
                     {columns.map((column) => (
                       <TableHead
@@ -439,13 +439,13 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
                         key={p.id}
                         className="border-b border-slate-100 hover:bg-slate-50/70 transition-colors"
                       >
-                        <TableCell className="px-2 py-2.5 align-top whitespace-normal">
+                        <TableCell className="sticky left-0 z-10 w-[130px] min-w-[130px] bg-white px-2 py-2.5 align-top whitespace-normal">
                           <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-100 whitespace-nowrap">
                             {p.code}
                           </span>
                         </TableCell>
-                        <TableCell className="px-2 py-2.5 align-top whitespace-normal">
-                          <p className="text-xs font-semibold leading-snug text-slate-800 break-words">{p.name}</p>
+                        <TableCell className="sticky left-[130px] z-10 w-[320px] min-w-[320px] bg-white px-2 py-2.5 align-top whitespace-normal shadow-[4px_0_6px_-5px_rgba(15,23,42,0.45)]">
+                          <p className="text-xs font-semibold leading-snug text-slate-800 break-words [overflow-wrap:normal]">{p.name}</p>
                           {p.description && <p className="mt-1 text-[10px] leading-snug text-slate-500 break-words">{p.description}</p>}
                         </TableCell>
                         <TableCell className="px-2 py-2.5 align-top whitespace-normal">
@@ -504,7 +504,7 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
                               size="sm"
                               variant="ghost"
                               className="h-6 w-6 p-0 text-blue-600 hover:bg-blue-50"
-                              title="Xem chi tiết"
+                              title="Xem chi tiết" aria-label="Xem chi tiết"
                               onClick={() => onViewDetail(p)}
                             >
                               <Eye className="h-3 w-3" />
@@ -513,7 +513,7 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
                               size="sm"
                               variant="ghost"
                               className="h-6 w-6 p-0 text-slate-500 hover:bg-slate-100"
-                              title="Sửa đề tài"
+                              title="Sửa đề tài" aria-label="Sửa đề tài"
                               onClick={() => setEditingProject(p)}
                             >
                               <Pencil className="h-3 w-3" />
