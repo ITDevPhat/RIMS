@@ -34,6 +34,7 @@ export default function AdminLayout({
     const syncLayout = () => {
       const narrow = window.innerWidth < 1024;
       if (narrow) setMobileOpen(false);
+      if (window.innerWidth >= 768 && window.innerWidth < 1366) setCollapsed(true);
     };
 
     syncLayout();

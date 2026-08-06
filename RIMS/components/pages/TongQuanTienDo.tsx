@@ -379,7 +379,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
   }[priority] ?? "text-slate-600 bg-slate-50 border-slate-200");
 
   return (
-    <div className="flex min-h-full min-w-0 flex-col" style={{ containerName: "overview", containerType: "inline-size" }}>
+    <div className="flex min-h-full min-w-0 flex-col [container-type:inline-size]">
       {/* ── Page header ─────────────────────────────────────────────────────── */}
       <div className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -399,12 +399,13 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
         </div>
       </div>
 
-      <div className="flex-1 space-y-4 px-4 py-4 sm:px-6 lg:px-8">
-        <Card className="gap-0 border-slate-200 py-0 shadow-sm">
-          <CardContent className="overview-control-grid p-3">
+      <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        <Card className="border-slate-200 shadow-sm">
+          <CardContent className="overview-control-grid p-4">
             <div className="min-w-0">
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Năm làm việc</label>
-              <div className="overview-year-grid rounded-lg border border-slate-200 bg-slate-50 p-1">
+              <div className="space-y-2">
+                <div className="overview-year-grid rounded-lg border border-slate-200 bg-slate-50 p-1">
                   {availableYears.map((year) => (
                     <button
                       key={year}
@@ -417,7 +418,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                         }
                       }}
                       className={cn(
-                        "min-h-8 min-w-0 rounded-md px-2 py-1 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+                        "min-h-9 min-w-0 rounded-md px-2 py-1 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
                         selectedYear === year ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:bg-white"
                       )}
                     >
@@ -441,7 +442,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                     type="button"
                     onClick={() => handleScopeChange(option.value)}
                     className={cn(
-                      "min-h-12 min-w-0 rounded-lg border px-2.5 py-1.5 text-left transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+                      "min-h-14 min-w-0 rounded-lg border px-3 py-2 text-left transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
                       timeScope === option.value ? "border-blue-300 bg-blue-50 text-blue-700 ring-2 ring-blue-100" : "border-slate-200 bg-white text-slate-700"
                     )}
                   >
@@ -495,7 +496,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
         )}
 
         {/* ── KPI cards ───────────────────────────────────────────────────────── */}
-        <div className="overview-kpi-grid" data-testid="overview-kpi-grid">
+        <div className="overview-kpi-grid">
           {[
             { label: "Tổng đề tài", value: total, icon: FlaskConical, iconBg: "bg-blue-50", iconColor: "text-blue-600", valueColor: "text-slate-800" },
             { label: "Đang thực hiện", value: ongoing, icon: Activity, iconBg: "bg-emerald-50", iconColor: "text-emerald-600", valueColor: "text-emerald-700" },
@@ -506,9 +507,9 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
           ].map((kpi) => {
             const Icon = kpi.icon;
             return (
-              <Card key={kpi.label} className="min-w-0 gap-0 border-slate-200 py-0 shadow-sm">
-                <CardContent className="p-3">
-                  <div className="mb-1.5 flex min-w-0 items-start justify-between gap-2">
+              <Card key={kpi.label} className="min-w-0 border-slate-200 shadow-sm">
+                <CardContent className="p-4">
+                  <div className="mb-2 flex min-w-0 items-start justify-between gap-2">
                     <p className="min-w-0 text-xs font-medium leading-tight text-slate-500">{kpi.label}</p>
                     <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", kpi.iconBg)}>
                       <Icon className={cn("h-3.5 w-3.5", kpi.iconColor)} />
@@ -522,8 +523,8 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
         </div>
 
         {/* ── Filter bar ─────────────────────────────────────────────────────── */}
-        <Card className="gap-0 border-slate-200 py-0 shadow-sm">
-          <CardContent className="p-3">
+        <Card className="border-slate-200 shadow-sm">
+          <CardContent className="p-4">
             <div className="overview-filter-grid">
               <div className="relative min-w-0">
                 <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
@@ -679,9 +680,9 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                   <p className="table-scroll-hint sticky left-0" aria-hidden="true">Vuốt ngang để xem toàn bộ tiến độ →</p>
                   <div className="gantt-timeline-width">
                   {/* ── Header: month row ───────────────────────────────────── */}
-                  <div data-testid="gantt-header" className="flex border-b border-slate-200 bg-slate-50">
+                  <div className="sticky top-0 z-30 flex border-b border-slate-200 bg-slate-50">
                     {/* Left info column */}
-                    <div className="gantt-project-column sticky left-0 z-30 flex-shrink-0 border-r border-slate-200 bg-slate-50 px-4 py-2">
+                    <div className="gantt-project-column sticky left-0 z-40 flex-shrink-0 border-r border-slate-200 bg-slate-50 px-4 py-2">
                       <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                         Đề tài
                       </span>
@@ -718,7 +719,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                           )}
                         >
                           {/* Left: project info */}
-                          <div className={cn("gantt-project-column sticky left-0 z-20 flex-shrink-0 space-y-1 border-r border-slate-200 px-4 py-2", idx % 2 === 0 ? "bg-white" : "bg-slate-50")}>
+                          <div className={cn("gantt-project-column sticky left-0 z-20 flex-shrink-0 space-y-1.5 border-r border-slate-200 px-4 py-3", idx % 2 === 0 ? "bg-white" : "bg-slate-50")}>
                             <div className="flex items-start gap-2">
                               <HealthDot health={project.health} />
                               <div className="min-w-0 flex-1">
@@ -731,11 +732,11 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                               </div>
                             </div>
                             <div className="space-y-0.5">
-                              <p className="truncate text-[10px] text-slate-400" title={project.department}>
+                              <p className="line-clamp-2 text-[11px] text-slate-400" title={project.department}>
                                 <span className="font-medium text-slate-600">{project.department}</span>
                               </p>
-                              <p className="truncate text-[10px] text-slate-400" title={project.pi}>Chủ nhiệm: <span className="text-slate-600">{project.pi}</span></p>
-                              <p className="truncate text-[10px] text-slate-400" title={project.sponsor}>Tài trợ: <span className="text-slate-600">{project.sponsor}</span></p>
+                              <p className="line-clamp-2 text-[11px] text-slate-400" title={project.pi}>Chủ nhiệm: <span className="text-slate-600">{project.pi}</span></p>
+                              <p className="line-clamp-2 text-[11px] text-slate-400" title={project.sponsor}>Tài trợ: <span className="text-slate-600">{project.sponsor}</span></p>
                             </div>
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <EthicsBadge status={project.ethicsStatus} />
@@ -744,7 +745,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="min-h-7 gap-1.5 px-2 text-xs font-medium text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                              className="min-h-8 gap-1.5 px-2 text-xs font-medium text-blue-600 hover:bg-blue-50 hover:text-blue-700"
                               onClick={() => onViewDetail(project)}
                             >
                               <Eye className="h-3.5 w-3.5" /> Chi tiết
