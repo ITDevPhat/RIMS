@@ -427,6 +427,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                   ))}
               </div>
             </div>
+            </div>
 
             <div className="min-w-0">
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Chế độ xem</label>
@@ -672,23 +673,22 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
               </CardHeader>
               <CardContent className="p-0">
                 <div
-                  className="gantt-scroll-region overflow-x-auto overscroll-x-contain pb-2"
+                  className="gantt-container gantt-scroll-region overscroll-x-contain pb-2"
                   tabIndex={0}
                   role="region"
                   aria-label="Biểu đồ Gantt có thể cuộn ngang"
                 >
                   <p className="table-scroll-hint sticky left-0" aria-hidden="true">Vuốt ngang để xem toàn bộ tiến độ →</p>
-                  <div className="gantt-timeline-width">
                   {/* ── Header: month row ───────────────────────────────────── */}
-                  <div className="sticky top-0 z-30 flex border-b border-slate-200 bg-slate-50">
+                  <div data-testid="gantt-header" className="gantt-row sticky top-0 z-30 border-b border-slate-200 bg-slate-50">
                     {/* Left info column */}
-                    <div className="gantt-project-column sticky left-0 z-40 flex-shrink-0 border-r border-slate-200 bg-slate-50 px-4 py-2">
+                    <div data-testid="gantt-project-header" className="gantt-project-column z-40 bg-slate-50 px-4 py-2">
                       <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                         Đề tài
                       </span>
                     </div>
                     {/* Month cells */}
-                    <div className="flex-1 relative h-7 overflow-hidden">
+                    <div data-testid="gantt-timeline-header" className="gantt-timeline-column relative h-7 overflow-hidden">
                       {columns.map((col) => (
                         <div
                           key={col.key}
@@ -714,46 +714,48 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                           key={project.id}
                           data-testid="gantt-row"
                           className={cn(
-                            "flex border-b border-slate-100 last:border-0",
+                            "gantt-row border-b border-slate-100 last:border-0",
                             idx % 2 === 0 ? "bg-white" : "bg-slate-50/30"
                           )}
                         >
                           {/* Left: project info */}
-                          <div className={cn("gantt-project-column sticky left-0 z-20 flex-shrink-0 space-y-1.5 border-r border-slate-200 px-4 py-3", idx % 2 === 0 ? "bg-white" : "bg-slate-50")}>
-                            <div className="flex items-start gap-2">
+                          <div data-testid="gantt-project-cell" className={cn("gantt-project-column z-20 px-4 py-3", idx % 2 === 0 ? "bg-white" : "bg-slate-50")}>
+                            <div className="flex h-full min-w-0 flex-col">
+                            <div className="flex min-w-0 items-start gap-2">
                               <HealthDot health={project.health} />
                               <div className="min-w-0 flex-1">
                                 <p className="truncate text-xs font-bold leading-tight text-slate-700" title={project.code}>
                                   {project.code}
                                 </p>
-                                <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-slate-500" title={project.name}>
+                                <p data-testid="gantt-project-name" className="mt-1 h-8 min-w-0 line-clamp-2 break-words [overflow-wrap:anywhere] text-xs leading-4 text-slate-500" title={project.name}>
                                   {project.name}
                                 </p>
                               </div>
                             </div>
-                            <div className="space-y-0.5">
-                              <p className="line-clamp-2 text-[11px] text-slate-400" title={project.department}>
+                            <div className="mt-2 min-w-0 space-y-1">
+                              <p className="truncate text-[11px] leading-4 text-slate-400" title={project.department}>
                                 <span className="font-medium text-slate-600">{project.department}</span>
                               </p>
-                              <p className="line-clamp-2 text-[11px] text-slate-400" title={project.pi}>Chủ nhiệm: <span className="text-slate-600">{project.pi}</span></p>
-                              <p className="line-clamp-2 text-[11px] text-slate-400" title={project.sponsor}>Tài trợ: <span className="text-slate-600">{project.sponsor}</span></p>
+                              <p className="truncate text-[11px] leading-4 text-slate-400" title={project.pi}>Chủ nhiệm: <span className="text-slate-600">{project.pi}</span></p>
+                              <p className="truncate text-[11px] leading-4 text-slate-400" title={project.sponsor}>Tài trợ: <span className="text-slate-600">{project.sponsor}</span></p>
                             </div>
-                            <div className="flex items-center gap-1.5 flex-wrap">
+                            <div className="mt-2 flex min-h-5 items-center gap-1.5 flex-wrap">
                               <EthicsBadge status={project.ethicsStatus} />
                               <span className="text-[9px] font-semibold text-blue-600">{project.progress}%</span>
                             </div>
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="min-h-8 gap-1.5 px-2 text-xs font-medium text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                              className="mt-auto min-h-8 self-start gap-1.5 px-2 pt-2 text-xs font-medium text-blue-600 hover:bg-blue-50 hover:text-blue-700"
                               onClick={() => onViewDetail(project)}
                             >
                               <Eye className="h-3.5 w-3.5" /> Chi tiết
                             </Button>
+                            </div>
                           </div>
 
                           {/* Right: phase bars */}
-                          <div className="flex-1 relative py-3 px-1 min-w-0">
+                          <div data-testid="gantt-timeline-cell" className="gantt-timeline-column relative min-w-0 px-1 py-3">
                             {/* Today line */}
                             {showToday && <div className="absolute top-0 h-full w-0.5 bg-slate-800 opacity-20 z-10" style={{ left: `${todayPct}%` }} />}
                             {/* Month grid */}
@@ -782,7 +784,6 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                       );
                     })
                   )}
-                  </div>
                 </div>
 
                 {/* Legend */}
