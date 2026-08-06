@@ -170,6 +170,37 @@
 
 /* Shared responsive layout safeguards. */
 @layer components {
+  /* The two Gantt tracks share these dimensions. Content must never size either
+     track independently, otherwise the sticky boundary drifts between rows. */
+  .gantt-container {
+    --gantt-project-width: clamp(18rem, 30vw, 26rem);
+    --gantt-timeline-width: 68rem;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .gantt-row {
+    display: grid;
+    grid-template-columns: var(--gantt-project-width) var(--gantt-timeline-width);
+    min-width: calc(var(--gantt-project-width) + var(--gantt-timeline-width));
+    align-items: stretch;
+  }
+
+  .gantt-project-column {
+    position: sticky;
+    left: 0;
+    width: var(--gantt-project-width);
+    min-width: var(--gantt-project-width);
+    max-width: var(--gantt-project-width);
+    border-right: 1px solid var(--color-slate-200);
+    box-shadow: 2px 0 3px rgb(15 23 42 / 0.05);
+  }
+
+  .gantt-timeline-column {
+    width: var(--gantt-timeline-width);
+    min-width: var(--gantt-timeline-width);
+  }
+
   .table-scroll-hint {
     @apply hidden border-b border-slate-200 bg-slate-50 px-3 py-2 text-right text-[11px] font-medium text-slate-500;
   }
@@ -181,6 +212,10 @@
   @container (max-width: 900px) {
     .table-scroll-hint { display: block; }
   }
+}
+
+@media (max-width: 640px) {
+  .gantt-container { --gantt-project-width: 17rem; }
 }
 
 @layer base {
