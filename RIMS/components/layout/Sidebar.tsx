@@ -72,9 +72,9 @@ export default function Sidebar({
     <TooltipProvider delay={120}>
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 flex h-screen w-[260px] flex-col overflow-hidden border-r border-slate-200 bg-white shadow-sm transition-transform duration-200 dark:border-slate-800 dark:bg-slate-950 md:z-40 md:translate-x-0",
+          "fixed left-0 top-0 z-50 flex h-screen w-[260px] flex-col overflow-hidden border-r border-slate-200 bg-white shadow-sm transition-transform duration-200 dark:border-slate-800 dark:bg-slate-950 lg:z-40 lg:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
-          collapsed ? "md:w-[76px]" : "md:w-[260px]"
+          collapsed ? "lg:w-[76px]" : "lg:w-[260px]"
         )}
       >
         {/* Brand */}
@@ -98,7 +98,7 @@ export default function Sidebar({
               </div>
             </div>
           )}
-          <button type="button" onClick={onCloseMobile} className="ml-auto rounded-lg p-2 text-slate-500 hover:bg-slate-100 md:hidden" aria-label="Đóng menu">
+          <button type="button" onClick={onCloseMobile} className="ml-auto rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden" aria-label="Đóng menu">
             <X className="h-5 w-5" />
           </button>
         </div>

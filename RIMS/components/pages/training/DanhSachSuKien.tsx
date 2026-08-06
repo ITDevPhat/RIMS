@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, Download, Grid3x3, List, Trash2, Eye, Pencil } from "lucide-react";
+import { Plus, Download, Grid3x3, List, Trash2, Eye, Pencil, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 import {
   LOAI_HOAT_DONG_OPTIONS,
   KHOA_PHONG_OPTIONS,
@@ -54,6 +55,7 @@ export default function DanhSachSuKien({
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterDept, setFilterDept] = useState<string>("all");
+  const [exporting, setExporting] = useState(false);
 
   const filtered = useMemo(() => {
     return conferences.filter((h) => {
@@ -66,12 +68,57 @@ export default function DanhSachSuKien({
     });
   }, [conferences, searchText, filterMonth, filterStatus, filterType, filterDept]);
 
-  const exportFilteredCsv = () => {
-    const escape = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
-    const rows = [["Mã", "Tên sự kiện", "Ngày dự kiến", "Ngày thực tế", "Loại", "Kế hoạch", "Khoa/phòng", "Phụ trách", "Địa điểm", "Trạng thái"], ...filtered.map((item) => [item.ma, item.ten, item.ngayDuKien, item.ngayThucTe ?? "", item.loai, item.loaiKeHoach, item.khoaPhong, item.nguoiPhuTrach, item.diaDiem, item.trangThai])];
-    const blob = new Blob(["\uFEFF" + rows.map((row) => row.map(escape).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob); const link = document.createElement("a");
-    link.href = url; link.download = `training-events-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}.csv`; link.click(); URL.revokeObjectURL(url);
+  const exportFilteredExcel = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const ExcelJS = await import("exceljs");
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = "RIMS";
+      workbook.created = new Date();
+      const worksheet = workbook.addWorksheet("Sự kiện đào tạo", { views: [{ state: "frozen", ySplit: 1 }] });
+      worksheet.columns = [
+        { header: "Mã", key: "code", width: 18 },
+        { header: "Tên sự kiện", key: "title", width: 42 },
+        { header: "Ngày dự kiến", key: "plannedDate", width: 16 },
+        { header: "Ngày thực tế", key: "actualDate", width: 16 },
+        { header: "Loại", key: "type", width: 22 },
+        { header: "Kế hoạch", key: "plan", width: 14 },
+        { header: "Khoa/phòng", key: "department", width: 28 },
+        { header: "Phụ trách", key: "owner", width: 26 },
+        { header: "Địa điểm", key: "location", width: 28 },
+        { header: "Trạng thái", key: "status", width: 22 },
+      ];
+      filtered.forEach((item) => worksheet.addRow({
+        code: item.ma, title: item.ten, plannedDate: item.ngayDuKien,
+        actualDate: item.ngayThucTe ?? "", type: item.loai, plan: item.loaiKeHoach,
+        department: item.khoaPhong, owner: item.nguoiPhuTrach,
+        location: item.diaDiem, status: item.trangThai,
+      }));
+      worksheet.autoFilter = { from: "A1", to: "J1" };
+      worksheet.getRow(1).eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4F46E5" } };
+        cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+      });
+      worksheet.getRow(1).height = 26;
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 1) row.alignment = { vertical: "top", wrapText: true };
+      });
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `training-events-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success({ title: "Đã xuất Excel", description: `${filtered.length} sự kiện đào tạo.` });
+    } catch (error) {
+      toast.error({ title: "Không xuất được Excel", description: error instanceof Error ? error.message : "Vui lòng thử lại." });
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -83,9 +130,9 @@ export default function DanhSachSuKien({
             <Plus className="h-5 w-5" />
             Thêm sự kiện
           </Button>
-          <Button variant="outline" size="sm" className="gap-2" onClick={exportFilteredCsv}>
-            <Download className="h-4 w-4" />
-            Xuất Excel
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => void exportFilteredExcel()} disabled={exporting}>
+            {exporting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {exporting ? "Đang xuất..." : "Xuất Excel (.xlsx)"}
           </Button>
         </div>
         <div className="flex items-center gap-2">
@@ -176,7 +223,7 @@ export default function DanhSachSuKien({
       {/* Table or Card View */}
       {viewMode === "table" ? (
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-          <table className="min-w-[1000px] w-full text-sm">
+          <table className="w-max min-w-[1160px] text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
                 <th className="w-[10%] px-3 py-3 text-left font-semibold text-slate-700">Mã</th>

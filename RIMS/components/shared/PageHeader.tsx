@@ -35,7 +35,7 @@ export default function PageHeader({
               {i > 0 && (
                 <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
               )}
-              <button
+              <button type="button"
                 onClick={crumb.onClick}
                 className={cn(
                   "text-xs font-medium transition-colors",
