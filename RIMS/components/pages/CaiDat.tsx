@@ -706,7 +706,7 @@ function PermissionsTab() {
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
           <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">Chọn vai trò</label>
           <Select value={selectedRoleId} onValueChange={(value) => value && setSelectedRoleId(value)}>
-            <SelectTrigger className="h-9 w-80 text-left">
+            <SelectTrigger className="min-h-9 w-full min-w-0 text-left">
               <span className="truncate">{roles.find((item) => String(item.roleId) === selectedRoleId)?.roleName ?? "Chọn vai trò"}</span>
             </SelectTrigger>
             <SelectContent>
@@ -859,7 +859,7 @@ function AuditLogTab() {
             <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tìm kiếm nhật ký..." className="h-9 pl-9" />
           </div>
           <Select value={action} onValueChange={(value) => value && setAction(value)}>
-            <SelectTrigger className="h-9 w-44"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="min-h-9 w-full min-w-0"><SelectValue /></SelectTrigger>
             <SelectContent>
               {["Tất cả", "Đăng nhập", "Thêm", "Sửa", "Xóa", "Xuất dữ liệu"].map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
             </SelectContent>

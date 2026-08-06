@@ -338,7 +338,7 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
         {/* Filter bar */}
         <Card className="border-slate-200 shadow-sm">
           <CardContent className="p-3.5">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
               <div className="relative flex-1 min-w-44">
                 <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                 <Input
@@ -356,7 +356,7 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
                 { label: "Đạo đức", value: filterEthics, setter: setFilterEthics, options: ["Tất cả", "Không yêu cầu", "Chờ duyệt", "Đã duyệt", "Sắp hết hạn", "Hết hạn"] },
               ].map((f) => (
                 <Select key={f.label} value={f.value} onValueChange={(v) => v && f.setter(v)}>
-                  <SelectTrigger className="h-8 w-36 text-xs border-slate-200">
+                  <SelectTrigger className="min-h-9 w-full min-w-0 text-xs border-slate-200">
                     <SelectValue placeholder={f.label} />
                   </SelectTrigger>
                   <SelectContent>
