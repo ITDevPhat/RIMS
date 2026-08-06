@@ -28,6 +28,9 @@ export default function AdminLayout({
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
+    const initialWidth = window.innerWidth;
+    if (initialWidth >= 768 && initialWidth < 1366) setCollapsed(true);
+
     const syncLayout = () => {
       const narrow = window.innerWidth < 1024;
       if (narrow) setMobileOpen(false);

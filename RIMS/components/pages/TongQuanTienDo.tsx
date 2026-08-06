@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -382,9 +381,9 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
   return (
     <div className="flex min-h-full min-w-0 flex-col [container-type:inline-size]">
       {/* ── Page header ─────────────────────────────────────────────────────── */}
-      <div className="border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8 py-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
+      <div className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
             <h1 className="text-lg font-bold text-slate-800">Tổng quan tiến độ nghiên cứu</h1>
             <p className="mt-0.5 text-sm text-slate-500">
               Theo dõi tiến độ, giai đoạn và hạn chót của các đề tài nghiên cứu khoa học trong bệnh viện.
@@ -426,18 +425,6 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                       {year}
                     </button>
                   ))}
-                </div>
-                <Input
-                  type="number"
-                  value={selectedYear}
-                  onChange={(event) => {
-                    const year = Number(event.target.value);
-                    if (Number.isFinite(year)) setSelectedYear(year);
-                  }}
-                  className="h-9 text-sm"
-                  min={2000}
-                  max={2100}
-                />
               </div>
             </div>
 
@@ -468,14 +455,9 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
 
             <div className="min-w-0">
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Khoảng thời gian</label>
-              {timeScope === "custom" ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <Input type="date" value={customStartDate} onChange={(event) => handleCustomStartChange(event.target.value)} className="h-10 text-sm" />
-                  <Input type="date" value={customEndDate} onChange={(event) => setCustomEndDate(event.target.value)} className="h-10 text-sm" />
-                </div>
-              ) : (
+              {timeScope !== "custom" ? (
                 <Select value={String(timeSegment)} onValueChange={(value) => setTimeSegment(Number(value))}>
-                  <SelectTrigger className="h-10 w-full text-left text-sm border-slate-200">
+                  <SelectTrigger className="min-h-9 w-full text-left text-sm border-slate-200">
                     <span className="truncate">{segmentOptions.find((item) => item.value === timeSegment)?.label ?? range.shortLabel}</span>
                   </SelectTrigger>
                   <SelectContent>
@@ -484,11 +466,17 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                     ))}
                   </SelectContent>
                 </Select>
-              )}
-              <p className="mt-2 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-500">
+              ) : <p className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700">Chọn ngày bắt đầu và kết thúc bên dưới.</p>}
+              <p className="mt-1.5 rounded-md bg-slate-50 px-3 py-1.5 text-xs text-slate-500">
                 {range.start.toLocaleDateString("vi-VN")} - {range.end.toLocaleDateString("vi-VN")}
               </p>
             </div>
+            {timeScope === "custom" && (
+              <div className="overview-custom-range grid min-w-0 gap-2 sm:grid-cols-2">
+                <label className="min-w-0 text-xs font-semibold text-slate-500">Từ ngày<Input type="date" value={customStartDate} onChange={(event) => handleCustomStartChange(event.target.value)} className="mt-1 h-9 text-sm" /></label>
+                <label className="min-w-0 text-xs font-semibold text-slate-500">Đến ngày<Input type="date" value={customEndDate} onChange={(event) => setCustomEndDate(event.target.value)} className="mt-1 h-9 text-sm" /></label>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -589,8 +577,8 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
         </Card>
 
         {/* ── Deadline summary panels ───────────────────────────────────────── */}
-        <div className="grid gap-4 lg:grid-cols-3">
-          <Card className="border-slate-200 shadow-sm">
+        <div className="overview-alert-grid">
+          <Card className="gap-0 border-slate-200 py-0 shadow-sm">
             <CardHeader className="px-4 py-3 border-b border-slate-100">
               <CardTitle className="flex items-center gap-2 text-xs font-semibold text-slate-700">
                 <Clock className="h-3.5 w-3.5 text-amber-500" />
@@ -619,7 +607,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
             </CardContent>
           </Card>
 
-          <Card className="border-red-100 shadow-sm">
+          <Card className="gap-0 border-red-100 py-0 shadow-sm">
             <CardHeader className="px-4 py-3 border-b border-red-100 bg-red-50/50">
               <CardTitle className="flex items-center gap-2 text-xs font-semibold text-red-700">
                 <AlertTriangle className="h-3.5 w-3.5" />
@@ -648,7 +636,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
             </CardContent>
           </Card>
 
-          <Card className="border-purple-100 shadow-sm">
+          <Card className="gap-0 border-purple-100 py-0 shadow-sm">
             <CardHeader className="px-4 py-3 border-b border-purple-100 bg-purple-50/50">
               <CardTitle className="flex items-center gap-2 text-xs font-semibold text-purple-700">
                 <Shield className="h-3.5 w-3.5" />
@@ -676,7 +664,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
 
         {/* ── Multi-project Gantt ──────────────────────────────────────────── */}
         <div className="min-w-0">
-          <Card className="border-slate-200 shadow-sm overflow-hidden">
+          <Card className="gap-0 overflow-hidden border-slate-200 py-0 shadow-sm">
               <CardHeader className="px-5 py-3.5 border-b border-slate-100 bg-slate-50">
                 <CardTitle className="text-sm font-semibold text-slate-700">
                   Gantt tiến độ đề tài — {range.label}
@@ -724,6 +712,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                       return (
                         <div
                           key={project.id}
+                          data-testid="gantt-row"
                           className={cn(
                             "flex border-b border-slate-100 last:border-0",
                             idx % 2 === 0 ? "bg-white" : "bg-slate-50/30"
