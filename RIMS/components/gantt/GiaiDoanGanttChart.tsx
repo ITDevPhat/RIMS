@@ -186,8 +186,8 @@ export default function GiaiDoanGanttChart({ phases }: { phases: ResearchPhase[]
               {range.start.toLocaleDateString("vi-VN")} - {range.end.toLocaleDateString("vi-VN")} · {filtered.length} giai đoạn
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
+            <div className="grid min-w-0 grid-cols-2 rounded-lg border border-slate-200 bg-slate-50 p-1 sm:grid-cols-4">
               {[
                 { value: "month" as ViewMode, label: "Tháng" },
                 { value: "quarter" as ViewMode, label: "Quý" },
@@ -199,7 +199,7 @@ export default function GiaiDoanGanttChart({ phases }: { phases: ResearchPhase[]
                   type="button"
                   onClick={() => setViewMode(item.value)}
                   className={cn(
-                    "rounded-md px-3 py-1.5 text-xs font-semibold transition",
+                    "min-h-9 rounded-md px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
                     viewMode === item.value ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:bg-white"
                   )}
                 >
@@ -207,7 +207,7 @@ export default function GiaiDoanGanttChart({ phases }: { phases: ResearchPhase[]
                 </button>
               ))}
             </div>
-            <div className="relative w-64">
+            <div className="relative w-full min-w-0 sm:w-64">
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
               <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm giai đoạn, người phụ trách..." className="h-9 pl-9 text-sm" />
             </div>
@@ -234,9 +234,10 @@ export default function GiaiDoanGanttChart({ phases }: { phases: ResearchPhase[]
         </span>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex border-b border-slate-200 bg-slate-50">
-          <div className="w-72 shrink-0 border-r border-slate-200 px-4 py-3">
+      <div className="overflow-x-auto overscroll-x-contain rounded-xl border border-slate-200 bg-white shadow-sm" tabIndex={0} role="region" aria-label="Biểu đồ Gantt giai đoạn có thể cuộn ngang">
+        <p className="table-scroll-hint sticky left-0" aria-hidden="true">Vuốt ngang để xem toàn bộ tiến độ →</p>
+        <div className="phase-gantt-width sticky top-0 z-30 flex border-b border-slate-200 bg-slate-50">
+          <div className="sticky left-0 z-40 w-72 shrink-0 border-r border-slate-200 bg-slate-50 px-4 py-3">
             <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Giai đoạn</span>
           </div>
           <div className="relative h-10 min-w-[760px] flex-1">
@@ -262,8 +263,8 @@ export default function GiaiDoanGanttChart({ phases }: { phases: ResearchPhase[]
           const deadlinePct = deadline ? dateToPct(deadline, range) : null;
 
           return (
-            <div key={phase.id} className={cn("flex border-b border-slate-100 last:border-b-0", index % 2 === 0 ? "bg-white" : "bg-slate-50/40")}>
-              <div className="w-72 shrink-0 border-r border-slate-200 px-4 py-3">
+            <div key={phase.id} className={cn("phase-gantt-width flex border-b border-slate-100 last:border-b-0", index % 2 === 0 ? "bg-white" : "bg-slate-50/40")}>
+              <div className={cn("sticky left-0 z-20 w-72 shrink-0 border-r border-slate-200 px-4 py-3", index % 2 === 0 ? "bg-white" : "bg-slate-50")}>
                 <div className="flex items-start gap-2">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-700 ring-1 ring-blue-100">{phase.order}</span>
                   <div className="min-w-0 flex-1">

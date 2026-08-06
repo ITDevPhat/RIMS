@@ -238,7 +238,7 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
     <div>
       {/* ── Back + Header ───────────────────────────────────────────────────── */}
       <div className="border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8 py-4">
-        <button
+        <button type="button"
           onClick={onBack}
           className="mb-3 flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium"
         >

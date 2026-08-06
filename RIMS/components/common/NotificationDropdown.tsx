@@ -140,7 +140,7 @@ export function NotificationDropdown({ onViewAll, onNavigate }: NotificationDrop
             )}
           </div>
           {unreadCount > 0 && (
-            <button
+            <button type="button"
               onClick={() => void handleMarkAllAsRead()}
               disabled={busyId === "all"}
               className="text-xs text-blue-600 hover:text-blue-700 font-medium"
@@ -181,7 +181,7 @@ export function NotificationDropdown({ onViewAll, onNavigate }: NotificationDrop
                         {notif.title}
                       </h4>
                       {!notif.read && (
-                        <button
+                        <button type="button"
                           onClick={(e) => handleMarkAsRead(notif.id, e)}
                           disabled={busyId === notif.id}
                           className="flex-shrink-0 text-blue-600 hover:text-blue-700"
@@ -215,7 +215,7 @@ export function NotificationDropdown({ onViewAll, onNavigate }: NotificationDrop
 
         {/* Footer */}
         <div className="sticky bottom-0 bg-white border-t border-slate-200 px-4 py-2">
-          <button
+          <button type="button"
             onClick={onViewAll}
             className="w-full flex items-center justify-center gap-2 h-8 text-xs font-medium text-blue-600 hover:bg-slate-50 rounded transition"
           >

@@ -17,7 +17,7 @@ export function FormDrawerHeader({
         <h2 className="text-lg font-bold text-slate-900">{title}</h2>
         <p className="mt-1 text-sm text-slate-500">Kiểm tra thông tin bắt buộc, mốc thời gian và trạng thái trước khi lưu.</p>
       </div>
-      <button
+      <button type="button"
         onClick={onClose}
         className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
         aria-label="Đóng"

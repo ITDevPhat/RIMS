@@ -107,8 +107,8 @@ export default function ThongKeNam({ selectedYear, conferences }: ThongKeNamProp
         <div className="px-5 py-4 border-b border-slate-200">
           <h3 className="text-sm font-bold text-slate-700">Bảng tóm tắt tháng</h3>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Bảng dữ liệu có thể cuộn ngang">
+          <table className="w-max min-w-[900px] text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
                 <th className="px-4 py-3 text-left font-semibold text-slate-700">Tháng</th>

@@ -173,11 +173,11 @@ export default function DeTaiFormModal({ open, mode = "create", project, onOpenC
     <>
       <div className="fixed inset-0 z-40 bg-slate-950/45" onClick={() => !saving && onOpenChange(false)} />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="flex h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl ring-1 ring-slate-200">
+        <div role="dialog" aria-modal="true" aria-labelledby="research-project-dialog-title" className="flex max-h-[calc(100dvh-2rem)] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl ring-1 ring-slate-200">
           <div className="border-b border-slate-200 bg-white px-6 py-4">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+                <h2 id="research-project-dialog-title" className="text-lg font-bold text-slate-900">{title}</h2>
                 <p className="mt-1 text-sm text-slate-500">Nhập đầy đủ thông tin chính để theo dõi tiến độ, phê duyệt và báo cáo đề tài.</p>
               </div>
               <Button variant="outline" className="h-9" disabled={saving} onClick={() => onOpenChange(false)}>Đóng</Button>

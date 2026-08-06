@@ -125,7 +125,7 @@ export default function TrungTamThongBao() {
               { label: "Chưa đọc", value: "unread" },
               { label: "Đã đọc", value: "read" },
             ].map((filter) => (
-              <button
+              <button type="button"
                 key={filter.value}
                 onClick={() => setFilterStatus(filter.value as FilterStatus)}
                 className={cn(
@@ -166,7 +166,7 @@ export default function TrungTamThongBao() {
                     </p>
                   </div>
                 </div>
-                <button
+                <button type="button"
                   onClick={() => setSelectedNotification(null)}
                   className="text-slate-400 hover:text-slate-600"
                 >

@@ -134,6 +134,7 @@ function CalendarHeader({
               <Button
                 variant="outline"
                 onClick={onPrevious}
+                aria-label="Khoảng thời gian trước"
                 className="h-10 w-10 p-0 rounded-lg"
               >
                 <ChevronLeft className="h-5 w-5" />
@@ -150,6 +151,7 @@ function CalendarHeader({
               <Button
                 variant="outline"
                 onClick={onNext}
+                aria-label="Khoảng thời gian tiếp theo"
                 className="h-10 w-10 p-0 rounded-lg"
               >
                 <ChevronRight className="h-5 w-5" />
