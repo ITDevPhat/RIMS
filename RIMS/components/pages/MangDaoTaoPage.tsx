@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import type { HoiNghi } from "@/lib/constants/training";
 import { trainingApi } from "@/lib/api/training-api";
+import { adminApi, type ApiDepartment } from "@/lib/api/admin-api";
 import { mapApiTrainingEventToUi } from "@/lib/mappers/training-event-mapper";
 import TrainingModuleNav from "@/components/layout/TrainingModuleNav";
 import HoiNghiFormModal from "@/components/modals/HoiNghiFormModal";
@@ -31,6 +32,7 @@ export default function MangDaoTaoPage() {
   const [editTarget, setEditTarget] = useState<HoiNghi | null>(null);
   const [detailTarget, setDetailTarget] = useState<HoiNghi | null>(null);
   const [allConferences, setAllConferences] = useState<HoiNghi[]>([]);
+  const [departments, setDepartments] = useState<ApiDepartment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -40,10 +42,17 @@ export default function MangDaoTaoPage() {
     try {
       const result = await trainingApi.getTrainingEvents({ year: selectedYear, pageSize: 100 });
       setAllConferences(result.items.map(mapApiTrainingEventToUi));
+      try {
+        const departmentResult = await adminApi.getDepartments({ pageSize: 200, isActive: true });
+        setDepartments(departmentResult.items);
+      } catch {
+        setDepartments([]);
+      }
     } catch {
       setError("Không tải được dữ liệu đào tạo từ API.");
       toast.error("Không tải được dữ liệu đào tạo.");
       setAllConferences([]);
+      setDepartments([]);
     } finally {
       setLoading(false);
     }
@@ -53,29 +62,34 @@ export default function MangDaoTaoPage() {
     void loadEvents();
   }, [loadEvents]);
 
-  const toPayload = (data: Partial<HoiNghi>) => ({
-    eventCode: data.ma,
-    eventTitle: data.ten,
-    description: data.moTa,
-    eventYear: data.nam ?? selectedYear,
-    eventMonth: data.thang ?? selectedMonth,
-    plannedDate: data.ngayDuKien || null,
-    startTime: null,
-    endTime: null,
-    actualDate: data.ngayThucTe || null,
-    categoryId: null,
-    eventType: data.loai === "Hội nghị" ? "conference" : data.loai === "Hội thảo" ? "workshop" : data.loai === "Lớp đào tạo" ? "class" : data.loai === "Tập huấn" ? "training" : "other",
-    planType: data.loaiKeHoach === "Phát sinh" ? "additional" : "planned",
-    departmentId: null,
-    responsibleUserId: null,
-    location: data.diaDiem,
-    deliveryMode: "offline",
-    expectedParticipants: data.soNguoiDuKien ?? 0,
-    actualParticipants: data.soNguoiThucTe ?? null,
-    eventStatus: data.trangThai === "Đã thực hiện" ? "completed" : data.trangThai === "Đang chuẩn bị" ? "preparing" : data.trangThai === "Không thực hiện được" ? "not_completed" : data.trangThai === "Hoãn" ? "postponed" : data.trangThai === "Hủy" ? "cancelled" : "planned",
-    cancelReason: data.lyDoKhongThucHien,
-    notes: data.ghiChu,
-  });
+  const toPayload = (data: Partial<HoiNghi>) => {
+    const department = departments.find((item) => item.departmentName === data.khoaPhong);
+    const responsibleName = data.nguoiPhuTrach?.trim();
+    const noteBody = data.ghiChu?.replace(/^Người phụ trách:.*(?:\r?\n)?/i, "").trim() ?? "";
+    return {
+      eventCode: data.ma,
+      eventTitle: data.ten,
+      description: data.moTa,
+      eventYear: data.nam ?? selectedYear,
+      eventMonth: data.thang ?? selectedMonth,
+      plannedDate: data.ngayDuKien || null,
+      startTime: null,
+      endTime: null,
+      actualDate: data.ngayThucTe || null,
+      categoryId: null,
+      eventType: data.loai === "Hội nghị" ? "conference" : data.loai === "Hội thảo" ? "workshop" : data.loai === "Lớp đào tạo" ? "class" : data.loai === "Tập huấn" ? "training" : "other",
+      planType: data.loaiKeHoach === "Phát sinh" ? "additional" : "planned",
+      departmentId: department?.departmentId ?? null,
+      responsibleUserId: null,
+      location: data.diaDiem,
+      deliveryMode: "offline",
+      expectedParticipants: data.soNguoiDuKien ?? 0,
+      actualParticipants: data.soNguoiThucTe ?? null,
+      eventStatus: data.trangThai === "Đã thực hiện" ? "completed" : data.trangThai === "Đang chuẩn bị" ? "preparing" : data.trangThai === "Không thực hiện được" ? "not_completed" : data.trangThai === "Hoãn" ? "postponed" : data.trangThai === "Hủy" ? "cancelled" : "planned",
+      cancelReason: data.lyDoKhongThucHien,
+      notes: [responsibleName ? `Người phụ trách: ${responsibleName}` : "", noteBody].filter(Boolean).join("\n"),
+    };
+  };
 
   const handleSave = async (data: Partial<HoiNghi>) => {
     try {
@@ -125,6 +139,7 @@ export default function MangDaoTaoPage() {
         onSave={handleSave}
         initialData={editTarget}
         selectedYear={selectedYear}
+        departments={departments}
       />
 
       {/* Page header */}

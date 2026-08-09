@@ -39,6 +39,19 @@ export interface ApiSetting {
   isActive: boolean;
 }
 
+export interface ApiDepartment {
+  departmentId: number;
+  departmentCode: string;
+  departmentName: string;
+  parentDepartmentId?: number | null;
+  parentDepartmentName?: string | null;
+  departmentType?: string | null;
+  description?: string | null;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+}
+
 export interface ApiAccountPreferences {
   appearanceMode: "light" | "dark" | "system";
   languageCode: string;
@@ -90,8 +103,14 @@ export const adminApi = {
   updateRolePermissions: (roleId: string | number, payload: { permissionIds: number[] }) =>
     apiClient.put<unknown>(`/roles/${roleId}/permissions`, payload),
   getSettings: (filters?: QueryParams) => apiClient.get<PagedResult<ApiSetting>>("/settings", filters),
+  getSetting: (key: string) => apiClient.get<ApiSetting>(`/settings/${key}`),
   createSetting: (payload: unknown) => apiClient.post<ApiSetting>("/settings", payload),
   updateSetting: (key: string, payload: unknown) => apiClient.put<ApiSetting>(`/settings/${key}`, payload),
+  getDepartments: (filters?: QueryParams) => apiClient.get<PagedResult<ApiDepartment>>("/departments", filters),
+  getDepartment: (id: string | number) => apiClient.get<ApiDepartment>(`/departments/${id}`),
+  createDepartment: (payload: unknown) => apiClient.post<ApiDepartment>("/departments", payload),
+  updateDepartment: (id: string | number, payload: unknown) => apiClient.put<ApiDepartment>(`/departments/${id}`, payload),
+  deleteDepartment: (id: string | number) => apiClient.delete<null>(`/departments/${id}`),
   getAccountPreferences: () => apiClient.get<ApiAccountPreferences>("/account/preferences"),
   updateAccountPreferences: (payload: ApiAccountPreferences) => apiClient.put<ApiAccountPreferences>("/account/preferences", payload),
 };

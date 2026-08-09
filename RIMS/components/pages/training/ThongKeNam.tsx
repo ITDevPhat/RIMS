@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
-  TrendingUp, Calendar, Users, CheckCircle2, XCircle, BarChart3,
+  ArrowUpDown, TrendingUp, Calendar, Users, CheckCircle2, XCircle, BarChart3,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { computeMonthlySummary, type HoiNghi } from "@/lib/constants/training";
 
 interface ThongKeNamProps {
@@ -37,8 +38,50 @@ function rateBg(rate: number): string {
   return "bg-red-500";
 }
 
+type SummaryItem = ReturnType<typeof computeMonthlySummary>[number];
+type SortKey = "thang" | "duKien" | "phatSinh" | "tongKeHoach" | "thucTe" | "chuaThucHien" | "tyLeHoanThanh" | "ghiChu";
+type SortDirection = "asc" | "desc";
+
+const columns: Array<{ label: string; key?: SortKey; className: string; align?: string }> = [
+  { label: "Tháng", key: "thang", className: "w-[130px]" },
+  { label: "Dự kiến", key: "duKien", className: "w-[110px]", align: "text-center" },
+  { label: "Phát sinh", key: "phatSinh", className: "w-[120px]", align: "text-center" },
+  { label: "Tổng KH", key: "tongKeHoach", className: "w-[120px]", align: "text-center" },
+  { label: "Thực tế", key: "thucTe", className: "w-[110px]", align: "text-center" },
+  { label: "Chưa TH", key: "chuaThucHien", className: "w-[110px]", align: "text-center" },
+  { label: "Hoàn thành", key: "tyLeHoanThanh", className: "w-[160px]", align: "text-center" },
+  { label: "Ghi chú", key: "ghiChu", className: "w-[280px]" },
+];
+
+function getSortValue(item: SummaryItem, key: SortKey) {
+  if (key === "tongKeHoach") return item.duKien + item.phatSinh;
+  return item[key] ?? "";
+}
+
 export default function ThongKeNam({ selectedYear, conferences }: ThongKeNamProps) {
   const summaries = useMemo(() => computeMonthlySummary(conferences), [conferences]);
+  const [sortKey, setSortKey] = useState<SortKey>("thang");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const sortedSummaries = useMemo(() => {
+    return [...summaries].sort((a, b) => {
+      const left = getSortValue(a, sortKey);
+      const right = getSortValue(b, sortKey);
+      const result = typeof left === "number" && typeof right === "number"
+        ? left - right
+        : String(left).localeCompare(String(right), "vi-VN", { numeric: true, sensitivity: "base" });
+      return sortDirection === "asc" ? result : -result;
+    });
+  }, [sortDirection, sortKey, summaries]);
+  const handleSort = (key: SortKey) => {
+    setSortKey((currentKey) => {
+      if (currentKey === key) {
+        setSortDirection((currentDirection) => currentDirection === "asc" ? "desc" : "asc");
+        return currentKey;
+      }
+      setSortDirection("asc");
+      return key;
+    });
+  };
 
   const stats = useMemo(() => {
     const planned = conferences.filter((h) => h.loaiKeHoach === "Dự kiến").length;
@@ -105,24 +148,31 @@ export default function ThongKeNam({ selectedYear, conferences }: ThongKeNamProp
       {/* Monthly Summary Table */}
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-200">
-          <h3 className="text-sm font-bold text-slate-700">Bảng tóm tắt tháng</h3>
+          <h3 className="text-sm font-bold text-slate-700">Bảng tóm tắt tháng năm {selectedYear}</h3>
         </div>
         <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Bảng dữ liệu có thể cuộn ngang">
-          <table className="w-max min-w-[900px] text-sm">
-            <thead>
+          <table className="w-full min-w-[1140px] table-fixed text-sm">
+            <thead className="sticky top-0 z-30">
               <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Tháng</th>
-                <th className="px-4 py-3 text-center font-semibold text-slate-700 w-16">Dự kiến</th>
-                <th className="px-4 py-3 text-center font-semibold text-slate-700 w-16">Phát sinh</th>
-                <th className="px-4 py-3 text-center font-semibold text-slate-700 w-20">Tổng KH</th>
-                <th className="px-4 py-3 text-center font-semibold text-slate-700 w-16">Thực tế</th>
-                <th className="px-4 py-3 text-center font-semibold text-slate-700 w-16">Chưa TH</th>
-                <th className="px-4 py-3 text-center font-semibold text-slate-700 w-20">Hoàn thành</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700 flex-1">Ghi chú</th>
+                {columns.map((column) => (
+                  <th key={column.label} className={cn("px-4 py-3 text-xs font-semibold text-slate-700", column.align ?? "text-left", column.className)}>
+                    {column.key ? (
+                      <button
+                        type="button"
+                        onClick={() => handleSort(column.key!)}
+                        className={cn("flex w-full items-center gap-1 rounded px-0.5 py-0.5 hover:bg-slate-100 hover:text-blue-700", column.align === "text-center" ? "justify-center" : "justify-start", sortKey === column.key && "text-blue-700")}
+                        title={`Sắp xếp theo ${column.label}`}
+                      >
+                        <span>{column.label}</span>
+                        <ArrowUpDown className={cn("h-3.5 w-3.5 shrink-0", sortKey === column.key && sortDirection === "desc" && "rotate-180")} />
+                      </button>
+                    ) : column.label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {summaries.map((s) => (
+              {sortedSummaries.map((s) => (
                 <tr key={s.thang} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-medium text-slate-800">Tháng {s.thang}</td>
                   <td className="px-4 py-3 text-center text-slate-600 font-semibold">{s.duKien}</td>

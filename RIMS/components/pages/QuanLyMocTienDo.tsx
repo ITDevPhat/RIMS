@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Eye, Plus, Pencil, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowUpDown, Eye, Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -17,6 +17,7 @@ import { mapApiMilestoneToUi } from "@/lib/mappers/milestone-mapper";
 import MocTienDoFormModal from "@/components/modals/MocTienDoFormModal";
 import { ConfirmationDialog } from "@/components/common/ConfirmationDialog";
 import { toast } from "@/lib/toast";
+import { useDateFormat } from "@/lib/date-format";
 
 function StatusBadge({ status }: { status: PhaseStatus }) {
   const map: Record<string, string> = {
@@ -46,7 +47,21 @@ function RiskBadge({ risk }: { risk: RiskLevel }) {
   return <span className={cn("inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold", map[risk])}>{risk}</span>;
 }
 
-const formatDate = (value: string | null) => value ? value.split("-").reverse().join("/") : "—";
+type MilestoneSortKey = "order" | "name" | "phaseName" | "assignee" | "deadline" | "progress" | "risk" | "status" | "hasIssue";
+type SortDirection = "asc" | "desc";
+
+const milestoneColumns: Array<{ label: string; key?: MilestoneSortKey; className: string }> = [
+  { label: "TT", key: "order", className: "w-[70px]" },
+  { label: "Tên mốc", key: "name", className: "w-[260px]" },
+  { label: "Giai đoạn", key: "phaseName", className: "w-[220px]" },
+  { label: "Người phụ trách", key: "assignee", className: "w-[180px]" },
+  { label: "Hạn chót", key: "deadline", className: "w-[150px]" },
+  { label: "Tiến độ", key: "progress", className: "w-[110px]" },
+  { label: "Rủi ro", key: "risk", className: "w-[150px]" },
+  { label: "Trạng thái", key: "status", className: "w-[150px]" },
+  { label: "Phát sinh", key: "hasIssue", className: "w-[180px]" },
+  { label: "Thao tác", className: "sticky right-0 z-20 w-[120px] bg-slate-50 shadow-[-4px_0_6px_-5px_rgba(15,23,42,0.45)]" },
+];
 
 export default function QuanLyMocTienDo() {
   const [projects, setProjects] = useState<ResearchProject[]>([]);
@@ -62,6 +77,9 @@ export default function QuanLyMocTienDo() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
+  const [sortKey, setSortKey] = useState<MilestoneSortKey>("order");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const { formatDate } = useDateFormat();
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -132,6 +150,34 @@ export default function QuanLyMocTienDo() {
   const visibleMilestones = useMemo(() => milestones.filter((ms) => selectedPhase === "all" || ms.phaseId === selectedPhase), [milestones, selectedPhase]);
   const selectedProject = projects.find((project) => project.id === selectedResearch);
   const selectedPhaseInfo = researchPhases.find((phase) => phase.id === selectedPhase);
+  const getMilestoneSortValue = useCallback((milestone: ResearchMilestone, key: MilestoneSortKey) => {
+    if (key === "phaseName") {
+      const phase = phases.find((item) => item.id === milestone.phaseId);
+      return phase ? `${phase.order}. ${phase.name}` : "";
+    }
+    if (key === "hasIssue") return milestone.hasIssue ? 1 : 0;
+    return milestone[key] ?? "";
+  }, [phases]);
+  const sortedMilestones = useMemo(() => {
+    return [...visibleMilestones].sort((a, b) => {
+      const left = getMilestoneSortValue(a, sortKey);
+      const right = getMilestoneSortValue(b, sortKey);
+      const result = typeof left === "number" && typeof right === "number"
+        ? left - right
+        : String(left).localeCompare(String(right), "vi-VN", { numeric: true, sensitivity: "base" });
+      return sortDirection === "asc" ? result : -result;
+    });
+  }, [getMilestoneSortValue, sortDirection, sortKey, visibleMilestones]);
+  const handleSort = (key: MilestoneSortKey) => {
+    setSortKey((currentKey) => {
+      if (currentKey === key) {
+        setSortDirection((currentDirection) => currentDirection === "asc" ? "desc" : "asc");
+        return currentKey;
+      }
+      setSortDirection("asc");
+      return key;
+    });
+  };
 
   return (
     <div>
@@ -187,12 +233,33 @@ export default function QuanLyMocTienDo() {
             <p className="text-xs text-slate-500">Theo dõi deadline, rủi ro, phát sinh và trạng thái của từng mốc.</p>
           </div>
           <CardContent className="p-0">
-            <Table className="w-max min-w-[1320px]">
-              <TableHeader><TableRow className="bg-slate-50">{["TT", "Tên mốc", "Giai đoạn", "Người phụ trách", "Hạn chót", "Tiến độ", "Rủi ro", "Trạng thái", "Phát sinh", "Thao tác"].map((head) => <TableHead key={head} className="px-2 py-2.5 text-[10px] font-semibold uppercase text-slate-500 whitespace-normal">{head}</TableHead>)}</TableRow></TableHeader>
+            <Table className="w-full min-w-[1590px] table-fixed" containerClassName="max-h-[68vh]">
+              <TableHeader className="sticky top-0 z-30">
+                <TableRow className="bg-slate-50">
+                  {milestoneColumns.map((column) => (
+                    <TableHead key={column.label} className={cn("px-2 py-2.5 text-[10px] font-semibold uppercase text-slate-500 whitespace-normal", column.className)}>
+                      {column.key ? (
+                        <button
+                          type="button"
+                          onClick={() => handleSort(column.key!)}
+                          className={cn(
+                            "flex w-full items-start gap-1 rounded px-0.5 py-0.5 text-left leading-tight hover:bg-slate-100 hover:text-slate-700",
+                            sortKey === column.key && "text-blue-700"
+                          )}
+                          title={`Sắp xếp theo ${column.label}`}
+                        >
+                          <span className="min-w-0 flex-1 break-words">{column.label}</span>
+                          <ArrowUpDown className={cn("mt-0.5 h-3 w-3 shrink-0", sortKey === column.key && sortDirection === "desc" && "rotate-180")} />
+                        </button>
+                      ) : column.label}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
               <TableBody>
-                {visibleMilestones.length === 0 ? (
+                {sortedMilestones.length === 0 ? (
                   <TableRow><TableCell colSpan={10} className="py-12 text-center text-sm text-slate-400">Không có mốc tiến độ nào.</TableCell></TableRow>
-                ) : visibleMilestones.map((ms) => {
+                ) : sortedMilestones.map((ms) => {
                   const phase = phases.find((item) => item.id === ms.phaseId);
                   return (
                     <TableRow key={ms.id} className="border-b border-slate-100 hover:bg-slate-50">
@@ -205,7 +272,7 @@ export default function QuanLyMocTienDo() {
                       <TableCell className="px-2 py-3 align-top"><RiskBadge risk={ms.risk} /></TableCell>
                       <TableCell className="px-2 py-3 align-top"><StatusBadge status={ms.status} /></TableCell>
                       <TableCell className="px-2 py-3 align-top">{ms.hasIssue ? <span className="flex items-start gap-1 text-xs text-amber-600 whitespace-normal break-words"><AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" /> {ms.issueReason ?? "Có phát sinh"}</span> : <span className="text-xs text-slate-400">—</span>}</TableCell>
-                      <TableCell className="px-2 py-3 align-top whitespace-nowrap">
+                      <TableCell className="sticky right-0 z-10 bg-white px-2 py-3 align-top whitespace-nowrap shadow-[-4px_0_6px_-5px_rgba(15,23,42,0.45)]">
                         <div className="flex flex-nowrap justify-end gap-1">
                           <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50" title="Xem chi tiết" aria-label="Xem chi tiết" onClick={() => setViewingMs(ms)}><Eye className="h-3 w-3" /></Button>
                           <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Sửa mốc tiến độ" aria-label="Sửa mốc tiến độ" onClick={() => { setEditingMs(ms); setModalOpen(true); }}><Pencil className="h-3 w-3" /></Button>

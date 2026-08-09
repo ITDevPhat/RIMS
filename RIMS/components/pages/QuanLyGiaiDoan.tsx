@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Eye, Plus, Pencil, Trash2 } from "lucide-react";
+import { ArrowUpDown, Eye, Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,6 +16,7 @@ import { mapApiPhaseToUi } from "@/lib/mappers/phase-mapper";
 import PhaseFormModal from "@/components/modals/PhaseFormModal";
 import { ConfirmationDialog } from "@/components/common/ConfirmationDialog";
 import { toast } from "@/lib/toast";
+import { useDateFormat } from "@/lib/date-format";
 
 function PhaseBadge({ status }: { status: PhaseStatus }) {
   const map: Record<string, string> = {
@@ -33,7 +34,25 @@ function PhaseBadge({ status }: { status: PhaseStatus }) {
   return <span className={cn("inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold", map[status])}>{status}</span>;
 }
 
-const formatDate = (value: string | null) => value ? value.split("-").reverse().join("/") : "—";
+type PhaseSortKey = "order" | "name" | "assignee" | "plannedStartDate" | "plannedEndDate" | "deadline" | "progress" | "status";
+type SortDirection = "asc" | "desc";
+
+const phaseColumns: Array<{ label: string; key?: PhaseSortKey; className: string }> = [
+  { label: "TT", key: "order", className: "w-[70px]" },
+  { label: "Tên giai đoạn", key: "name", className: "w-[260px]" },
+  { label: "Người phụ trách", key: "assignee", className: "w-[180px]" },
+  { label: "Bắt đầu DK", key: "plannedStartDate", className: "w-[150px]" },
+  { label: "Kết thúc DK", key: "plannedEndDate", className: "w-[150px]" },
+  { label: "Hạn chót", key: "deadline", className: "w-[150px]" },
+  { label: "Tiến độ", key: "progress", className: "w-[110px]" },
+  { label: "Trạng thái", key: "status", className: "w-[150px]" },
+  { label: "Thao tác", className: "sticky right-0 z-20 w-[120px] bg-slate-50 shadow-[-4px_0_6px_-5px_rgba(15,23,42,0.45)]" },
+];
+
+function getPhaseSortValue(phase: ResearchPhase, key: PhaseSortKey) {
+  const value = phase[key];
+  return value ?? "";
+}
 
 export default function QuanLyGiaiDoan() {
   const [projects, setProjects] = useState<ResearchProject[]>([]);
@@ -47,6 +66,9 @@ export default function QuanLyGiaiDoan() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
+  const [sortKey, setSortKey] = useState<PhaseSortKey>("order");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const { formatDate } = useDateFormat();
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -116,7 +138,27 @@ export default function QuanLyGiaiDoan() {
     () => selectedResearch === "all" ? phases : phases.filter((phase) => phase.researchId === selectedResearch),
     [phases, selectedResearch]
   );
+  const sortedPhases = useMemo(() => {
+    return [...visiblePhases].sort((a, b) => {
+      const left = getPhaseSortValue(a, sortKey);
+      const right = getPhaseSortValue(b, sortKey);
+      const result = typeof left === "number" && typeof right === "number"
+        ? left - right
+        : String(left).localeCompare(String(right), "vi-VN", { numeric: true, sensitivity: "base" });
+      return sortDirection === "asc" ? result : -result;
+    });
+  }, [sortDirection, sortKey, visiblePhases]);
   const selectedProject = projects.find((project) => project.id === selectedResearch);
+  const handleSort = (key: PhaseSortKey) => {
+    setSortKey((currentKey) => {
+      if (currentKey === key) {
+        setSortDirection((currentDirection) => currentDirection === "asc" ? "desc" : "asc");
+        return currentKey;
+      }
+      setSortDirection("asc");
+      return key;
+    });
+  };
 
   return (
     <div>
@@ -177,18 +219,33 @@ export default function QuanLyGiaiDoan() {
             <p className="text-xs text-slate-500">Theo dõi người phụ trách, mốc thời gian, tiến độ và trạng thái xử lý.</p>
           </div>
           <CardContent className="p-0">
-            <Table className="w-max min-w-[1120px]">
-              <TableHeader>
+            <Table className="w-full min-w-[1340px] table-fixed" containerClassName="max-h-[68vh]">
+              <TableHeader className="sticky top-0 z-30">
                 <TableRow className="bg-slate-50">
-                  {["TT", "Tên giai đoạn", "Người phụ trách", "Bắt đầu DK", "Kết thúc DK", "Hạn chót", "Tiến độ", "Trạng thái", "Thao tác"].map((head) => (
-                    <TableHead key={head} className="px-2 py-2.5 text-[10px] font-semibold uppercase text-slate-500 whitespace-normal">{head}</TableHead>
+                  {phaseColumns.map((column) => (
+                    <TableHead key={column.label} className={cn("px-2 py-2.5 text-[10px] font-semibold uppercase text-slate-500 whitespace-normal", column.className)}>
+                      {column.key ? (
+                        <button
+                          type="button"
+                          onClick={() => handleSort(column.key!)}
+                          className={cn(
+                            "flex w-full items-start gap-1 rounded px-0.5 py-0.5 text-left leading-tight hover:bg-slate-100 hover:text-slate-700",
+                            sortKey === column.key && "text-blue-700"
+                          )}
+                          title={`Sắp xếp theo ${column.label}`}
+                        >
+                          <span className="min-w-0 flex-1 break-words">{column.label}</span>
+                          <ArrowUpDown className={cn("mt-0.5 h-3 w-3 shrink-0", sortKey === column.key && sortDirection === "desc" && "rotate-180")} />
+                        </button>
+                      ) : column.label}
+                    </TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {visiblePhases.length === 0 ? (
+                {sortedPhases.length === 0 ? (
                   <TableRow><TableCell colSpan={9} className="py-12 text-center text-sm text-slate-400">Không có giai đoạn nào.</TableCell></TableRow>
-                ) : visiblePhases.map((phase) => (
+                ) : sortedPhases.map((phase) => (
                   <TableRow key={phase.id} className="border-b border-slate-100 hover:bg-slate-50">
                     <TableCell className="px-2 py-3 align-top text-sm text-slate-600">{phase.order}</TableCell>
                     <TableCell className="px-2 py-3 align-top text-sm font-medium text-slate-800 whitespace-normal break-words">{phase.name}</TableCell>
@@ -198,7 +255,7 @@ export default function QuanLyGiaiDoan() {
                     <TableCell className="px-2 py-3 align-top text-xs font-medium text-red-500">{formatDate(phase.deadline)}</TableCell>
                     <TableCell className="px-2 py-3 align-top text-xs font-semibold text-slate-600">{phase.progress}%</TableCell>
                     <TableCell className="px-2 py-3 align-top"><PhaseBadge status={phase.status} /></TableCell>
-                    <TableCell className="px-2 py-3 align-top whitespace-nowrap">
+                    <TableCell className="sticky right-0 z-10 bg-white px-2 py-3 align-top whitespace-nowrap shadow-[-4px_0_6px_-5px_rgba(15,23,42,0.45)]">
                       <div className="flex flex-nowrap justify-end gap-1">
                         <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50" title="Xem chi tiết" aria-label="Xem chi tiết" onClick={() => setViewingPhase(phase)}><Eye className="h-3 w-3" /></Button>
                         <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Sửa giai đoạn" aria-label="Sửa giai đoạn" onClick={() => { setEditingPhase(phase); setModalOpen(true); }}><Pencil className="h-3 w-3" /></Button>

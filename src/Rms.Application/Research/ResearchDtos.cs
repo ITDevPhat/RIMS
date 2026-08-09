@@ -173,6 +173,7 @@ public sealed record CreateResearchProjectRequest(
     string? Notes);
 
 public sealed record UpdateResearchProjectRequest(
+    string? ProjectCode,
     [Required] string ProjectTitle,
     string? Description,
     long? DepartmentId,

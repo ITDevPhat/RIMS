@@ -7,6 +7,7 @@ import { FormDrawer, FormDrawerField, FormDrawerSection } from "@/components/com
 import type { ResearchPhase, PhaseStatus } from "@/lib/types";
 import type { ProjectPhasePayload } from "@/lib/api/research-api";
 import { toApiPhaseStatus } from "@/lib/mappers/status-mapper";
+import { useDateFormat } from "@/lib/date-format";
 
 const STATUS_OPTIONS: PhaseStatus[] = [
   "Chưa bắt đầu",
@@ -38,6 +39,17 @@ const toNumberOrNull = (value?: string | null) => {
 
 const toOptionalDate = (value: string) => value || null;
 
+function calculateProgress(startDate: string, deadlineDate: string, actualDate: string) {
+  if (!startDate || !deadlineDate || !actualDate) return null;
+  const start = new Date(`${startDate}T00:00:00`);
+  const deadline = new Date(`${deadlineDate}T00:00:00`);
+  const actual = new Date(`${actualDate}T00:00:00`);
+  if ([start, deadline, actual].some((date) => Number.isNaN(date.getTime()))) return null;
+  const total = deadline.getTime() - start.getTime();
+  if (total <= 0) return actual >= deadline ? 100 : 0;
+  return Math.min(100, Math.max(0, Math.round(((actual.getTime() - start.getTime()) / total) * 100)));
+}
+
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   return "Không lưu được giai đoạn. Vui lòng thử lại.";
@@ -47,6 +59,7 @@ export default function PhaseFormModal({ open, onClose, phase, projectId, nextOr
   const isEdit = !!phase;
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const { inputType, toInputValue, fromInputValue, dateFormat } = useDateFormat();
 
   const [form, setForm] = useState({
     name: "",
@@ -98,6 +111,12 @@ export default function PhaseFormModal({ open, onClose, phase, projectId, nextOr
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
+
+  useEffect(() => {
+    const progress = calculateProgress(form.plannedStartDate, form.deadline || form.plannedEndDate, form.actualEndDate || form.actualStartDate);
+    if (progress === null) return;
+    setForm((prev) => prev.progress === String(progress) ? prev : ({ ...prev, progress: String(progress) }));
+  }, [form.actualEndDate, form.actualStartDate, form.deadline, form.plannedEndDate, form.plannedStartDate]);
 
   const handleSave = async () => {
     setSubmitError("");
@@ -194,8 +213,8 @@ export default function PhaseFormModal({ open, onClose, phase, projectId, nextOr
             min={0}
             max={100}
             value={form.progress}
-            onChange={(e) => handleChange("progress", e.target.value)}
-            className="h-10 border-slate-200"
+            readOnly
+            className="h-10 border-slate-200 bg-slate-50 font-semibold"
           />
         </FormDrawerField>
       </FormDrawerSection>
@@ -203,27 +222,30 @@ export default function PhaseFormModal({ open, onClose, phase, projectId, nextOr
       <FormDrawerSection title="Kế hoạch và trạng thái">
         <FormDrawerField label="Ngày bắt đầu dự kiến">
           <Input
-            type="date"
-            value={form.plannedStartDate}
-            onChange={(e) => handleChange("plannedStartDate", e.target.value)}
+            type={inputType}
+            lang="vi-VN"
+            value={toInputValue(form.plannedStartDate)}
+            onChange={(e) => handleChange("plannedStartDate", fromInputValue(e.target.value))}
             className="h-10 border-slate-200"
           />
         </FormDrawerField>
 
         <FormDrawerField label="Ngày kết thúc dự kiến">
           <Input
-            type="date"
-            value={form.plannedEndDate}
-            onChange={(e) => handleChange("plannedEndDate", e.target.value)}
+            type={inputType}
+            lang="vi-VN"
+            value={toInputValue(form.plannedEndDate)}
+            onChange={(e) => handleChange("plannedEndDate", fromInputValue(e.target.value))}
             className="h-10 border-slate-200"
           />
         </FormDrawerField>
 
         <FormDrawerField label="Hạn chót">
           <Input
-            type="date"
-            value={form.deadline}
-            onChange={(e) => handleChange("deadline", e.target.value)}
+            type={inputType}
+            lang="vi-VN"
+            value={toInputValue(form.deadline)}
+            onChange={(e) => handleChange("deadline", fromInputValue(e.target.value))}
             className="h-10 border-slate-200"
           />
         </FormDrawerField>
@@ -245,21 +267,27 @@ export default function PhaseFormModal({ open, onClose, phase, projectId, nextOr
       <FormDrawerSection title="Thực tế và ghi chú">
         <FormDrawerField label="Ngày bắt đầu thực tế">
           <Input
-            type="date"
-            value={form.actualStartDate}
-            onChange={(e) => handleChange("actualStartDate", e.target.value)}
+            type={inputType}
+            lang="vi-VN"
+            value={toInputValue(form.actualStartDate)}
+            onChange={(e) => handleChange("actualStartDate", fromInputValue(e.target.value))}
             className="h-10 border-slate-200"
           />
         </FormDrawerField>
 
         <FormDrawerField label="Ngày kết thúc thực tế">
           <Input
-            type="date"
-            value={form.actualEndDate}
-            onChange={(e) => handleChange("actualEndDate", e.target.value)}
+            type={inputType}
+            lang="vi-VN"
+            value={toInputValue(form.actualEndDate)}
+            onChange={(e) => handleChange("actualEndDate", fromInputValue(e.target.value))}
             className="h-10 border-slate-200"
           />
         </FormDrawerField>
+
+        <div className="col-span-2 rounded-md bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700">
+          Tiến độ tự tính theo ngày bắt đầu, deadline và ngày thực tế. Định dạng hiện tại: {dateFormat}.
+        </div>
 
         <FormDrawerField label="Ghi chú" colSpan={2}>
           <textarea

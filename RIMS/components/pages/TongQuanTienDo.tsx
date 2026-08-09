@@ -12,10 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DEPARTMENTS,
-  SPONSORS,
-} from "@/lib/constants/research";
+import { SPONSORS } from "@/lib/constants/research";
 import type { ResearchProject, ResearchPhase, DeadlineItem, PhaseStatus, EthicsStatus } from "@/lib/types";
 import { dashboardApi, type DashboardDeadlinesDto, type ResearchOverviewDto } from "@/lib/api/dashboard-api";
 import { mapGanttProjectToUi } from "@/lib/mappers/project-mapper";
@@ -26,6 +23,8 @@ import {
   Activity,
   AlertTriangle,
   CalendarRange,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   TrendingUp,
   Shield,
@@ -255,7 +254,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
   const todayPct = dateToPct(TODAY, range);
   const showToday = TODAY >= range.start && TODAY <= range.end;
   const columns = useMemo(() => monthColumns(range), [range]);
-  const availableYears = useMemo(() => Array.from({ length: 7 }, (_, index) => selectedYear - 3 + index), [selectedYear]);
+  const availableYears = useMemo(() => Array.from({ length: 15 }, (_, index) => selectedYear - 7 + index), [selectedYear]);
   const dashboardYears = useMemo(() => {
     const startYear = range.start.getFullYear();
     const endYear = range.end.getFullYear();
@@ -354,6 +353,12 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
     });
   }, [timeScopedProjects, filterDept, filterSponsor, filterEthics, filterStatus, searchQuery]);
 
+  const departmentFilterOptions = useMemo(() => {
+    const names = Array.from(new Set(projects.map((project) => project.department).filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b, "vi-VN"));
+    return ["Tất cả", ...names];
+  }, [projects]);
+
   // KPIs
   const total = timeScopedProjects.length;
   const ongoing = timeScopedProjects.filter((project) => project.status === "Đang thực hiện").length;
@@ -401,83 +406,104 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
 
       <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         <Card className="border-slate-200 shadow-sm">
-          <CardContent className="overview-control-grid p-4">
-            <div className="min-w-0">
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Năm làm việc</label>
-              <div className="space-y-2">
-                <div className="overview-year-grid rounded-lg border border-slate-200 bg-slate-50 p-1">
-                  {availableYears.map((year) => (
+          <CardContent className="space-y-4 p-4">
+            <div className="grid gap-3 xl:grid-cols-[300px_1fr_280px]">
+              <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Năm làm việc</label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 w-9 p-0"
+                    onClick={() => setSelectedYear((year) => year - 1)}
+                    aria-label="Năm trước"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Select value={String(selectedYear)} onValueChange={(value) => setSelectedYear(Number(value))}>
+                    <SelectTrigger className="h-9 flex-1 border-slate-200 bg-white text-sm font-semibold">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableYears.map((year) => (
+                        <SelectItem key={year} value={String(year)}>Năm {year}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 w-9 p-0"
+                    onClick={() => setSelectedYear((year) => year + 1)}
+                    aria-label="Năm sau"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="min-w-0 rounded-lg border border-slate-200 bg-white p-3">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Chế độ xem</label>
+                <div className="grid gap-2 sm:grid-cols-4">
+                  {[
+                    { value: "quarter" as TimeScope, label: "Theo quý", desc: "3 tháng" },
+                    { value: "half" as TimeScope, label: "Nửa năm", desc: "6 tháng" },
+                    { value: "year" as TimeScope, label: "Cả năm", desc: "12 tháng" },
+                    { value: "custom" as TimeScope, label: "Tùy chỉnh", desc: "Chọn ngày" },
+                  ].map((option) => (
                     <button
-                      key={year}
+                      key={option.value}
                       type="button"
-                      onClick={() => {
-                        setSelectedYear(year);
-                        if (timeScope === "custom") {
-                          setCustomStartDate(`${year}-01-01`);
-                          setCustomEndDate(`${year}-12-31`);
-                        }
-                      }}
+                      onClick={() => handleScopeChange(option.value)}
                       className={cn(
-                        "min-h-9 min-w-0 rounded-md px-2 py-1 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
-                        selectedYear === year ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:bg-white"
+                        "min-h-12 rounded-md border px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+                        timeScope === option.value ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                       )}
                     >
-                      {year}
+                      <span className="block truncate text-sm font-bold">{option.label}</span>
+                      <span className="block truncate text-[11px] opacity-70">{option.desc}</span>
                     </button>
                   ))}
+                </div>
+              </div>
+
+              <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Khoảng thời gian</label>
+                {timeScope !== "custom" ? (
+                  <Select value={String(timeSegment)} onValueChange={(value) => setTimeSegment(Number(value))}>
+                    <SelectTrigger className="h-9 w-full border-slate-200 bg-white text-left text-sm">
+                      <span className="truncate">{segmentOptions.find((item) => item.value === timeSegment)?.label ?? range.shortLabel}</span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {segmentOptions.map((item) => (
+                        <SelectItem key={item.value} value={String(item.value)}>{item.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                    <label className="min-w-0 text-xs font-semibold text-slate-500">
+                      Từ ngày
+                      <Input type="date" lang="vi-VN" value={customStartDate} onChange={(event) => handleCustomStartChange(event.target.value)} className="mt-1 h-9 bg-white text-sm" />
+                    </label>
+                    <label className="min-w-0 text-xs font-semibold text-slate-500">
+                      Đến ngày
+                      <Input type="date" lang="vi-VN" value={customEndDate} onChange={(event) => setCustomEndDate(event.target.value)} className="mt-1 h-9 bg-white text-sm" />
+                    </label>
+                  </div>
+                )}
               </div>
             </div>
-            </div>
 
-            <div className="min-w-0">
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Chế độ xem</label>
-              <div className="overview-view-grid">
-                {[
-                  { value: "quarter" as TimeScope, label: "Theo quý", desc: "3 tháng" },
-                  { value: "half" as TimeScope, label: "Nửa năm", desc: "6 tháng" },
-                  { value: "year" as TimeScope, label: "Cả năm", desc: "12 tháng" },
-                  { value: "custom" as TimeScope, label: "Tùy chỉnh", desc: "Chọn ngày" },
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => handleScopeChange(option.value)}
-                    className={cn(
-                      "min-h-14 min-w-0 rounded-lg border px-3 py-2 text-left transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
-                      timeScope === option.value ? "border-blue-300 bg-blue-50 text-blue-700 ring-2 ring-blue-100" : "border-slate-200 bg-white text-slate-700"
-                    )}
-                  >
-                    <span className="block text-sm font-bold">{option.label}</span>
-                    <span className="text-[11px] opacity-70">{option.desc}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="min-w-0">
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Khoảng thời gian</label>
-              {timeScope !== "custom" ? (
-                <Select value={String(timeSegment)} onValueChange={(value) => setTimeSegment(Number(value))}>
-                  <SelectTrigger className="min-h-9 w-full text-left text-sm border-slate-200">
-                    <span className="truncate">{segmentOptions.find((item) => item.value === timeSegment)?.label ?? range.shortLabel}</span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {segmentOptions.map((item) => (
-                      <SelectItem key={item.value} value={String(item.value)}>{item.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : <p className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700">Chọn ngày bắt đầu và kết thúc bên dưới.</p>}
-              <p className="mt-1.5 rounded-md bg-slate-50 px-3 py-1.5 text-xs text-slate-500">
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm">
+              <CalendarRange className="h-4 w-4 text-blue-600" />
+              <span className="font-semibold text-blue-700">Khoảng đang xem</span>
+              <span className="rounded-md bg-white px-2 py-1 font-medium text-slate-700">
                 {range.start.toLocaleDateString("vi-VN")} - {range.end.toLocaleDateString("vi-VN")}
-              </p>
+              </span>
             </div>
-            {timeScope === "custom" && (
-              <div className="overview-custom-range grid min-w-0 gap-2 sm:grid-cols-2">
-                <label className="min-w-0 text-xs font-semibold text-slate-500">Từ ngày<Input type="date" value={customStartDate} onChange={(event) => handleCustomStartChange(event.target.value)} className="mt-1 h-9 text-sm" /></label>
-                <label className="min-w-0 text-xs font-semibold text-slate-500">Đến ngày<Input type="date" value={customEndDate} onChange={(event) => setCustomEndDate(event.target.value)} className="mt-1 h-9 text-sm" /></label>
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -497,14 +523,14 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
         )}
 
         {/* ── KPI cards ───────────────────────────────────────────────────────── */}
-        <div className="overview-kpi-grid">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
           {[
-            { label: "Tổng đề tài", value: total, icon: FlaskConical, iconBg: "bg-blue-50", iconColor: "text-blue-600", valueColor: "text-slate-800" },
-            { label: "Đang thực hiện", value: ongoing, icon: Activity, iconBg: "bg-emerald-50", iconColor: "text-emerald-600", valueColor: "text-emerald-700" },
-            { label: "Sắp đến hạn", value: soonDue, icon: Clock, iconBg: "bg-amber-50", iconColor: "text-amber-600", valueColor: "text-amber-700" },
-            { label: "Quá hạn", value: overdue, icon: AlertTriangle, iconBg: "bg-red-50", iconColor: "text-red-500", valueColor: "text-red-600" },
-            { label: "Tiến độ TB", value: `${avgProgress}%`, icon: TrendingUp, iconBg: "bg-indigo-50", iconColor: "text-indigo-600", valueColor: "text-indigo-700" },
-            { label: "Đạo đức sắp hết hạn", value: ethicsExpiring, icon: Shield, iconBg: "bg-purple-50", iconColor: "text-purple-600", valueColor: "text-purple-700" },
+            { label: "Tổng đề tài", value: total, hint: "Trong khoảng xem", icon: FlaskConical, iconBg: "bg-blue-50", iconColor: "text-blue-600", valueColor: "text-slate-800" },
+            { label: "Đang thực hiện", value: ongoing, hint: "Đề tài active", icon: Activity, iconBg: "bg-emerald-50", iconColor: "text-emerald-600", valueColor: "text-emerald-700" },
+            { label: "Sắp đến hạn", value: soonDue, hint: "Trong 30 ngày", icon: Clock, iconBg: "bg-amber-50", iconColor: "text-amber-600", valueColor: "text-amber-700" },
+            { label: "Quá hạn", value: overdue, hint: "Chưa hoàn thành", icon: AlertTriangle, iconBg: "bg-red-50", iconColor: "text-red-500", valueColor: "text-red-600" },
+            { label: "Tiến độ TB", value: `${avgProgress}%`, hint: "Theo đề tài hiển thị", icon: TrendingUp, iconBg: "bg-indigo-50", iconColor: "text-indigo-600", valueColor: "text-indigo-700" },
+            { label: "Đạo đức sắp hết hạn", value: ethicsExpiring, hint: "Theo khoảng xem", icon: Shield, iconBg: "bg-purple-50", iconColor: "text-purple-600", valueColor: "text-purple-700" },
           ].map((kpi) => {
             const Icon = kpi.icon;
             return (
@@ -517,6 +543,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                     </div>
                   </div>
                   <p className={cn("text-2xl font-bold", kpi.valueColor)}>{kpi.value}</p>
+                  <p className="mt-1 truncate text-[11px] text-slate-400">{kpi.hint}</p>
                 </CardContent>
               </Card>
             );
@@ -526,18 +553,21 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
         {/* ── Filter bar ─────────────────────────────────────────────────────── */}
         <Card className="border-slate-200 shadow-sm">
           <CardContent className="p-4">
-            <div className="overview-filter-grid">
-              <div className="relative min-w-0">
-                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                <Input
-                  placeholder="Tìm đề tài, mã, chủ nhiệm..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-8 pl-8 text-xs border-slate-200"
-                />
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+              <div className="min-w-0">
+                <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">Tìm kiếm</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    placeholder="Tìm đề tài, mã, chủ nhiệm..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="h-8 pl-8 text-xs border-slate-200"
+                  />
+                </div>
               </div>
               {[
-                { label: "Khoa/phòng", value: filterDept, setter: setFilterDept, options: DEPARTMENTS },
+                { label: "Khoa/phòng", value: filterDept, setter: setFilterDept, options: departmentFilterOptions },
                 { label: "Nhà tài trợ", value: filterSponsor, setter: setFilterSponsor, options: SPONSORS },
                 {
                   label: "Đạo đức",
@@ -552,22 +582,25 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                   options: ["Tất cả", "Đang thực hiện", "Hoàn thành", "Tạm dừng", "Chưa bắt đầu"],
                 },
               ].map((f) => (
-                <Select key={f.label} value={f.value} onValueChange={(v) => v && f.setter(v)}>
-                  <SelectTrigger className="min-h-9 w-full min-w-0 text-xs border-slate-200">
-                    <SelectValue placeholder={f.label} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {f.options.map((o) => (
-                      <SelectItem key={o} value={o} className="text-xs">{o}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div key={f.label} className="min-w-0">
+                  <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">{f.label}</label>
+                  <Select value={f.value} onValueChange={(v) => v && f.setter(v)}>
+                    <SelectTrigger className="min-h-8 w-full min-w-0 text-xs border-slate-200">
+                      <SelectValue placeholder={f.label} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {f.options.map((o) => (
+                        <SelectItem key={o} value={o} className="text-xs">{o}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               ))}
               {(filterDept !== "Tất cả" || filterSponsor !== "Tất cả" || filterEthics !== "Tất cả" || filterStatus !== "Tất cả" || searchQuery) && (
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="min-h-9 justify-self-start px-2 text-xs text-slate-500 hover:text-slate-700"
+                  className="mt-5 min-h-8 justify-self-start px-2 text-xs text-slate-500 hover:text-slate-700"
                   onClick={() => { setFilterDept("Tất cả"); setFilterSponsor("Tất cả"); setFilterEthics("Tất cả"); setFilterStatus("Tất cả"); setSearchQuery(""); }}
                 >
                   Xóa bộ lọc
@@ -578,7 +611,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
         </Card>
 
         {/* ── Deadline summary panels ───────────────────────────────────────── */}
-        <div className="overview-alert-grid">
+        <div className="grid gap-4 lg:grid-cols-3">
           <Card className="gap-0 border-slate-200 py-0 shadow-sm">
             <CardHeader className="px-4 py-3 border-b border-slate-100">
               <CardTitle className="flex items-center gap-2 text-xs font-semibold text-slate-700">

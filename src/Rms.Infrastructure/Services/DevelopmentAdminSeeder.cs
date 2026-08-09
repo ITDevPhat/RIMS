@@ -82,14 +82,32 @@ public sealed class DevelopmentAdminSeeder
     {
         var definitions = new[]
         {
-            ("QLNCKH", "Phòng Quản lý Nghiên cứu Khoa học", "administrative", 10),
-            ("KHAMBENH", "Khoa Khám bệnh", "clinical", 20),
-            ("NOITIET", "Khoa Nội tiết", "clinical", 30),
-            ("NOIHOHAP", "Khoa Nội hô hấp", "clinical", 40),
-            ("QLCL", "Phòng Quản lý chất lượng", "administrative", 50),
-            ("CTXH", "Phòng Công tác xã hội", "administrative", 60),
-            ("THONGKE", "Tổ Thống kê", "support", 70),
-            ("HSBA", "Khoa Hồ sơ bệnh án", "support", 80)
+            ("QLCL", "QLCL", "administrative", 10),
+            ("KHTH", "KHTH", "administrative", 20),
+            ("DIEUDUONG", "Điều dưỡng", "clinical", 30),
+            ("DTNCKH", "ĐT&NCKH", "administrative", 40),
+            ("XETNGHIEM", "Xét nghiệm", "support", 50),
+            ("CDHA", "Chẩn đoán hình ảnh", "support", 60),
+            ("DUOC", "Dược", "support", 70),
+            ("KSNK", "Kiểm soát nhiễm khuẩn", "support", 80),
+            ("DINHDUONG", "Dinh dưỡng", "clinical", 90),
+            ("HSCC", "Hồi sức cấp cứu", "clinical", 100),
+            ("KHAMBENH", "Khoa khám bệnh", "clinical", 110),
+            ("VLTL", "Vật lý trị liệu", "clinical", 120),
+            ("TKDOTQUY", "Thần kinh đột quỵ", "clinical", 130),
+            ("TKDOTQUY2", "Thần kinh đột quỵ 2", "clinical", 140),
+            ("NOITONGHOP", "Nội tổng hợp", "clinical", 150),
+            ("NOITONGHOP2", "Nội tổng hợp 2", "clinical", 160),
+            ("NGOAITONGHOP", "Ngoại tổng hợp", "clinical", 170),
+            ("PTGMHSICU", "PTGMHS - ICU", "clinical", 180),
+            ("PTGMHSDSA", "PTGMHS - DSA", "clinical", 190),
+            ("PTGMHSPM", "PTGMHS - PM", "clinical", 200),
+            ("QLNCKH", "Phòng Quản lý Nghiên cứu Khoa học", "administrative", 210),
+            ("NOITIET", "Khoa Nội tiết", "clinical", 220),
+            ("NOIHOHAP", "Khoa Nội hô hấp", "clinical", 230),
+            ("CTXH", "Phòng Công tác xã hội", "administrative", 240),
+            ("THONGKE", "Tổ Thống kê", "support", 250),
+            ("HSBA", "Khoa Hồ sơ bệnh án", "support", 260)
         };
 
         foreach (var (code, name, type, sortOrder) in definitions)

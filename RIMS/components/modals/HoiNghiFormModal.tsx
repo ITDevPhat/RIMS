@@ -15,12 +15,12 @@ import {
   LOAI_KE_HOACH_OPTIONS,
   TRANG_THAI_OPTIONS,
   KHOA_PHONG_OPTIONS,
-  NGUOI_PHU_TRACH_OPTIONS,
   type HoiNghi,
   type LoaiHoatDong,
   type LoaiKeHoach,
   type TrangThaiHoiNghi,
 } from "@/lib/constants/training";
+import type { ApiDepartment } from "@/lib/api/admin-api";
 
 interface HoiNghiFormModalProps {
   open: boolean;
@@ -28,6 +28,7 @@ interface HoiNghiFormModalProps {
   onSave: (data: Partial<HoiNghi>) => void;
   initialData?: HoiNghi | null;
   selectedYear: number;
+  departments?: ApiDepartment[];
 }
 
 type FormState = {
@@ -61,7 +62,7 @@ const defaultForm = (year: number): FormState => ({
   loai: "Hội nghị",
   loaiKeHoach: "Dự kiến",
   khoaPhong: KHOA_PHONG_OPTIONS[0],
-  nguoiPhuTrach: NGUOI_PHU_TRACH_OPTIONS[0],
+  nguoiPhuTrach: "",
   diaDiem: "",
   soNguoiDuKien: 50,
   soNguoiThucTe: 0,
@@ -76,8 +77,13 @@ export default function HoiNghiFormModal({
   onSave,
   initialData,
   selectedYear,
+  departments = [],
 }: HoiNghiFormModalProps) {
   const [form, setForm] = useState<FormState>(defaultForm(selectedYear));
+
+  const departmentOptions = departments.length > 0
+    ? departments.filter((item) => item.isActive).map((item) => item.departmentName)
+    : KHOA_PHONG_OPTIONS;
 
   useEffect(() => {
     if (initialData) {
@@ -113,9 +119,10 @@ export default function HoiNghiFormModal({
   const needsThucTe = form.trangThai === "Đã thực hiện";
 
   const handleSave = () => {
-    if (!form.ten.trim() || !form.ngayDuKien) return;
+    if (!form.ten.trim() || !form.ngayDuKien || !form.khoaPhong || !form.nguoiPhuTrach.trim()) return;
     onSave({
       ...form,
+      nguoiPhuTrach: form.nguoiPhuTrach.trim(),
       ngayThucTe: needsThucTe && form.ngayThucTe ? form.ngayThucTe : null,
       soNguoiThucTe: needsThucTe ? form.soNguoiThucTe : null,
       lyDoKhongThucHien: needsLyDo && form.lyDoKhongThucHien ? form.lyDoKhongThucHien : null,
@@ -205,16 +212,25 @@ export default function HoiNghiFormModal({
         <FormDrawerField label="Ngày dự kiến" required>
           <Input
             type="date"
+            lang="vi-VN"
             value={form.ngayDuKien}
-            onChange={(e) => set("ngayDuKien", e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              set("ngayDuKien", value);
+              if (value) {
+                const month = Number(value.slice(5, 7));
+                if (month >= 1 && month <= 12) set("thang", month);
+              }
+            }}
             className="h-9 border-slate-200"
           />
         </FormDrawerField>
 
         {needsThucTe && (
           <FormDrawerField label="Ngày thực tế">
-            <Input
+              <Input
               type="date"
+              lang="vi-VN"
               value={form.ngayThucTe}
               onChange={(e) => set("ngayThucTe", e.target.value)}
               className="h-9 border-slate-200"
@@ -243,7 +259,7 @@ export default function HoiNghiFormModal({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {KHOA_PHONG_OPTIONS.map((o) => (
+              {departmentOptions.map((o) => (
                 <SelectItem key={o} value={o}>{o}</SelectItem>
               ))}
             </SelectContent>
@@ -253,16 +269,12 @@ export default function HoiNghiFormModal({
 
       <FormDrawerSection>
         <FormDrawerField label="Người phụ trách" required>
-          <Select value={form.nguoiPhuTrach} onValueChange={(v) => v && set("nguoiPhuTrach", v)}>
-            <SelectTrigger className="h-9 border-slate-200">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {NGUOI_PHU_TRACH_OPTIONS.map((o) => (
-                <SelectItem key={o} value={o}>{o}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Input
+            value={form.nguoiPhuTrach}
+            onChange={(e) => set("nguoiPhuTrach", e.target.value)}
+            placeholder="Nhập người phụ trách"
+            className="h-9 border-slate-200"
+          />
         </FormDrawerField>
 
         <FormDrawerField label="Địa điểm">
@@ -333,6 +345,10 @@ export default function HoiNghiFormModal({
           className="h-16 w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 resize-none"
         />
       </FormDrawerField>
+
+      <p className="rounded-md bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700">
+        Mảng đào tạo luôn nhập ngày đầy đủ theo định dạng dd/MM/yyyy. Dữ liệu lưu về hệ thống vẫn theo chuẩn ngày của database.
+      </p>
     </FormDrawer>
   );
 }

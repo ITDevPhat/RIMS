@@ -509,6 +509,126 @@ public sealed class AdminService : IAdminService
         await _auditService.WriteActivityAsync("setting", "delete", $"Deleted setting {setting.SettingKey}", "SystemSetting", id, setting.SettingKey, before, cancellationToken: cancellationToken);
     }
 
+    public async Task<PagedResult<DepartmentDto>> GetDepartmentsAsync(DepartmentQuery query, CancellationToken cancellationToken = default)
+    {
+        var departments = DepartmentGraph().Where(x => x.DeletedAt == null);
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim();
+            departments = departments.Where(x => x.DepartmentCode.Contains(search) || x.DepartmentName.Contains(search));
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Type))
+        {
+            departments = departments.Where(x => x.DepartmentType == query.Type);
+        }
+
+        if (query.IsActive is not null)
+        {
+            departments = departments.Where(x => x.IsActive == query.IsActive.Value);
+        }
+
+        var total = await departments.CountAsync(cancellationToken);
+        var items = await departments
+            .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.DepartmentName)
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .Select(x => MapDepartment(x))
+            .ToListAsync(cancellationToken);
+
+        return PagedResult<DepartmentDto>.Create(items, query.Page, query.PageSize, total);
+    }
+
+    public async Task<DepartmentDto> GetDepartmentAsync(long id, CancellationToken cancellationToken = default)
+    {
+        var department = await DepartmentGraph().FirstOrDefaultAsync(x => x.DepartmentId == id && x.DeletedAt == null, cancellationToken);
+        return department is null ? throw new NotFoundException("Department not found.") : MapDepartment(department);
+    }
+
+    public async Task<DepartmentDto> CreateDepartmentAsync(CreateDepartmentRequest request, CancellationToken cancellationToken = default)
+    {
+        var code = request.DepartmentCode.Trim();
+        var exists = await _dbContext.Departments.AnyAsync(x => x.DepartmentCode == code && x.DeletedAt == null, cancellationToken);
+        if (exists)
+        {
+            throw new InvalidOperationException("Department code already exists.");
+        }
+
+        var department = new Department
+        {
+            DepartmentCode = code,
+            DepartmentName = request.DepartmentName.Trim(),
+            ParentDepartmentId = request.ParentDepartmentId,
+            DepartmentType = request.DepartmentType,
+            Description = request.Description,
+            IsActive = request.IsActive,
+            SortOrder = request.SortOrder,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = _userContext.User?.UserId
+        };
+
+        _dbContext.Departments.Add(department);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _auditService.WriteActivityAsync("department", "create", $"Created department {department.DepartmentCode}", "Department", department.DepartmentId, department.DepartmentCode, newValueJson: Serialize(MapDepartment(department)), cancellationToken: cancellationToken);
+        return await GetDepartmentAsync(department.DepartmentId, cancellationToken);
+    }
+
+    public async Task<DepartmentDto> UpdateDepartmentAsync(long id, UpdateDepartmentRequest request, CancellationToken cancellationToken = default)
+    {
+        var department = await DepartmentGraph().FirstOrDefaultAsync(x => x.DepartmentId == id && x.DeletedAt == null, cancellationToken);
+        if (department is null)
+        {
+            throw new NotFoundException("Department not found.");
+        }
+
+        if (request.ParentDepartmentId == id)
+        {
+            throw new InvalidOperationException("Department cannot be its own parent.");
+        }
+
+        var before = MapDepartment(department);
+        department.DepartmentName = request.DepartmentName.Trim();
+        department.ParentDepartmentId = request.ParentDepartmentId;
+        department.DepartmentType = request.DepartmentType;
+        department.Description = request.Description;
+        department.IsActive = request.IsActive;
+        department.SortOrder = request.SortOrder;
+        department.UpdatedAt = DateTime.UtcNow;
+        department.UpdatedBy = _userContext.User?.UserId;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _auditService.WriteActivityAsync("department", "update", $"Updated department {department.DepartmentCode}", "Department", department.DepartmentId, department.DepartmentCode, Serialize(before), Serialize(MapDepartment(department)), cancellationToken);
+        return await GetDepartmentAsync(id, cancellationToken);
+    }
+
+    public async Task DeleteDepartmentAsync(long id, CancellationToken cancellationToken = default)
+    {
+        var department = await _dbContext.Departments.FirstOrDefaultAsync(x => x.DepartmentId == id && x.DeletedAt == null, cancellationToken);
+        if (department is null)
+        {
+            throw new NotFoundException("Department not found.");
+        }
+
+        var inUse = await _dbContext.Users.AnyAsync(x => x.DepartmentId == id && x.DeletedAt == null, cancellationToken)
+            || await _dbContext.ResearchProjects.AnyAsync(x => x.LeadDepartmentId == id && x.DeletedAt == null, cancellationToken)
+            || await _dbContext.TrainingEvents.AnyAsync(x => x.DepartmentId == id && x.DeletedAt == null, cancellationToken)
+            || await _dbContext.TrainingEventParticipants.AnyAsync(x => x.DepartmentId == id, cancellationToken);
+
+        if (inUse)
+        {
+            throw new InvalidOperationException("Department is in use and cannot be deleted.");
+        }
+
+        var before = Serialize(MapDepartment(department));
+        department.DeletedAt = DateTime.UtcNow;
+        department.DeletedBy = _userContext.User?.UserId;
+        department.UpdatedAt = DateTime.UtcNow;
+        department.UpdatedBy = _userContext.User?.UserId;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _auditService.WriteActivityAsync("department", "delete", $"Deleted department {department.DepartmentCode}", "Department", id, department.DepartmentCode, before, cancellationToken: cancellationToken);
+    }
+
     private async Task<UserDto> ChangeUserStatusAsync(long id, string status, string summary, CancellationToken cancellationToken)
     {
         var user = await GetUserEntityAsync(id, cancellationToken);
@@ -527,6 +647,11 @@ public sealed class AdminService : IAdminService
             .Include(x => x.Department)
             .Include(x => x.UserRoleUsers.Where(ur => ur.IsActive))
             .ThenInclude(ur => ur.Role);
+    }
+
+    private IQueryable<Department> DepartmentGraph()
+    {
+        return _dbContext.Departments.Include(x => x.ParentDepartment);
     }
 
     private async Task<User> GetUserEntityAsync(long id, CancellationToken cancellationToken)
@@ -652,6 +777,21 @@ public sealed class AdminService : IAdminService
             setting.Description,
             setting.IsPublic,
             setting.IsActive);
+    }
+
+    private static DepartmentDto MapDepartment(Department department)
+    {
+        return new DepartmentDto(
+            department.DepartmentId,
+            department.DepartmentCode,
+            department.DepartmentName,
+            department.ParentDepartmentId,
+            department.ParentDepartment?.DepartmentName,
+            department.DepartmentType,
+            department.Description,
+            department.IsActive,
+            department.SortOrder,
+            department.CreatedAt);
     }
 
     private static string Serialize(object value)

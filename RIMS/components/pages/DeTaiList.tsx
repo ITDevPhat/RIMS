@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -29,9 +28,11 @@ import type { ResearchProject, EthicsStatus, ProjectHealth } from "@/lib/types";
 import { Search, Plus, Eye, Pencil, Trash2, Filter, ArrowUpDown } from "lucide-react";
 import DeTaiFormModal, { type DeTaiFormData } from "@/components/modals/DeTaiFormModal";
 import { researchApi } from "@/lib/api/research-api";
+import { adminApi, type ApiDepartment } from "@/lib/api/admin-api";
 import { mapApiProjectToUi } from "@/lib/mappers/project-mapper";
 import { ConfirmationDialog } from "@/components/common/ConfirmationDialog";
 import { toast } from "@/lib/toast";
+import { useDateFormat } from "@/lib/date-format";
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -116,7 +117,7 @@ const columns: Array<{ label: string; key?: SortKey; className?: string }> = [
   { label: "Hạn chót", key: "nearestDeadline", className: "w-[110px] min-w-[110px]" },
   { label: "Trạng thái", key: "status", className: "w-[130px] min-w-[130px]" },
   { label: "Sức khỏe", key: "health", className: "w-[130px] min-w-[130px]" },
-  { label: "", className: "w-[120px] min-w-[120px]" },
+  { label: "Chức năng", className: "sticky right-0 z-20 w-[120px] min-w-[120px] bg-slate-50 shadow-[-4px_0_6px_-5px_rgba(15,23,42,0.45)]" },
 ];
 
 function mapEthicsToApi(status: string) {
@@ -140,10 +141,12 @@ function mapHealthToApi(health?: ProjectHealth) {
 }
 
 export function buildProjectPayload(data: DeTaiFormData, existing?: ResearchProject | null) {
+  const departmentId = Number(data.departmentId || existing?.departmentId || 0);
   return {
+    projectCode: data.code.trim(),
     projectTitle: data.name.trim(),
     description: data.description.trim() || null,
-    departmentId: existing?.departmentId ?? null,
+    departmentId: Number.isFinite(departmentId) && departmentId > 0 ? departmentId : null,
     principalInvestigatorId: existing?.principalInvestigatorId ?? null,
     sponsorId: existing?.sponsorId ?? null,
     sponsorName: data.sponsor.trim() || null,
@@ -156,7 +159,7 @@ export function buildProjectPayload(data: DeTaiFormData, existing?: ResearchProj
     plannedStartDate: data.startDate || null,
     plannedEndDate: data.endDate || null,
     actualStartDate: null,
-    actualEndDate: null,
+    actualEndDate: data.actualProgressDate || null,
     currentPhaseName: data.currentPhase.trim() || "Chưa bắt đầu",
     progressPercent: Number(data.progress || 0),
     projectStatus: mapStatusToApi(data.status),
@@ -174,6 +177,7 @@ function getSortValue(project: ResearchProject, key: SortKey) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiListProps) {
   const [projects, setProjects] = useState<ResearchProject[]>([]);
+  const [departments, setDepartments] = useState<ApiDepartment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState(initialSearch);
@@ -189,6 +193,7 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
   const [actionError, setActionError] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("code");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const { formatDate } = useDateFormat();
 
   const loadProjects = useCallback(async () => {
     setLoading(true);
@@ -205,10 +210,30 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
     }
   }, [searchQuery]);
 
+  const loadDepartments = useCallback(async () => {
+    try {
+      const result = await adminApi.getDepartments({ pageSize: 200, isActive: true });
+      setDepartments(result.items);
+    } catch {
+      setDepartments([]);
+    }
+  }, []);
+
   useEffect(() => {
     const timer = window.setTimeout(() => void loadProjects(), 250);
     return () => window.clearTimeout(timer);
   }, [loadProjects]);
+
+  useEffect(() => {
+    void loadDepartments();
+  }, [loadDepartments]);
+
+  const departmentFilterOptions = useMemo(() => {
+    const names = departments.length > 0
+      ? departments.map((item) => item.departmentName)
+      : DEPARTMENTS.filter((item) => item !== "Tất cả");
+    return ["Tất cả", ...Array.from(new Set(names))];
+  }, [departments]);
 
   const handleDeleteProject = async () => {
     if (!projectToDelete) return;
@@ -338,40 +363,46 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
         {/* Filter bar */}
         <Card className="border-slate-200 shadow-sm">
           <CardContent className="p-3.5">
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-              <div className="relative flex-1 min-w-44">
-                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                <Input
-                  placeholder="Mã, tên, chủ nhiệm..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-8 pl-9 text-xs border-slate-200"
-                />
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+              <div className="min-w-0">
+                <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">Tìm kiếm</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    placeholder="Mã, tên, chủ nhiệm..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="h-8 pl-9 text-xs border-slate-200"
+                  />
+                </div>
               </div>
 
               {[
-                { label: "Khoa/phòng", value: filterDept, setter: setFilterDept, options: DEPARTMENTS },
+                { label: "Khoa/phòng", value: filterDept, setter: setFilterDept, options: departmentFilterOptions },
                 { label: "Nhà tài trợ", value: filterSponsor, setter: setFilterSponsor, options: SPONSORS },
                 { label: "Trạng thái", value: filterStatus, setter: setFilterStatus, options: ["Tất cả", "Đang thực hiện", "Hoàn thành", "Tạm dừng", "Chưa bắt đầu"] },
                 { label: "Đạo đức", value: filterEthics, setter: setFilterEthics, options: ["Tất cả", "Không yêu cầu", "Chờ duyệt", "Đã duyệt", "Sắp hết hạn", "Hết hạn"] },
               ].map((f) => (
-                <Select key={f.label} value={f.value} onValueChange={(v) => v && f.setter(v)}>
-                  <SelectTrigger className="min-h-9 w-full min-w-0 text-xs border-slate-200">
-                    <SelectValue placeholder={f.label} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {f.options.map((o) => (
-                      <SelectItem key={o} value={o} className="text-xs">{o}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div key={f.label} className="min-w-0">
+                  <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">{f.label}</label>
+                  <Select value={f.value} onValueChange={(v) => v && f.setter(v)}>
+                    <SelectTrigger className="min-h-8 w-full min-w-0 text-xs border-slate-200">
+                      <SelectValue placeholder={f.label} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {f.options.map((o) => (
+                        <SelectItem key={o} value={o} className="text-xs">{o}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               ))}
 
               {/* Overdue toggle */}
               <button type="button"
                 onClick={() => setShowOverdueOnly((v) => !v)}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-md border px-3 h-8 text-xs font-medium transition-colors",
+                  "mt-5 flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs font-medium transition-colors",
                   showOverdueOnly
                     ? "bg-red-50 border-red-300 text-red-700"
                     : "border-slate-200 text-slate-600 hover:bg-slate-50"
@@ -385,7 +416,7 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-8 px-2 text-xs text-slate-500"
+                  className="mt-5 h-8 px-2 text-xs text-slate-500"
                   onClick={() => { setSearchQuery(""); setFilterDept("Tất cả"); setFilterSponsor("Tất cả"); setFilterStatus("Tất cả"); setFilterEthics("Tất cả"); setShowOverdueOnly(false); }}
                 >
                   Xóa bộ lọc
@@ -486,7 +517,7 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
                         <TableCell className="px-2 py-2.5 align-top">
                           {p.nearestDeadline ? (
                             <span className="text-[10px] font-medium leading-tight text-red-500">
-                              {p.nearestDeadline.split("-").reverse().join("/")}
+                              {formatDate(p.nearestDeadline)}
                             </span>
                           ) : (
                             <span className="text-slate-300 text-xs">—</span>
@@ -498,7 +529,7 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
                         <TableCell className="px-2 py-2.5 align-top">
                           <HealthBadge health={p.health} />
                         </TableCell>
-                        <TableCell className="px-2 py-2.5 align-top whitespace-nowrap">
+                        <TableCell className="sticky right-0 z-10 bg-white px-2 py-2.5 align-top whitespace-nowrap shadow-[-4px_0_6px_-5px_rgba(15,23,42,0.45)]">
                           <div className="flex flex-nowrap items-center justify-end gap-0.5">
                             <Button
                               size="sm"
@@ -545,6 +576,7 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
       <DeTaiFormModal
         open={formModalOpen}
         mode="create"
+        departments={departments}
         onOpenChange={setFormModalOpen}
         onSave={handleCreateProject}
       />
@@ -552,6 +584,7 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
         open={!!editingProject}
         mode="edit"
         project={editingProject}
+        departments={departments}
         onOpenChange={(open) => {
           if (!open) setEditingProject(null);
         }}

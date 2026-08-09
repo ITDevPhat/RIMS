@@ -122,6 +122,18 @@ public sealed class ResearchService : IResearchService
         var project = await _dbContext.ResearchProjects.FirstOrDefaultAsync(x => x.ProjectId == id && x.DeletedAt == null, cancellationToken);
         if (project is null) throw new NotFoundException("Research project not found.");
 
+        if (!string.IsNullOrWhiteSpace(request.ProjectCode))
+        {
+            var projectCode = request.ProjectCode.Trim();
+            var exists = await _dbContext.ResearchProjects.AnyAsync(x => x.ProjectId != id && x.ProjectCode == projectCode && x.DeletedAt == null, cancellationToken);
+            if (exists)
+            {
+                throw new InvalidOperationException("Project code already exists.");
+            }
+
+            project.ProjectCode = projectCode;
+        }
+
         project.ProjectTitle = request.ProjectTitle.Trim();
         project.ProjectDescription = request.Description;
         project.LeadDepartmentId = request.DepartmentId;

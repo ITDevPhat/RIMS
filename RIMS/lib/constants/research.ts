@@ -1,2 +1,24 @@
-export const DEPARTMENTS = ["Tất cả", "Khoa Khám bệnh", "Khoa Nội tiết", "Phòng Quản lý chất lượng", "Khoa Nội hô hấp", "Phòng Công tác xã hội", "Phòng Quản lý khoa học", "Khoa Dinh dưỡng", "Khoa Xét nghiệm"];
+export const DEPARTMENTS = [
+  "Tất cả",
+  "QLCL",
+  "KHTH",
+  "Điều dưỡng",
+  "ĐT&NCKH",
+  "Xét nghiệm",
+  "Chẩn đoán hình ảnh",
+  "Dược",
+  "Kiểm soát nhiễm khuẩn",
+  "Dinh dưỡng",
+  "Hồi sức cấp cứu",
+  "Khoa khám bệnh",
+  "Vật lý trị liệu",
+  "Thần kinh đột quỵ",
+  "Thần kinh đột quỵ 2",
+  "Nội tổng hợp",
+  "Nội tổng hợp 2",
+  "Ngoại tổng hợp",
+  "PTGMHS - ICU",
+  "PTGMHS - DSA",
+  "PTGMHS - PM",
+];
 export const SPONSORS = ["Tất cả", "Bệnh viện", "Nguồn kinh phí khoa/phòng", "Chương trình cải tiến chất lượng bệnh viện"];

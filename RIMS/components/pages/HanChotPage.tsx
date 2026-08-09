@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Calendar, CheckCircle2, Clock, Eye, Search, Shield, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowUpDown, Calendar, CheckCircle2, Clock, Eye, Search, Shield, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { DeadlineItem } from "@/lib/types";
@@ -14,6 +14,7 @@ import { projectDeadlineApi, researchApi } from "@/lib/api/research-api";
 import { mapApiDeadlineToUi } from "@/lib/mappers/deadline-mapper";
 import { mapApiProjectToUi } from "@/lib/mappers/project-mapper";
 import { toast } from "@/lib/toast";
+import { useDateFormat } from "@/lib/date-format";
 
 type Priority = DeadlineItem["priority"];
 
@@ -26,7 +27,31 @@ const PRIORITY_CONFIG: Record<Priority, { label: string; badge: string; icon: Re
 };
 
 const PRIORITY_ORDER: Priority[] = ["critical", "ethics", "high", "medium", "normal"];
-const formatDate = (value: string) => value ? value.split("-").reverse().join("/") : "—";
+
+type DeadlineSortKey = "researchCode" | "researchName" | "type" | "assignee" | "dueDate" | "daysRemaining" | "status";
+type SortDirection = "asc" | "desc";
+
+const deadlineColumns: Array<{ label: string; key?: DeadlineSortKey; className: string }> = [
+  { label: "Mã đề tài", key: "researchCode", className: "w-[140px]" },
+  { label: "Tên đề tài", key: "researchName", className: "w-[280px]" },
+  { label: "Loại hạn chót", key: "type", className: "w-[180px]" },
+  { label: "Người phụ trách", key: "assignee", className: "w-[180px]" },
+  { label: "Ngày hạn", key: "dueDate", className: "w-[170px]" },
+  { label: "Còn lại", key: "daysRemaining", className: "w-[150px]" },
+  { label: "Trạng thái", key: "status", className: "w-[150px]" },
+  { label: "Thao tác", className: "sticky right-0 z-20 w-[130px] bg-slate-50 shadow-[-4px_0_6px_-5px_rgba(15,23,42,0.45)]" },
+];
+
+function deadlineTypeLabel(type: string) {
+  const normalized = type.toLowerCase();
+  const map: Record<string, string> = {
+    milestone_deadline: "Hạn chót mốc tiến độ",
+    phase_deadline: "Hạn chót giai đoạn",
+    ethics_expiry: "Hết hạn đạo đức",
+    project_deadline: "Hạn chót đề tài",
+  };
+  return map[normalized] ?? type;
+}
 
 function DaysChip({ days }: { days: number }) {
   if (days < 0) return <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700">Quá hạn {Math.abs(days)} ngày</span>;
@@ -44,6 +69,9 @@ export default function HanChotPage() {
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [sortKey, setSortKey] = useState<DeadlineSortKey>("daysRemaining");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const { formatDate } = useDateFormat();
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -71,18 +99,38 @@ export default function HanChotPage() {
   const filtered = useMemo(() => {
     return items.filter((item) => {
       const q = search.toLowerCase();
-      const matchSearch = !q || item.researchCode.toLowerCase().includes(q) || item.researchName.toLowerCase().includes(q) || item.type.toLowerCase().includes(q) || item.assignee.toLowerCase().includes(q);
+      const matchSearch = !q || item.researchCode.toLowerCase().includes(q) || item.researchName.toLowerCase().includes(q) || item.type.toLowerCase().includes(q) || deadlineTypeLabel(item.type).toLowerCase().includes(q) || item.assignee.toLowerCase().includes(q);
       const matchResearch = filterResearch === "all" || item.researchId === filterResearch;
       const matchType = filterType === "all" || item.priority === filterType;
       return matchSearch && matchResearch && matchType;
     });
   }, [filterResearch, filterType, items, search]);
+  const sortedItems = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const left = sortKey === "type" ? deadlineTypeLabel(a.type) : a[sortKey];
+      const right = sortKey === "type" ? deadlineTypeLabel(b.type) : b[sortKey];
+      const result = typeof left === "number" && typeof right === "number"
+        ? left - right
+        : String(left ?? "").localeCompare(String(right ?? ""), "vi-VN", { numeric: true, sensitivity: "base" });
+      return sortDirection === "asc" ? result : -result;
+    });
+  }, [filtered, sortDirection, sortKey]);
 
   const counts = PRIORITY_ORDER.reduce<Record<Priority, number>>((acc, priority) => {
     acc[priority] = items.filter((item) => item.priority === priority).length;
     return acc;
   }, {} as Record<Priority, number>);
   const selectedProject = projects.find((project) => project.id === filterResearch);
+  const handleSort = (key: DeadlineSortKey) => {
+    setSortKey((currentKey) => {
+      if (currentKey === key) {
+        setSortDirection((currentDirection) => currentDirection === "asc" ? "desc" : "asc");
+        return currentKey;
+      }
+      setSortDirection("asc");
+      return key;
+    });
+  };
 
   const handleMarkCompleted = async (item: DeadlineItem) => {
     setCompletingId(item.id);
@@ -171,23 +219,42 @@ export default function HanChotPage() {
             <p className="text-xs text-slate-500">Ưu tiên các hạn chót quá hạn, sắp đến hạn và hồ sơ đạo đức/pháp lý.</p>
           </div>
           <CardContent className="p-0">
-            <Table className="w-max min-w-[1080px]">
-              <TableHeader>
-                <TableRow className="bg-slate-50">{["Mã đề tài", "Tên đề tài", "Loại hạn chót", "Người phụ trách", "Ngày hạn", "Còn lại", "Trạng thái", "Thao tác"].map((head) => <TableHead key={head} className="px-2 py-2.5 text-[10px] font-semibold uppercase text-slate-500 whitespace-normal">{head}</TableHead>)}</TableRow>
+            <Table className="w-full min-w-[1380px] table-fixed" containerClassName="max-h-[68vh]">
+              <TableHeader className="sticky top-0 z-30">
+                <TableRow className="bg-slate-50">
+                  {deadlineColumns.map((column) => (
+                    <TableHead key={column.label} className={cn("px-2 py-2.5 text-[10px] font-semibold uppercase text-slate-500 whitespace-normal", column.className)}>
+                      {column.key ? (
+                        <button
+                          type="button"
+                          onClick={() => handleSort(column.key!)}
+                          className={cn(
+                            "flex w-full items-start gap-1 rounded px-0.5 py-0.5 text-left leading-tight hover:bg-slate-100 hover:text-slate-700",
+                            sortKey === column.key && "text-blue-700"
+                          )}
+                          title={`Sắp xếp theo ${column.label}`}
+                        >
+                          <span className="min-w-0 flex-1 break-words">{column.label}</span>
+                          <ArrowUpDown className={cn("mt-0.5 h-3 w-3 shrink-0", sortKey === column.key && sortDirection === "desc" && "rotate-180")} />
+                        </button>
+                      ) : column.label}
+                    </TableHead>
+                  ))}
+                </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.length === 0 ? (
+                {sortedItems.length === 0 ? (
                   <TableRow><TableCell colSpan={8} className="py-12 text-center text-sm text-slate-400">Không tìm thấy hạn chót nào.</TableCell></TableRow>
-                ) : filtered.map((item) => (
+                ) : sortedItems.map((item) => (
                   <TableRow key={item.id} className="border-b border-slate-100 hover:bg-slate-50">
                     <TableCell className="px-2 py-3 align-top text-xs font-mono font-semibold text-slate-700 whitespace-normal break-words">{item.researchCode || "—"}</TableCell>
                     <TableCell className="px-2 py-3 align-top text-sm text-slate-800 whitespace-normal break-words">{item.researchName || "—"}</TableCell>
-                    <TableCell className="px-2 py-3 align-top"><span className={cn("inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold whitespace-normal", PRIORITY_CONFIG[item.priority].badge)}>{item.type}</span></TableCell>
+                    <TableCell className="px-2 py-3 align-top"><span className={cn("inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold whitespace-normal", PRIORITY_CONFIG[item.priority].badge)}>{deadlineTypeLabel(item.type)}</span></TableCell>
                     <TableCell className="px-2 py-3 align-top text-xs text-slate-600 whitespace-normal break-words">{item.assignee}</TableCell>
                     <TableCell className="px-2 py-3 align-top text-xs text-slate-700"><Calendar className="mr-1 inline h-3 w-3 text-slate-400" />{formatDate(item.dueDate)}</TableCell>
                     <TableCell className="px-2 py-3 align-top"><DaysChip days={item.daysRemaining} /></TableCell>
                     <TableCell className="px-2 py-3 align-top text-xs font-semibold text-slate-600 whitespace-normal break-words">{item.status}</TableCell>
-                    <TableCell className="px-2 py-3 align-top whitespace-nowrap">
+                    <TableCell className="sticky right-0 z-10 bg-white px-2 py-3 align-top whitespace-nowrap shadow-[-4px_0_6px_-5px_rgba(15,23,42,0.45)]">
                       <div className="flex flex-nowrap justify-end gap-1">
                         <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50" title="Xem chi tiết" aria-label="Xem chi tiết" onClick={() => setSelectedDeadline(item)}>
                           <Eye className="h-3 w-3" />
@@ -212,7 +279,7 @@ export default function HanChotPage() {
           {selectedDeadline && (
             <div className="grid gap-3 text-sm sm:grid-cols-2">
               <InfoLine label="Đề tài" value={`${selectedDeadline.researchCode} - ${selectedDeadline.researchName}`} wide />
-              <InfoLine label="Loại hạn chót" value={selectedDeadline.type} />
+              <InfoLine label="Loại hạn chót" value={deadlineTypeLabel(selectedDeadline.type)} />
               <InfoLine label="Người phụ trách" value={selectedDeadline.assignee || "—"} />
               <InfoLine label="Ngày hạn" value={formatDate(selectedDeadline.dueDate)} />
               <InfoLine label="Còn lại" value={selectedDeadline.daysRemaining < 0 ? `Quá hạn ${Math.abs(selectedDeadline.daysRemaining)} ngày` : `${selectedDeadline.daysRemaining} ngày`} />

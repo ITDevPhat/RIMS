@@ -66,6 +66,24 @@ public sealed record SystemSettingDto(
     bool IsPublic,
     bool IsActive);
 
+public sealed class DepartmentQuery : PaginationQuery
+{
+    public string? Type { get; set; }
+    public bool? IsActive { get; set; }
+}
+
+public sealed record DepartmentDto(
+    long DepartmentId,
+    string DepartmentCode,
+    string DepartmentName,
+    long? ParentDepartmentId,
+    string? ParentDepartmentName,
+    string? DepartmentType,
+    string? Description,
+    bool IsActive,
+    int SortOrder,
+    DateTime CreatedAt);
+
 public sealed record AccountPreferenceDto(
     string AppearanceMode,
     string LanguageCode,
@@ -155,6 +173,23 @@ public sealed record UpdateSettingRequest(
     string? Description,
     bool IsPublic,
     bool IsActive);
+
+public sealed record CreateDepartmentRequest(
+    [Required] string DepartmentCode,
+    [Required] string DepartmentName,
+    long? ParentDepartmentId,
+    string? DepartmentType,
+    string? Description,
+    bool IsActive,
+    int SortOrder);
+
+public sealed record UpdateDepartmentRequest(
+    [Required] string DepartmentName,
+    long? ParentDepartmentId,
+    string? DepartmentType,
+    string? Description,
+    bool IsActive,
+    int SortOrder);
 
 public sealed record UpdatePreferenceRequest(
     [Required] string AppearanceMode,

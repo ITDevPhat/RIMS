@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Edit2, Plus, Search, Trash2, Users } from "lucide-react";
+import { ArrowUpDown, Edit2, Plus, Search, Trash2, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -27,6 +27,24 @@ const emptyForm: RoleForm = {
   permissionIds: [],
 };
 
+type SortKey = "roleName" | "roleCode" | "description" | "userCount" | "isActive" | "createdAt";
+type SortDirection = "asc" | "desc";
+
+const columns: Array<{ label: string; key?: SortKey; className: string }> = [
+  { label: "Tên vai trò", key: "roleName", className: "w-[220px]" },
+  { label: "Mã", key: "roleCode", className: "w-[170px]" },
+  { label: "Mô tả", key: "description", className: "w-[300px]" },
+  { label: "Người dùng", key: "userCount", className: "w-[140px]" },
+  { label: "Trạng thái", key: "isActive", className: "w-[140px]" },
+  { label: "Ngày tạo", key: "createdAt", className: "w-[160px]" },
+  { label: "Hành động", className: "sticky right-0 z-20 w-[120px] bg-slate-50 shadow-[-4px_0_6px_-5px_rgba(15,23,42,0.45)]" },
+];
+
+function getSortValue(role: ApiAdminRole, key: SortKey) {
+  if (key === "isActive") return role.isActive ? 1 : 0;
+  return role[key] ?? "";
+}
+
 export default function RoleManagementTab() {
   const [roles, setRoles] = useState<ApiAdminRole[]>([]);
   const [permissions, setPermissions] = useState<ApiPermission[]>([]);
@@ -40,6 +58,8 @@ export default function RoleManagementTab() {
   const [form, setForm] = useState<RoleForm>(emptyForm);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("roleName");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -70,6 +90,26 @@ export default function RoleManagementTab() {
     const q = query.toLowerCase();
     return roles.filter((role) => !q || role.roleCode.toLowerCase().includes(q) || role.roleName.toLowerCase().includes(q));
   }, [query, roles]);
+  const sortedRoles = useMemo(() => {
+    return [...filteredRoles].sort((a, b) => {
+      const left = getSortValue(a, sortKey);
+      const right = getSortValue(b, sortKey);
+      const result = typeof left === "number" && typeof right === "number"
+        ? left - right
+        : String(left).localeCompare(String(right), "vi-VN", { numeric: true, sensitivity: "base" });
+      return sortDirection === "asc" ? result : -result;
+    });
+  }, [filteredRoles, sortDirection, sortKey]);
+  const handleSort = (key: SortKey) => {
+    setSortKey((currentKey) => {
+      if (currentKey === key) {
+        setSortDirection((currentDirection) => currentDirection === "asc" ? "desc" : "asc");
+        return currentKey;
+      }
+      setSortDirection("asc");
+      return key;
+    });
+  };
 
   const groupedPermissions = useMemo(() => {
     return permissions.reduce<Record<string, ApiPermission[]>>((acc, permission) => {
@@ -192,16 +232,30 @@ export default function RoleManagementTab() {
       {actionError && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">{actionError}</div>}
 
       <div className="overflow-hidden rounded-lg border border-slate-200">
-        <Table className="w-max min-w-[900px]">
-          <TableHeader className="bg-slate-50">
+        <Table className="w-full min-w-[1250px] table-fixed" containerClassName="max-h-[68vh]">
+          <TableHeader className="sticky top-0 z-30 bg-slate-50">
             <TableRow>
-              {["Tên vai trò", "Mã", "Mô tả", "Người dùng", "Trạng thái", "Ngày tạo", "Hành động"].map((head) => <TableHead key={head} className="px-3 py-3 text-xs font-semibold text-slate-700">{head}</TableHead>)}
+              {columns.map((column) => (
+                <TableHead key={column.label} className={cn("px-3 py-3 text-xs font-semibold text-slate-700", column.className)}>
+                  {column.key ? (
+                    <button
+                      type="button"
+                      onClick={() => handleSort(column.key!)}
+                      className={cn("flex w-full items-start gap-1 rounded px-0.5 py-0.5 text-left hover:bg-slate-100 hover:text-blue-700", sortKey === column.key && "text-blue-700")}
+                      title={`Sắp xếp theo ${column.label}`}
+                    >
+                      <span className="min-w-0 flex-1">{column.label}</span>
+                      <ArrowUpDown className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", sortKey === column.key && sortDirection === "desc" && "rotate-180")} />
+                    </button>
+                  ) : column.label}
+                </TableHead>
+              ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredRoles.length === 0 ? (
+            {sortedRoles.length === 0 ? (
               <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-slate-400">Không có vai trò phù hợp.</TableCell></TableRow>
-            ) : filteredRoles.map((role) => (
+            ) : sortedRoles.map((role) => (
               <TableRow key={role.roleId} className="border-b border-slate-100 hover:bg-slate-50">
                 <TableCell className="px-3 py-3 align-top text-sm font-semibold text-slate-800 break-words">{role.roleName}</TableCell>
                 <TableCell className="px-3 py-3 align-top"><code className="rounded bg-slate-100 px-2 py-1 text-xs">{role.roleCode}</code></TableCell>
@@ -209,7 +263,7 @@ export default function RoleManagementTab() {
                 <TableCell className="px-3 py-3 align-top"><Badge className="bg-blue-100 text-blue-800 text-xs"><Users className="mr-1 h-3 w-3" />{role.userCount} người</Badge></TableCell>
                 <TableCell className="px-3 py-3 align-top"><Badge className={cn("text-xs", role.isActive ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-800")}>{role.isActive ? "Hoạt động" : "Vô hiệu"}</Badge></TableCell>
                 <TableCell className="px-3 py-3 align-top text-sm text-slate-600">{formatDate(role.createdAt)}</TableCell>
-                <TableCell className="px-3 py-3 align-top whitespace-nowrap">
+                <TableCell className="sticky right-0 z-10 bg-white px-3 py-3 align-top whitespace-nowrap shadow-[-4px_0_6px_-5px_rgba(15,23,42,0.45)]">
                   <div className="flex flex-nowrap justify-end gap-1">
                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Sửa" aria-label="Sửa" onClick={() => void openEdit(role)}><Edit2 className="h-3.5 w-3.5" /></Button>
                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-600 hover:bg-red-50" title="Xóa" aria-label="Xóa" disabled={pendingRoleId === role.roleId || role.isSystem} onClick={() => void deleteRole(role)}><Trash2 className="h-3.5 w-3.5" /></Button>

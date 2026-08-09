@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, Download, Grid3x3, List, Trash2, Eye, Pencil, LoaderCircle } from "lucide-react";
+import { ArrowUpDown, Plus, Download, Grid3x3, List, Trash2, Eye, Pencil, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,7 +18,6 @@ import {
   LOAI_HOAT_DONG_OPTIONS,
   KHOA_PHONG_OPTIONS,
   TRANG_THAI_OPTIONS,
-  LOAI_KE_HOACH_OPTIONS,
   type HoiNghi,
 } from "@/lib/constants/training";
 
@@ -42,6 +41,26 @@ function statusColor(status: string): string {
   }
 }
 
+type SortKey = "ma" | "ten" | "ngayDuKien" | "loai" | "khoaPhong" | "trangThai";
+type SortDirection = "asc" | "desc";
+
+const columns: Array<{ label: string; key?: SortKey; className: string }> = [
+  { label: "Mã", key: "ma", className: "w-[140px]" },
+  { label: "Tên sự kiện", key: "ten", className: "w-[320px]" },
+  { label: "Ngày dự kiến", key: "ngayDuKien", className: "w-[150px]" },
+  { label: "Loại", key: "loai", className: "w-[160px]" },
+  { label: "Khoa/phòng", key: "khoaPhong", className: "w-[240px]" },
+  { label: "Trạng thái", key: "trangThai", className: "w-[170px]" },
+  { label: "Thao tác", className: "sticky right-0 z-20 w-[120px] bg-slate-50 shadow-[-4px_0_6px_-5px_rgba(15,23,42,0.45)]" },
+];
+
+function formatDateVN(value?: string | null) {
+  if (!value) return "—";
+  const [datePart] = value.split("T");
+  const [year, month, day] = datePart.split("-");
+  return year && month && day ? `${day}/${month}/${year}` : value;
+}
+
 export default function DanhSachSuKien({
   conferences,
   onAddEvent,
@@ -56,6 +75,8 @@ export default function DanhSachSuKien({
   const [filterType, setFilterType] = useState<string>("all");
   const [filterDept, setFilterDept] = useState<string>("all");
   const [exporting, setExporting] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("ngayDuKien");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const filtered = useMemo(() => {
     return conferences.filter((h) => {
@@ -67,6 +88,24 @@ export default function DanhSachSuKien({
       return true;
     });
   }, [conferences, searchText, filterMonth, filterStatus, filterType, filterDept]);
+
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const result = String(a[sortKey] ?? "").localeCompare(String(b[sortKey] ?? ""), "vi-VN", { numeric: true, sensitivity: "base" });
+      return sortDirection === "asc" ? result : -result;
+    });
+  }, [filtered, sortDirection, sortKey]);
+
+  const handleSort = (key: SortKey) => {
+    setSortKey((currentKey) => {
+      if (currentKey === key) {
+        setSortDirection((currentDirection) => currentDirection === "asc" ? "desc" : "asc");
+        return currentKey;
+      }
+      setSortDirection("asc");
+      return key;
+    });
+  };
 
   const exportFilteredExcel = async () => {
     if (exporting) return;
@@ -90,8 +129,8 @@ export default function DanhSachSuKien({
         { header: "Trạng thái", key: "status", width: 22 },
       ];
       filtered.forEach((item) => worksheet.addRow({
-        code: item.ma, title: item.ten, plannedDate: item.ngayDuKien,
-        actualDate: item.ngayThucTe ?? "", type: item.loai, plan: item.loaiKeHoach,
+        code: item.ma, title: item.ten, plannedDate: formatDateVN(item.ngayDuKien),
+        actualDate: item.ngayThucTe ? formatDateVN(item.ngayThucTe) : "", type: item.loai, plan: item.loaiKeHoach,
         department: item.khoaPhong, owner: item.nguoiPhuTrach,
         location: item.diaDiem, status: item.trangThai,
       }));
@@ -155,64 +194,57 @@ export default function DanhSachSuKien({
 
       {/* Filters */}
       <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 md:grid-cols-2 lg:grid-cols-5">
-        <Input
-          placeholder="Tìm kiếm sự kiện..."
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          className="text-sm h-9"
-        />
-        <Select value={filterMonth} onValueChange={(v) => v && setFilterMonth(v)}>
-          <SelectTrigger className="h-9 text-sm">
-            <SelectValue placeholder="Chọn tháng" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tất cả tháng</SelectItem>
-            {Array.from({ length: 12 }, (_, i) => (
-              <SelectItem key={i + 1} value={String(i + 1)}>
-                Tháng {i + 1}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filterStatus} onValueChange={(v) => v && setFilterStatus(v)}>
-          <SelectTrigger className="h-9 text-sm">
-            <SelectValue placeholder="Chọn trạng thái" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tất cả trạng thái</SelectItem>
-            {TRANG_THAI_OPTIONS.map((s) => (
-              <SelectItem key={s} value={s}>
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filterType} onValueChange={(v) => v && setFilterType(v)}>
-          <SelectTrigger className="h-9 text-sm">
-            <SelectValue placeholder="Chọn loại" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tất cả loại</SelectItem>
-            {LOAI_HOAT_DONG_OPTIONS.map((t) => (
-              <SelectItem key={t} value={t}>
-                {t}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filterDept} onValueChange={(v) => v && setFilterDept(v)}>
-          <SelectTrigger className="h-9 text-sm">
-            <SelectValue placeholder="Chọn khoa/phòng" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tất cả khoa/phòng</SelectItem>
-            {KHOA_PHONG_OPTIONS.map((d) => (
-              <SelectItem key={d} value={d}>
-                {d}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <label className="space-y-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          Tìm kiếm
+          <Input
+            placeholder="Tên sự kiện..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="h-9 text-sm normal-case tracking-normal"
+          />
+        </label>
+        {[
+          {
+            label: "Tháng",
+            value: filterMonth,
+            setter: setFilterMonth,
+            options: [{ value: "all", label: "Tất cả tháng" }, ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: `Tháng ${i + 1}` }))],
+          },
+          {
+            label: "Trạng thái",
+            value: filterStatus,
+            setter: setFilterStatus,
+            options: [{ value: "all", label: "Tất cả trạng thái" }, ...TRANG_THAI_OPTIONS.map((item) => ({ value: item, label: item }))],
+          },
+          {
+            label: "Loại hoạt động",
+            value: filterType,
+            setter: setFilterType,
+            options: [{ value: "all", label: "Tất cả loại hoạt động" }, ...LOAI_HOAT_DONG_OPTIONS.map((item) => ({ value: item, label: item }))],
+          },
+          {
+            label: "Khoa/phòng",
+            value: filterDept,
+            setter: setFilterDept,
+            options: [{ value: "all", label: "Tất cả khoa/phòng" }, ...KHOA_PHONG_OPTIONS.map((item) => ({ value: item, label: item }))],
+          },
+        ].map((filter) => (
+          <label key={filter.label} className="space-y-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            {filter.label}
+            <Select value={filter.value} onValueChange={(v) => v && filter.setter(v)}>
+              <SelectTrigger className="h-9 text-sm normal-case tracking-normal">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {filter.options.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+        ))}
       </div>
 
       {/* Results info */}
@@ -222,31 +254,39 @@ export default function DanhSachSuKien({
 
       {/* Table or Card View */}
       {viewMode === "table" ? (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-          <table className="w-max min-w-[1160px] text-sm">
-            <thead>
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white" tabIndex={0} role="region" aria-label="Bảng sự kiện đào tạo có thể cuộn ngang">
+          <table className="w-full min-w-[1300px] table-fixed text-sm">
+            <thead className="sticky top-0 z-30">
               <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="w-[10%] px-3 py-3 text-left font-semibold text-slate-700">Mã</th>
-                <th className="w-[26%] px-3 py-3 text-left font-semibold text-slate-700">Tên sự kiện</th>
-                <th className="w-[12%] px-3 py-3 text-left font-semibold text-slate-700">Ngày dự kiến</th>
-                <th className="w-[12%] px-3 py-3 text-left font-semibold text-slate-700">Loại</th>
-                <th className="w-[18%] px-3 py-3 text-left font-semibold text-slate-700">Khoa/phòng</th>
-                <th className="w-[12%] px-3 py-3 text-left font-semibold text-slate-700">Trạng thái</th>
-                <th className="w-[10%] px-3 py-3 text-right font-semibold text-slate-700">Thao tác</th>
+                {columns.map((column) => (
+                  <th key={column.label} className={cn("px-3 py-3 text-left text-xs font-semibold text-slate-700", column.className)}>
+                    {column.key ? (
+                      <button
+                        type="button"
+                        onClick={() => handleSort(column.key!)}
+                        className={cn("flex w-full items-start gap-1 rounded px-0.5 py-0.5 text-left hover:bg-slate-100 hover:text-blue-700", sortKey === column.key && "text-blue-700")}
+                        title={`Sắp xếp theo ${column.label}`}
+                      >
+                        <span className="min-w-0 flex-1">{column.label}</span>
+                        <ArrowUpDown className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", sortKey === column.key && sortDirection === "desc" && "rotate-180")} />
+                      </button>
+                    ) : column.label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.length === 0 ? (
+              {sorted.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-12 text-center text-sm text-slate-400">
                     Không có sự kiện đào tạo phù hợp.
                   </td>
                 </tr>
-              ) : filtered.map((h) => (
+              ) : sorted.map((h) => (
                 <tr key={h.id} className="hover:bg-slate-50">
                   <td className="px-3 py-3 align-top text-slate-600 font-mono text-[11px] whitespace-normal break-words">{h.ma}</td>
                   <td className="px-3 py-3 align-top font-medium text-slate-800 whitespace-normal break-words">{h.ten}</td>
-                  <td className="px-3 py-3 align-top text-slate-600">{h.ngayDuKien}</td>
+                  <td className="px-3 py-3 align-top text-slate-600">{formatDateVN(h.ngayDuKien)}</td>
                   <td className="px-3 py-3 align-top">
                     <Badge variant="outline" className="text-[10px]">
                       {h.loai}
@@ -258,7 +298,7 @@ export default function DanhSachSuKien({
                       {h.trangThai}
                     </span>
                   </td>
-                  <td className="px-3 py-3 align-top whitespace-nowrap">
+                  <td className="sticky right-0 z-10 bg-white px-3 py-3 align-top whitespace-nowrap shadow-[-4px_0_6px_-5px_rgba(15,23,42,0.45)]">
                     <div className="flex flex-nowrap items-center justify-end gap-1">
                       <Button
                         variant="ghost"
@@ -296,14 +336,14 @@ export default function DanhSachSuKien({
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((h) => (
+          {sorted.map((h) => (
             <div key={h.id} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between gap-2 mb-2">
                 <h4 className="font-bold text-slate-800 flex-1">{h.ten}</h4>
                 <span className="text-[9px] font-mono text-slate-500 flex-shrink-0">{h.ma}</span>
               </div>
               <div className="space-y-2 text-sm text-slate-600">
-                <p>Ngày: <span className="font-semibold">{h.ngayDuKien}</span></p>
+                <p>Ngày: <span className="font-semibold">{formatDateVN(h.ngayDuKien)}</span></p>
                 <p>Khoa: <span className="font-semibold">{h.khoaPhong}</span></p>
               </div>
               <div className="mt-3 flex flex-wrap gap-1.5">

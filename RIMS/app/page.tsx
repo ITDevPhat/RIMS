@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { DateFormatProvider } from "@/lib/date-format";
 import { ThemeModeProvider } from "@/lib/theme-mode";
 import AdminLayout from "@/components/layout/AdminLayout";
 import type { PageKey } from "@/components/layout/Sidebar";
@@ -124,9 +125,11 @@ function AppInner() {
 export default function App() {
   return (
     <ThemeModeProvider>
-      <AuthProvider>
-        <AppInner />
-      </AuthProvider>
+      <DateFormatProvider>
+        <AuthProvider>
+          <AppInner />
+        </AuthProvider>
+      </DateFormatProvider>
     </ThemeModeProvider>
   );
 }

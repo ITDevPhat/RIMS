@@ -32,6 +32,12 @@ public interface IAdminService
     Task<SystemSettingDto> UpdateSettingByKeyAsync(string key, UpdateSettingRequest request, CancellationToken cancellationToken = default);
     Task<SystemSettingDto> UpdateSettingAsync(long id, UpdateSettingRequest request, CancellationToken cancellationToken = default);
     Task DeleteSettingAsync(long id, CancellationToken cancellationToken = default);
+
+    Task<PagedResult<DepartmentDto>> GetDepartmentsAsync(DepartmentQuery query, CancellationToken cancellationToken = default);
+    Task<DepartmentDto> GetDepartmentAsync(long id, CancellationToken cancellationToken = default);
+    Task<DepartmentDto> CreateDepartmentAsync(CreateDepartmentRequest request, CancellationToken cancellationToken = default);
+    Task<DepartmentDto> UpdateDepartmentAsync(long id, UpdateDepartmentRequest request, CancellationToken cancellationToken = default);
+    Task DeleteDepartmentAsync(long id, CancellationToken cancellationToken = default);
 }
 
 public interface IAccountPreferenceService

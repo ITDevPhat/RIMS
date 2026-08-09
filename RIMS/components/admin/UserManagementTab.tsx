@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Edit2, Lock, Plus, RotateCcw, Search, Trash2 } from "lucide-react";
+import { ArrowUpDown, Edit2, Lock, Plus, RotateCcw, Search, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -40,6 +40,24 @@ const emptyForm: UserForm = {
   roleIds: [],
 };
 
+type SortKey = "fullName" | "email" | "title" | "roles" | "accountStatus" | "lastLoginAt";
+type SortDirection = "asc" | "desc";
+
+const columns: Array<{ label: string; key?: SortKey; className: string }> = [
+  { label: "Người dùng", key: "fullName", className: "w-[240px]" },
+  { label: "Email", key: "email", className: "w-[260px]" },
+  { label: "Chức vụ", key: "title", className: "w-[180px]" },
+  { label: "Vai trò", key: "roles", className: "w-[260px]" },
+  { label: "Trạng thái", key: "accountStatus", className: "w-[140px]" },
+  { label: "Đăng nhập cuối", key: "lastLoginAt", className: "w-[170px]" },
+  { label: "Hành động", className: "sticky right-0 z-20 w-[130px] bg-slate-50 shadow-[-4px_0_6px_-5px_rgba(15,23,42,0.45)]" },
+];
+
+function getSortValue(user: ApiAdminUser, key: SortKey) {
+  if (key === "roles") return user.roles.map((role) => role.roleName).join(", ");
+  return user[key] ?? "";
+}
+
 function toForm(user?: ApiAdminUser | null): UserForm {
   if (!user) return emptyForm;
   return {
@@ -70,6 +88,8 @@ export default function UserManagementTab() {
   const [form, setForm] = useState<UserForm>(emptyForm);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("fullName");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -100,6 +120,24 @@ export default function UserManagementTab() {
     const q = searchQuery.toLowerCase();
     return users.filter((user) => !q || user.fullName.toLowerCase().includes(q) || user.email.toLowerCase().includes(q) || user.username.toLowerCase().includes(q));
   }, [searchQuery, users]);
+  const sortedUsers = useMemo(() => {
+    return [...filteredUsers].sort((a, b) => {
+      const left = getSortValue(a, sortKey);
+      const right = getSortValue(b, sortKey);
+      const result = String(left).localeCompare(String(right), "vi-VN", { numeric: true, sensitivity: "base" });
+      return sortDirection === "asc" ? result : -result;
+    });
+  }, [filteredUsers, sortDirection, sortKey]);
+  const handleSort = (key: SortKey) => {
+    setSortKey((currentKey) => {
+      if (currentKey === key) {
+        setSortDirection((currentDirection) => currentDirection === "asc" ? "desc" : "asc");
+        return currentKey;
+      }
+      setSortDirection("asc");
+      return key;
+    });
+  };
 
   const openCreate = () => {
     setEditingUser(null);
@@ -227,16 +265,30 @@ export default function UserManagementTab() {
       {actionError && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">{actionError}</div>}
 
       <div className="overflow-hidden rounded-lg border border-slate-200">
-        <Table className="w-max min-w-[1120px]">
-          <TableHeader className="bg-slate-50">
+        <Table className="w-full min-w-[1400px] table-fixed" containerClassName="max-h-[68vh]">
+          <TableHeader className="sticky top-0 z-30 bg-slate-50">
             <TableRow>
-              {["Người dùng", "Email", "Chức vụ", "Vai trò", "Trạng thái", "Đăng nhập cuối", "Hành động"].map((head) => <TableHead key={head} className="px-3 py-3 text-xs font-semibold text-slate-700">{head}</TableHead>)}
+              {columns.map((column) => (
+                <TableHead key={column.label} className={cn("px-3 py-3 text-xs font-semibold text-slate-700", column.className)}>
+                  {column.key ? (
+                    <button
+                      type="button"
+                      onClick={() => handleSort(column.key!)}
+                      className={cn("flex w-full items-start gap-1 rounded px-0.5 py-0.5 text-left hover:bg-slate-100 hover:text-blue-700", sortKey === column.key && "text-blue-700")}
+                      title={`Sắp xếp theo ${column.label}`}
+                    >
+                      <span className="min-w-0 flex-1">{column.label}</span>
+                      <ArrowUpDown className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", sortKey === column.key && sortDirection === "desc" && "rotate-180")} />
+                    </button>
+                  ) : column.label}
+                </TableHead>
+              ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredUsers.length === 0 ? (
+            {sortedUsers.length === 0 ? (
               <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-slate-400">Không có người dùng phù hợp.</TableCell></TableRow>
-            ) : filteredUsers.map((user) => (
+            ) : sortedUsers.map((user) => (
               <TableRow key={user.userId} className="border-b border-slate-100 hover:bg-slate-50">
                 <TableCell className="px-3 py-3 align-top">
                   <p className="text-sm font-semibold text-slate-800 break-words">{user.fullName}</p>
@@ -249,7 +301,7 @@ export default function UserManagementTab() {
                 </TableCell>
                 <TableCell className="px-3 py-3 align-top"><StatusBadge status={user.accountStatus} /></TableCell>
                 <TableCell className="px-3 py-3 align-top text-sm text-slate-600">{formatDate(user.lastLoginAt)}</TableCell>
-                <TableCell className="px-3 py-3 align-top whitespace-nowrap">
+                <TableCell className="sticky right-0 z-10 bg-white px-3 py-3 align-top whitespace-nowrap shadow-[-4px_0_6px_-5px_rgba(15,23,42,0.45)]">
                   <div className="flex flex-nowrap justify-end gap-1">
                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Sửa" aria-label="Sửa" onClick={() => openEdit(user)}><Edit2 className="h-3.5 w-3.5" /></Button>
                     {user.accountStatus === "locked" ? (

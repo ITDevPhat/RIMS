@@ -39,7 +39,20 @@ function mapEventStatus(status?: string | null): TrangThaiHoiNghi {
   }
 }
 
+function splitResponsibleName(notes?: string | null) {
+  if (!notes) return { responsibleName: "", notes: "" };
+  const lines = notes.split(/\r?\n/);
+  const firstLine = lines[0]?.trim() ?? "";
+  const match = /^Người phụ trách:\s*(.+)$/i.exec(firstLine);
+  if (!match) return { responsibleName: "", notes };
+  return {
+    responsibleName: match[1].trim(),
+    notes: lines.slice(1).join("\n").trim(),
+  };
+}
+
 export function mapApiTrainingEventToUi(event: ApiTrainingEvent): HoiNghi {
+  const noteParts = splitResponsibleName(event.notes);
   return {
     id: String(event.eventId),
     ma: event.eventCode,
@@ -52,13 +65,13 @@ export function mapApiTrainingEventToUi(event: ApiTrainingEvent): HoiNghi {
     loai: mapEventType(event.eventType),
     loaiKeHoach: mapPlanType(event.planType),
     khoaPhong: event.departmentName ?? "Chưa phân khoa",
-    nguoiPhuTrach: event.responsibleUserName ?? "Chưa phân công",
+    nguoiPhuTrach: event.responsibleUserName ?? noteParts.responsibleName,
     diaDiem: event.location ?? "",
     soNguoiDuKien: event.expectedParticipants ?? 0,
     soNguoiThucTe: event.actualParticipants ?? null,
     trangThai: mapEventStatus(event.eventStatus),
     lyDoKhongThucHien: event.cancelReason ?? null,
-    ghiChu: event.notes ?? "",
+    ghiChu: noteParts.notes,
     nhatKy: [],
   };
 }

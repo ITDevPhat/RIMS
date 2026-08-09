@@ -13,12 +13,15 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { DEPARTMENTS, SPONSORS } from "@/lib/constants/research";
+import { useDateFormat } from "@/lib/date-format";
+import type { ApiDepartment } from "@/lib/api/admin-api";
 import type { ResearchProject } from "@/lib/types";
 
 export interface DeTaiFormData {
   code: string;
   name: string;
   description: string;
+  departmentId: string;
   department: string;
   pi: string;
   sponsor: string;
@@ -28,6 +31,7 @@ export interface DeTaiFormData {
   ethicsStatus: string;
   startDate: string;
   endDate: string;
+  actualProgressDate: string;
   status: string;
   progress: string;
   currentPhase: string;
@@ -38,6 +42,7 @@ interface DeTaiFormModalProps {
   open: boolean;
   mode?: "create" | "edit";
   project?: ResearchProject | null;
+  departments?: ApiDepartment[];
   onOpenChange: (open: boolean) => void;
   onSave?: (data: DeTaiFormData) => Promise<void> | void;
 }
@@ -50,6 +55,7 @@ const emptyForm: DeTaiFormData = {
   code: "",
   name: "",
   description: "",
+  departmentId: "",
   department: "",
   pi: "",
   sponsor: "",
@@ -59,6 +65,7 @@ const emptyForm: DeTaiFormData = {
   ethicsStatus: "Không yêu cầu",
   startDate: "",
   endDate: "",
+  actualProgressDate: "",
   status: "Chưa bắt đầu",
   progress: "0",
   currentPhase: "Chưa bắt đầu",
@@ -71,6 +78,7 @@ function fromProject(project?: ResearchProject | null): DeTaiFormData {
     code: project.code,
     name: project.name,
     description: project.description ?? "",
+    departmentId: project.departmentId ? String(project.departmentId) : "",
     department: project.department === "Chưa phân khoa" ? "" : project.department,
     pi: project.pi === "Chưa phân công" ? "" : project.pi,
     sponsor: project.sponsor === "Chưa có" ? "" : project.sponsor,
@@ -80,6 +88,7 @@ function fromProject(project?: ResearchProject | null): DeTaiFormData {
     ethicsStatus: project.ethicsStatus,
     startDate: project.startDate ?? "",
     endDate: project.plannedEndDate ?? "",
+    actualProgressDate: "",
     status: project.status,
     progress: String(project.progress ?? 0),
     currentPhase: project.currentPhase ?? "Chưa bắt đầu",
@@ -87,11 +96,24 @@ function fromProject(project?: ResearchProject | null): DeTaiFormData {
   };
 }
 
-export default function DeTaiFormModal({ open, mode = "create", project, onOpenChange, onSave }: DeTaiFormModalProps) {
+function calculateProgress(startDate: string, endDate: string, actualProgressDate: string) {
+  if (!startDate || !endDate || !actualProgressDate) return null;
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+  const actual = new Date(`${actualProgressDate}T00:00:00`);
+  if ([start, end, actual].some((date) => Number.isNaN(date.getTime()))) return null;
+  const total = end.getTime() - start.getTime();
+  if (total <= 0) return actual >= end ? 100 : 0;
+  const elapsed = actual.getTime() - start.getTime();
+  return Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
+}
+
+export default function DeTaiFormModal({ open, mode = "create", project, departments = [], onOpenChange, onSave }: DeTaiFormModalProps) {
   const [formData, setFormData] = useState<DeTaiFormData>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState("");
   const [saving, setSaving] = useState(false);
+  const { inputType, toInputValue, fromInputValue, dateFormat } = useDateFormat();
 
   useEffect(() => {
     if (open) {
@@ -111,8 +133,33 @@ export default function DeTaiFormModal({ open, mode = "create", project, onOpenC
     return "";
   }, [formData.progress, formData.status]);
 
+  const departmentOptions = useMemo(() => {
+    const active = departments.filter((item) => item.isActive);
+    if (active.length > 0) return active;
+    return DEPARTMENTS.filter((item) => item !== "Tất cả").map((name, index) => ({
+      departmentId: -(index + 1),
+      departmentCode: name.toUpperCase().replace(/\s+/g, "_"),
+      departmentName: name,
+      isActive: true,
+      sortOrder: index + 1,
+      createdAt: "",
+    } satisfies ApiDepartment));
+  }, [departments]);
+
+  useEffect(() => {
+    const progress = calculateProgress(formData.startDate, formData.endDate, formData.actualProgressDate);
+    if (progress === null) return;
+    setFormData((prev) => prev.progress === String(progress) ? prev : ({ ...prev, progress: String(progress) }));
+  }, [formData.actualProgressDate, formData.endDate, formData.startDate]);
+
   const handleChange = (field: keyof DeTaiFormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      if (field === "departmentId") {
+        const selected = departmentOptions.find((item) => String(item.departmentId) === value);
+        return { ...prev, departmentId: value, department: selected?.departmentName ?? "" };
+      }
+      return { ...prev, [field]: value };
+    });
     setErrors((prev) => {
       const next = { ...prev };
       delete next[field];
@@ -128,7 +175,7 @@ export default function DeTaiFormModal({ open, mode = "create", project, onOpenC
     if (!/^[A-Za-z0-9._-]+$/.test(formData.code.trim())) next.code = "Mã đề tài chỉ dùng chữ, số, dấu gạch ngang, gạch dưới hoặc dấu chấm.";
     if (!formData.name.trim()) next.name = "Vui lòng nhập tên đề tài.";
     if (formData.name.trim().length < 10) next.name = "Tên đề tài cần tối thiểu 10 ký tự.";
-    if (!formData.department) next.department = "Vui lòng chọn khoa/phòng chủ trì.";
+    if (!formData.departmentId && !formData.department) next.department = "Vui lòng chọn khoa/phòng chủ trì.";
     if (!formData.pi.trim()) next.pi = "Vui lòng nhập chủ nhiệm đề tài.";
     if (!formData.startDate) next.startDate = "Vui lòng chọn ngày bắt đầu.";
     if (!formData.endDate) next.endDate = "Vui lòng chọn ngày kết thúc dự kiến.";
@@ -196,7 +243,7 @@ export default function DeTaiFormModal({ open, mode = "create", project, onOpenC
                 <SectionTitle icon={<ClipboardList className="h-4 w-4" />} title="Thông tin đề tài" />
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Mã đề tài" required error={errors.code}>
-                    <Input value={formData.code} onChange={(e) => handleChange("code", e.target.value)} disabled={mode === "edit"} placeholder="VD: NC-2026-001" />
+                    <Input value={formData.code} onChange={(e) => handleChange("code", e.target.value)} placeholder="VD: NC-2026-001" />
                   </Field>
                   <Field label="Loại nghiên cứu" required>
                     <Select value={formData.type} onValueChange={(value) => handleChange("type", value ?? "")}>
@@ -217,9 +264,9 @@ export default function DeTaiFormModal({ open, mode = "create", project, onOpenC
                 <SectionTitle icon={<Hospital className="h-4 w-4" />} title="Đơn vị phụ trách" />
                 <div className="grid gap-4">
                   <Field label="Khoa/phòng chủ trì" required error={errors.department}>
-                    <Select value={formData.department} onValueChange={(value) => handleChange("department", value ?? "")}>
+                    <Select value={formData.departmentId || formData.department} onValueChange={(value) => handleChange("departmentId", value ?? "")}>
                       <SelectTrigger><SelectValue placeholder="Chọn khoa/phòng" /></SelectTrigger>
-                      <SelectContent>{DEPARTMENTS.filter((item) => item !== "Tất cả").map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
+                      <SelectContent>{departmentOptions.map((item) => <SelectItem key={item.departmentId} value={String(item.departmentId)}>{item.departmentName}</SelectItem>)}</SelectContent>
                     </Select>
                   </Field>
                   <Field label="Chủ nhiệm đề tài" required error={errors.pi}>
@@ -256,10 +303,13 @@ export default function DeTaiFormModal({ open, mode = "create", project, onOpenC
                 <SectionTitle icon={<CalendarDays className="h-4 w-4" />} title="Tiến độ" />
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Ngày bắt đầu" required error={errors.startDate}>
-                    <Input type="date" value={formData.startDate} onChange={(e) => handleChange("startDate", e.target.value)} />
+                    <Input type={inputType} lang="vi-VN" value={toInputValue(formData.startDate)} onChange={(e) => handleChange("startDate", fromInputValue(e.target.value))} />
                   </Field>
-                  <Field label="Ngày kết thúc dự kiến" required error={errors.endDate}>
-                    <Input type="date" value={formData.endDate} onChange={(e) => handleChange("endDate", e.target.value)} />
+                  <Field label="Deadline/kết thúc dự kiến" required error={errors.endDate}>
+                    <Input type={inputType} lang="vi-VN" value={toInputValue(formData.endDate)} onChange={(e) => handleChange("endDate", fromInputValue(e.target.value))} />
+                  </Field>
+                  <Field label="Ngày thực tế thực hiện">
+                    <Input type={inputType} lang="vi-VN" value={toInputValue(formData.actualProgressDate)} onChange={(e) => handleChange("actualProgressDate", fromInputValue(e.target.value))} />
                   </Field>
                   <Field label="Trạng thái đề tài" error={errors.status}>
                     <Select value={formData.status} onValueChange={(value) => handleChange("status", value ?? "")}>
@@ -268,7 +318,7 @@ export default function DeTaiFormModal({ open, mode = "create", project, onOpenC
                     </Select>
                   </Field>
                   <Field label="Tiến độ (%)" error={errors.progress}>
-                    <Input type="number" min={0} max={100} value={formData.progress} onChange={(e) => handleChange("progress", e.target.value)} />
+                    <Input type="number" min={0} max={100} value={formData.progress} readOnly className="bg-slate-50 font-semibold text-slate-700" />
                   </Field>
                   <Field label="Giai đoạn hiện tại" wide>
                     <Input value={formData.currentPhase} onChange={(e) => handleChange("currentPhase", e.target.value)} placeholder="VD: Thu thập số liệu" />
@@ -277,6 +327,9 @@ export default function DeTaiFormModal({ open, mode = "create", project, onOpenC
                     <textarea className="min-h-20 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" value={formData.notes} onChange={(e) => handleChange("notes", e.target.value)} placeholder="Các vấn đề, rủi ro hoặc ghi chú theo dõi" />
                   </Field>
                 </div>
+                <p className="mt-3 rounded-md bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700">
+                  Tiến độ tự tính theo ngày bắt đầu, deadline và ngày thực tế thực hiện. Định dạng hiện tại: {dateFormat}.
+                </p>
                 {completionHint && <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">{completionHint}</p>}
               </section>
             </div>

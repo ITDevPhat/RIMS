@@ -19,6 +19,8 @@ import { mapApiDeadlineToUi } from "@/lib/mappers/deadline-mapper";
 import { mapApiMilestoneToUi } from "@/lib/mappers/milestone-mapper";
 import { mapApiPhaseToUi } from "@/lib/mappers/phase-mapper";
 import { mapApiProjectToUi } from "@/lib/mappers/project-mapper";
+import { adminApi, type ApiDepartment } from "@/lib/api/admin-api";
+import { useDateFormat } from "@/lib/date-format";
 import {
   ArrowLeft,
   Activity,
@@ -119,10 +121,12 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
   const [milestones, setMilestones] = useState<ResearchMilestone[]>([]);
   const [deadlines, setDeadlines] = useState<DeadlineItem[]>([]);
   const [activityLog, setActivityLog] = useState<ApiAuditLog[]>([]);
+  const [departments, setDepartments] = useState<ApiDepartment[]>([]);
   const [detailLoading, setDetailLoading] = useState(true);
   const [detailError, setDetailError] = useState("");
   const [exportingExcel, setExportingExcel] = useState(false);
   const [projectEditOpen, setProjectEditOpen] = useState(false);
+  const { formatDate } = useDateFormat();
 
   const handleProjectSave = async (data: DeTaiFormData) => {
     await researchApi.updateProject(currentProject.id, buildProjectPayload(data, currentProject));
@@ -135,18 +139,20 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
     setDetailLoading(true);
     setDetailError("");
     try {
-      const [projectResult, phaseResult, milestoneResult, deadlineResult, auditResult] = await Promise.all([
+      const [projectResult, phaseResult, milestoneResult, deadlineResult, auditResult, departmentResult] = await Promise.all([
         researchApi.getProject(project.id),
         projectPhaseApi.getPhases({ pageSize: 100, projectId: project.id }),
         projectMilestoneApi.getMilestones({ pageSize: 100, projectId: project.id }),
         projectDeadlineApi.getDeadlines({ pageSize: 100, projectId: project.id }),
         auditApi.getAuditLogs({ pageSize: 20, moduleCode: "research_project", entityType: "ResearchProject", entityId: project.id }),
+        adminApi.getDepartments({ pageSize: 200, isActive: true }),
       ]);
       setCurrentProject(mapApiProjectToUi(projectResult));
       setPhases(phaseResult.items.map(mapApiPhaseToUi));
       setMilestones(milestoneResult.items.map((item, index) => mapApiMilestoneToUi(item, index + 1)));
       setDeadlines(deadlineResult.items.map(mapApiDeadlineToUi));
       setActivityLog(auditResult.items);
+      setDepartments(departmentResult.items);
     } catch (error) {
       setDetailError(error instanceof Error ? error.message : "Không tải được dữ liệu chi tiết đề tài.");
       setCurrentProject(project);
@@ -154,6 +160,7 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
       setMilestones([]);
       setDeadlines([]);
       setActivityLog([]);
+      setDepartments([]);
     } finally {
       setDetailLoading(false);
     }
@@ -166,11 +173,6 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
   const phaseDone = phases.filter((p) => p.status === "Hoàn thành" || p.status === "Hoàn thành trễ").length;
   const phaseInProgress = phases.filter((p) => p.status === "Đang thực hiện").length;
   const phaseLate = phases.filter((p) => p.status === "Trễ hạn" || p.status === "Hoàn thành trễ").length;
-
-  const formatDate = (s: string | null) => {
-    if (!s) return "—";
-    return s.split("-").reverse().join("/");
-  };
 
   const priorityColor = (priority: string) => ({
     critical: "bg-red-50 text-red-700 border-red-200",
@@ -277,7 +279,7 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
         </div>
       </div>
 
-      <DeTaiFormModal open={projectEditOpen} mode="edit" project={currentProject} onOpenChange={setProjectEditOpen} onSave={handleProjectSave} />
+      <DeTaiFormModal open={projectEditOpen} mode="edit" project={currentProject} departments={departments} onOpenChange={setProjectEditOpen} onSave={handleProjectSave} />
 
       {/* ── KPI summary bar ──────────────────────────────────────────────────── */}
       <div className="bg-white border-b border-slate-100 px-4 py-3 sm:px-6 lg:px-8">
