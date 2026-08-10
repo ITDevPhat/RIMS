@@ -66,14 +66,19 @@ public sealed record ResearchProjectDto(
     DateOnly? EthicsApprovalDate,
     DateOnly? EthicsExpiryDate,
     DateOnly? PlannedStartDate,
+    string PlannedStartDatePrecision,
     DateOnly? PlannedEndDate,
+    string PlannedEndDatePrecision,
     DateOnly? ActualStartDate,
+    string ActualStartDatePrecision,
     DateOnly? ActualEndDate,
+    string ActualEndDatePrecision,
     string? CurrentPhaseName,
     decimal ProgressPercent,
     string ProjectStatus,
     string RiskLevel,
     DateOnly? NearestDeadlineDate,
+    string NearestDeadlineDatePrecision,
     string? Notes);
 
 public sealed record ResearchProjectOverviewDto(
@@ -93,10 +98,15 @@ public sealed record ProjectPhaseDto(
     long? ResponsibleUserId,
     string? ResponsibleUserName,
     DateOnly? PlannedStartDate,
+    string PlannedStartDatePrecision,
     DateOnly? PlannedEndDate,
+    string PlannedEndDatePrecision,
     DateOnly? DeadlineDate,
+    string DeadlineDatePrecision,
     DateOnly? ActualStartDate,
+    string ActualStartDatePrecision,
     DateOnly? ActualEndDate,
+    string ActualEndDatePrecision,
     decimal ProgressPercent,
     string PhaseStatus,
     string? Notes,
@@ -112,11 +122,13 @@ public sealed record ProjectMilestoneDto(
     string MilestoneName,
     string? Description,
     DateOnly DueDate,
+    string DueDatePrecision,
     long? ResponsibleUserId,
     string? ResponsibleUserName,
     string MilestoneStatus,
     string PriorityLevel,
     DateOnly? CompletedAt,
+    string CompletedAtPrecision,
     string? Notes);
 
 public sealed record ProjectDeadlineDto(
@@ -132,6 +144,7 @@ public sealed record ProjectDeadlineDto(
     string Title,
     string? Description,
     DateOnly DueDate,
+    string DueDatePrecision,
     long? ResponsibleUserId,
     string? ResponsibleUserName,
     string PriorityLevel,
@@ -163,9 +176,13 @@ public sealed record CreateResearchProjectRequest(
     DateOnly? EthicsApprovalDate,
     DateOnly? EthicsExpiryDate,
     DateOnly? PlannedStartDate,
+    string? PlannedStartDatePrecision,
     DateOnly? PlannedEndDate,
+    string? PlannedEndDatePrecision,
     DateOnly? ActualStartDate,
+    string? ActualStartDatePrecision,
     DateOnly? ActualEndDate,
+    string? ActualEndDatePrecision,
     string? CurrentPhaseName,
     decimal ProgressPercent,
     string ProjectStatus,
@@ -187,23 +204,27 @@ public sealed record UpdateResearchProjectRequest(
     DateOnly? EthicsApprovalDate,
     DateOnly? EthicsExpiryDate,
     DateOnly? PlannedStartDate,
+    string? PlannedStartDatePrecision,
     DateOnly? PlannedEndDate,
+    string? PlannedEndDatePrecision,
     DateOnly? ActualStartDate,
+    string? ActualStartDatePrecision,
     DateOnly? ActualEndDate,
+    string? ActualEndDatePrecision,
     string? CurrentPhaseName,
     decimal ProgressPercent,
     string ProjectStatus,
     string RiskLevel,
     string? Notes);
 
-public sealed record CreateProjectPhaseRequest(long ProjectId, [Required] string PhaseName, string? Description, long? ResponsibleUserId, DateOnly? PlannedStartDate, DateOnly? PlannedEndDate, DateOnly? DeadlineDate, DateOnly? ActualStartDate, DateOnly? ActualEndDate, decimal ProgressPercent, string PhaseStatus, string? Notes, int SortOrder);
-public sealed record UpdateProjectPhaseRequest([Required] string PhaseName, string? Description, long? ResponsibleUserId, DateOnly? PlannedStartDate, DateOnly? PlannedEndDate, DateOnly? DeadlineDate, DateOnly? ActualStartDate, DateOnly? ActualEndDate, decimal ProgressPercent, string PhaseStatus, string? Notes, int SortOrder);
+public sealed record CreateProjectPhaseRequest(long ProjectId, [Required] string PhaseName, string? Description, long? ResponsibleUserId, DateOnly? PlannedStartDate, string? PlannedStartDatePrecision, DateOnly? PlannedEndDate, string? PlannedEndDatePrecision, DateOnly? DeadlineDate, string? DeadlineDatePrecision, DateOnly? ActualStartDate, string? ActualStartDatePrecision, DateOnly? ActualEndDate, string? ActualEndDatePrecision, decimal ProgressPercent, string PhaseStatus, string? Notes, int SortOrder);
+public sealed record UpdateProjectPhaseRequest([Required] string PhaseName, string? Description, long? ResponsibleUserId, DateOnly? PlannedStartDate, string? PlannedStartDatePrecision, DateOnly? PlannedEndDate, string? PlannedEndDatePrecision, DateOnly? DeadlineDate, string? DeadlineDatePrecision, DateOnly? ActualStartDate, string? ActualStartDatePrecision, DateOnly? ActualEndDate, string? ActualEndDatePrecision, decimal ProgressPercent, string PhaseStatus, string? Notes, int SortOrder);
 
-public sealed record CreateProjectMilestoneRequest(long ProjectId, long? PhaseId, [Required] string MilestoneName, string? Description, DateOnly DueDate, long? ResponsibleUserId, string MilestoneStatus, string PriorityLevel, DateOnly? CompletedAt, string? Notes);
-public sealed record UpdateProjectMilestoneRequest(long? PhaseId, [Required] string MilestoneName, string? Description, DateOnly DueDate, long? ResponsibleUserId, string MilestoneStatus, string PriorityLevel, DateOnly? CompletedAt, string? Notes);
+public sealed record CreateProjectMilestoneRequest(long ProjectId, long? PhaseId, [Required] string MilestoneName, string? Description, DateOnly DueDate, string? DueDatePrecision, long? ResponsibleUserId, string MilestoneStatus, string PriorityLevel, DateOnly? CompletedAt, string? CompletedAtPrecision, string? Notes);
+public sealed record UpdateProjectMilestoneRequest(long? PhaseId, [Required] string MilestoneName, string? Description, DateOnly DueDate, string? DueDatePrecision, long? ResponsibleUserId, string MilestoneStatus, string PriorityLevel, DateOnly? CompletedAt, string? CompletedAtPrecision, string? Notes);
 
-public sealed record CreateProjectDeadlineRequest(long? ProjectId, long? PhaseId, long? MilestoneId, [Required] string DeadlineType, [Required] string Title, string? Description, DateOnly DueDate, long? ResponsibleUserId, string PriorityLevel, string DeadlineStatus);
-public sealed record UpdateProjectDeadlineRequest(long? ProjectId, long? PhaseId, long? MilestoneId, [Required] string DeadlineType, [Required] string Title, string? Description, DateOnly DueDate, long? ResponsibleUserId, string PriorityLevel, string DeadlineStatus, DateTime? CompletedAt);
+public sealed record CreateProjectDeadlineRequest(long? ProjectId, long? PhaseId, long? MilestoneId, [Required] string DeadlineType, [Required] string Title, string? Description, DateOnly DueDate, string? DueDatePrecision, long? ResponsibleUserId, string PriorityLevel, string DeadlineStatus);
+public sealed record UpdateProjectDeadlineRequest(long? ProjectId, long? PhaseId, long? MilestoneId, [Required] string DeadlineType, [Required] string Title, string? Description, DateOnly DueDate, string? DueDatePrecision, long? ResponsibleUserId, string PriorityLevel, string DeadlineStatus, DateTime? CompletedAt);
 
 public sealed record CreateSponsorRequest([Required] string SponsorCode, [Required] string SponsorName, string? SponsorType, string? ContactPerson, string? ContactEmail, string? ContactPhone, string? Address, bool IsActive);
 public sealed record UpdateSponsorRequest([Required] string SponsorName, string? SponsorType, string? ContactPerson, string? ContactEmail, string? ContactPhone, string? Address, bool IsActive);

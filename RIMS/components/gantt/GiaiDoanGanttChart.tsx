@@ -5,6 +5,7 @@ import { CalendarRange, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { PhaseStatus, ResearchPhase } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { formatDateByPrecision, formatDateVN } from "@/lib/date-utils";
 
 type ViewMode = "month" | "quarter" | "half" | "year";
 
@@ -28,15 +29,12 @@ function parseDate(value: string | null | undefined): Date | null {
   return new Date(year, month - 1, day);
 }
 
-function formatDate(value: string | null | undefined) {
-  const date = parseDate(value);
-  return date ? date.toLocaleDateString("vi-VN") : "—";
+function formatDate(value: string | null | undefined, precision?: string | null) {
+  return formatDateByPrecision(value, precision);
 }
 
-function fmtShort(value: string | null | undefined) {
-  const date = parseDate(value);
-  if (!date) return "—";
-  return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`;
+function fmtShort(value: string | null | undefined, precision?: string | null) {
+  return formatDateByPrecision(value, precision);
 }
 
 function dateToPct(date: Date, range: TimelineRange) {
@@ -183,7 +181,7 @@ export default function GiaiDoanGanttChart({ phases }: { phases: ResearchPhase[]
           <div>
             <h3 className="text-sm font-bold text-slate-800">Gantt giai đoạn nghiên cứu</h3>
             <p className="mt-1 text-xs text-slate-500">
-              {range.start.toLocaleDateString("vi-VN")} - {range.end.toLocaleDateString("vi-VN")} · {filtered.length} giai đoạn
+              {formatDateVN(range.start)} - {formatDateVN(range.end)} · {filtered.length} giai đoạn
             </p>
           </div>
           <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
@@ -286,16 +284,16 @@ export default function GiaiDoanGanttChart({ phases }: { phases: ResearchPhase[]
                   <>
                     <div className="absolute top-0 z-20 h-full w-0.5 bg-red-500" style={{ left: `${deadlinePct}%` }} />
                     <span className="absolute top-1 z-30 rounded bg-red-50 px-1 text-[9px] font-semibold text-red-600" style={{ left: `${Math.min(deadlinePct + 0.2, 88)}%` }}>
-                      Hạn {fmtShort(phase.deadline)}
+                      Hạn {fmtShort(phase.deadline, phase.deadlinePrecision)}
                     </span>
                   </>
                 )}
                 <div className="relative h-7">
-                  {planned && <GanttBar position={planned} className="bg-slate-300" label={`${fmtShort(phase.plannedStartDate)} - ${fmtShort(phase.plannedEndDate)}`} title={`Kế hoạch: ${formatDate(phase.plannedStartDate)} - ${formatDate(phase.plannedEndDate)}`} />}
+                  {planned && <GanttBar position={planned} className="bg-slate-300" label={`${fmtShort(phase.plannedStartDate, phase.plannedStartDatePrecision)} - ${fmtShort(phase.plannedEndDate, phase.plannedEndDatePrecision)}`} title={`Kế hoạch: ${formatDate(phase.plannedStartDate, phase.plannedStartDatePrecision)} - ${formatDate(phase.plannedEndDate, phase.plannedEndDatePrecision)}`} />}
                 </div>
                 <div className="relative h-7">
                   {actual ? (
-                    <GanttBar position={actual} className={barColor(phase.status)} label={`${phase.progress}%`} title={`Thực tế: ${formatDate(phase.actualStartDate)} - ${formatDate(phase.actualEndDate)}`} />
+                    <GanttBar position={actual} className={barColor(phase.status)} label={`${phase.progress}%`} title={`Thực tế: ${formatDate(phase.actualStartDate, phase.actualStartDatePrecision)} - ${formatDate(phase.actualEndDate, phase.actualEndDatePrecision)}`} />
                   ) : (
                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] italic text-slate-300">Chưa có ngày thực tế</span>
                   )}

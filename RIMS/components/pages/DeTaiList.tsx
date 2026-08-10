@@ -32,7 +32,7 @@ import { adminApi, type ApiDepartment } from "@/lib/api/admin-api";
 import { mapApiProjectToUi } from "@/lib/mappers/project-mapper";
 import { ConfirmationDialog } from "@/components/common/ConfirmationDialog";
 import { toast } from "@/lib/toast";
-import { useDateFormat } from "@/lib/date-format";
+import { formatDateByPrecision } from "@/lib/date-utils";
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -157,9 +157,13 @@ export function buildProjectPayload(data: DeTaiFormData, existing?: ResearchProj
     ethicsApprovalDate: null,
     ethicsExpiryDate: null,
     plannedStartDate: data.startDate || null,
+    plannedStartDatePrecision: data.startDatePrecision,
     plannedEndDate: data.endDate || null,
+    plannedEndDatePrecision: data.endDatePrecision,
     actualStartDate: null,
+    actualStartDatePrecision: "DAY",
     actualEndDate: data.actualProgressDate || null,
+    actualEndDatePrecision: data.actualProgressDatePrecision,
     currentPhaseName: data.currentPhase.trim() || "Chưa bắt đầu",
     progressPercent: Number(data.progress || 0),
     projectStatus: mapStatusToApi(data.status),
@@ -193,7 +197,7 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
   const [actionError, setActionError] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("code");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-  const { formatDate } = useDateFormat();
+  const formatProjectDate = (value?: string | null, precision?: string | null) => formatDateByPrecision(value, precision);
 
   const loadProjects = useCallback(async () => {
     setLoading(true);
@@ -268,7 +272,6 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
     setActionError("");
     try {
       await researchApi.createProject({
-        projectCode: data.code.trim(),
         ...buildProjectPayload(data),
       });
       toast.success({ title: "Đã thêm đề tài", description: data.code.trim() });
@@ -517,7 +520,7 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
                         <TableCell className="px-2 py-2.5 align-top">
                           {p.nearestDeadline ? (
                             <span className="text-[10px] font-medium leading-tight text-red-500">
-                              {formatDate(p.nearestDeadline)}
+                              {formatProjectDate(p.nearestDeadline, p.nearestDeadlinePrecision)}
                             </span>
                           ) : (
                             <span className="text-slate-300 text-xs">—</span>

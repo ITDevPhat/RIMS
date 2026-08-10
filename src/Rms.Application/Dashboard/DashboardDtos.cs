@@ -8,9 +8,13 @@ public sealed record DashboardPhaseDto(
     long PhaseId,
     string PhaseName,
     DateOnly? PlannedStartDate,
+    string PlannedStartDatePrecision,
     DateOnly? PlannedEndDate,
+    string PlannedEndDatePrecision,
     DateOnly? ActualStartDate,
+    string ActualStartDatePrecision,
     DateOnly? ActualEndDate,
+    string ActualEndDatePrecision,
     decimal ProgressPercent,
     string PhaseStatus);
 
@@ -30,6 +34,7 @@ public sealed record DashboardDeadlineDto(
     string DeadlineType,
     string Title,
     DateOnly DueDate,
+    string DueDatePrecision,
     string PriorityLevel,
     string DeadlineStatus,
     long? ProjectId,

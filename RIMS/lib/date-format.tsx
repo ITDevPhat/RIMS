@@ -3,16 +3,15 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { adminApi } from "@/lib/api/admin-api";
 
-export type DateFormat = "dd/MM/yyyy" | "MM/yyyy";
+export type DateFormat = "dd/MM/yyyy";
 
-const DEFAULT_DATE_FORMAT: DateFormat = "MM/yyyy";
+const DEFAULT_DATE_FORMAT: DateFormat = "dd/MM/yyyy";
 const STORAGE_KEY = "rms.dateFormat";
 const SETTING_KEY = "system.date_format";
 const CHANGE_EVENT = "rms:date-format-changed";
 
 interface DateFormatContextValue {
   dateFormat: DateFormat;
-  inputType: "date" | "month";
   formatDate: (value?: string | null) => string;
   toInputValue: (value?: string | null) => string;
   fromInputValue: (value: string) => string;
@@ -22,7 +21,7 @@ interface DateFormatContextValue {
 const DateFormatContext = createContext<DateFormatContextValue | null>(null);
 
 function normalizeDateFormat(value?: string | null): DateFormat {
-  return value === "dd/MM/yyyy" ? "dd/MM/yyyy" : DEFAULT_DATE_FORMAT;
+  return value === "dd/MM/yyyy" ? value : DEFAULT_DATE_FORMAT;
 }
 
 function readStoredDateFormat() {
@@ -81,26 +80,19 @@ export function DateFormatProvider({ children }: { children: React.ReactNode }) 
 
   const value = useMemo<DateFormatContextValue>(() => ({
     dateFormat,
-    inputType: dateFormat === "MM/yyyy" ? "month" : "date",
     formatDate: (input) => {
       const date = parseIsoDate(input);
       if (!date) return input || "—";
-      return dateFormat === "MM/yyyy"
-        ? `Tháng ${date.month} Năm ${date.year}`
-        : `${pad(date.day)}/${pad(date.month)}/${date.year}`;
+      return `${pad(date.day)}/${pad(date.month)}/${date.year}`;
     },
     toInputValue: (input) => {
       const date = parseIsoDate(input);
       if (!date) return "";
-      return dateFormat === "MM/yyyy"
-        ? `${date.year}-${pad(date.month)}`
-        : `${date.year}-${pad(date.month)}-${pad(date.day)}`;
+      return `${date.year}-${pad(date.month)}-${pad(date.day)}`;
     },
     fromInputValue: (input) => {
       if (!input) return "";
-      return dateFormat === "MM/yyyy" && /^\d{4}-\d{2}$/.test(input)
-        ? `${input}-01`
-        : input;
+      return input;
     },
     refreshDateFormat,
   }), [dateFormat, refreshDateFormat]);

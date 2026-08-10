@@ -38,6 +38,8 @@ export type EthicsStatus =
   | "Sắp hết hạn"
   | "Hết hạn";
 
+export type DatePrecision = "DAY" | "MONTH";
+
 export type ProjectHealth =
   | "Đúng tiến độ"
   | "Có nguy cơ"
@@ -66,8 +68,13 @@ export interface ResearchProject {
   ethicsStatus: EthicsStatus;
   ethicsExpiry: string | null;  // ISO date
   startDate: string;
+  startDatePrecision: DatePrecision;
   plannedEndDate: string;
+  plannedEndDatePrecision: DatePrecision;
+  actualStartDate?: string | null;
+  actualStartDatePrecision?: DatePrecision;
   actualEndDate?: string | null;
+  actualEndDatePrecision?: DatePrecision;
   progress: number;
   progressPercent?: number;
   status: ResearchStatus;
@@ -75,6 +82,7 @@ export interface ResearchProject {
   riskLevel?: RiskLevel;
   currentPhase: string;
   nearestDeadline: string | null;
+  nearestDeadlinePrecision?: DatePrecision;
   notes?: string | null;
 }
 
@@ -90,11 +98,16 @@ export interface ResearchPhase {
   assignee?: string;
   assignedTo?: string;
   plannedStartDate: string;
+  plannedStartDatePrecision: DatePrecision;
   plannedEndDate: string;
+  plannedEndDatePrecision: DatePrecision;
   deadline: string;
+  deadlinePrecision: DatePrecision;
   deadlineDate?: string;
   actualStartDate: string | null;
+  actualStartDatePrecision: DatePrecision;
   actualEndDate: string | null;
+  actualEndDatePrecision: DatePrecision;
   progress: number;
   progressPercent?: number;
   status: PhaseStatus;
@@ -117,11 +130,16 @@ export interface ResearchMilestone {
   assignee?: string;
   assignedTo?: string;
   plannedStartDate: string;
+  plannedStartDatePrecision: DatePrecision;
   plannedEndDate: string;
+  plannedEndDatePrecision: DatePrecision;
   deadline: string;
+  deadlinePrecision: DatePrecision;
   deadlineDate?: string;
   actualStartDate: string | null;
+  actualStartDatePrecision: DatePrecision;
   actualEndDate: string | null;
+  actualEndDatePrecision: DatePrecision;
   progress: number;
   progressPercent?: number;
   status: PhaseStatus;
@@ -141,6 +159,7 @@ export interface DeadlineItem {
   researchName: string;
   type: string;             // Loại hạn chót
   dueDate: string;          // ISO date
+  dueDatePrecision: DatePrecision;
   daysRemaining: number;    // negative = overdue
   assignee: string;
   status: PhaseStatus | "Quá hạn";

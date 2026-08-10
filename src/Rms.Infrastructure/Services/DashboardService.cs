@@ -247,7 +247,7 @@ public sealed class DashboardService : IDashboardService, IAuditQueryService
             .Where(x => x.DeletedAt == null)
             .OrderBy(x => x.SortOrder)
             .ThenBy(x => x.PlannedStartDate ?? DateOnly.MaxValue)
-            .Select(x => new DashboardPhaseDto(x.PhaseId, x.PhaseName, x.PlannedStartDate, x.PlannedEndDate, x.ActualStartDate, x.ActualEndDate, x.ProgressPercent, x.PhaseStatus))
+            .Select(x => new DashboardPhaseDto(x.PhaseId, x.PhaseName, x.PlannedStartDate, NormalizeDatePrecision(x.PlannedStartDatePrecision), x.PlannedEndDate, NormalizeDatePrecision(x.PlannedEndDatePrecision), x.ActualStartDate, NormalizeDatePrecision(x.ActualStartDatePrecision), x.ActualEndDate, NormalizeDatePrecision(x.ActualEndDatePrecision), x.ProgressPercent, x.PhaseStatus))
             .ToList());
 
     private static DashboardDeadlineDto MapDeadline(ProjectDeadline item, DateOnly today) => new(
@@ -255,6 +255,7 @@ public sealed class DashboardService : IDashboardService, IAuditQueryService
         item.DeadlineType,
         item.DeadlineTitle,
         item.DueDate,
+        NormalizeDatePrecision(item.DueDatePrecision),
         item.PriorityLevel,
         item.DeadlineStatus,
         item.ProjectId,
@@ -319,4 +320,10 @@ public sealed class DashboardService : IDashboardService, IAuditQueryService
     private static int NormalizeYear(int year) => year <= 0 ? DateTime.UtcNow.Year : year;
     private static bool IsCompleted(string status) => status is "completed" or "done" or "closed";
     private static bool IsActiveProjectStatus(string status) => status is "active" or "in_progress" or "đang thực hiện";
+    private static string NormalizeDatePrecision(string? precision)
+    {
+        if (string.IsNullOrWhiteSpace(precision)) return "DAY";
+        var normalized = precision.Trim().ToUpperInvariant();
+        return normalized is "DAY" or "MONTH" ? normalized : "DAY";
+    }
 }

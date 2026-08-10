@@ -37,11 +37,19 @@ public partial class ResearchProject
 
     public DateOnly? PlannedStartDate { get; set; }
 
+    public string PlannedStartDatePrecision { get; set; } = "DAY";
+
     public DateOnly? PlannedEndDate { get; set; }
+
+    public string PlannedEndDatePrecision { get; set; } = "DAY";
 
     public DateOnly? ActualStartDate { get; set; }
 
+    public string ActualStartDatePrecision { get; set; } = "DAY";
+
     public DateOnly? ActualEndDate { get; set; }
+
+    public string ActualEndDatePrecision { get; set; } = "DAY";
 
     public string? CurrentPhaseName { get; set; }
 

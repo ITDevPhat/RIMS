@@ -19,7 +19,11 @@ public partial class ProjectMilestone
 
     public DateOnly DueDate { get; set; }
 
+    public string DueDatePrecision { get; set; } = "DAY";
+
     public DateOnly? CompletedDate { get; set; }
+
+    public string CompletedDatePrecision { get; set; } = "DAY";
 
     public long? OwnerUserId { get; set; }
 

@@ -1,20 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowUpDown, Calendar, CheckCircle2, Clock, Eye, Search, Shield, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowUpDown, Calendar, CheckCircle2, Clock, Eye, Pencil, Plus, Search, Shield, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import type { DeadlineItem } from "@/lib/types";
+import type { DatePrecision, DeadlineItem, PhaseStatus } from "@/lib/types";
 import { projectDeadlineApi, researchApi } from "@/lib/api/research-api";
 import { mapApiDeadlineToUi } from "@/lib/mappers/deadline-mapper";
 import { mapApiProjectToUi } from "@/lib/mappers/project-mapper";
 import { toast } from "@/lib/toast";
-import { useDateFormat } from "@/lib/date-format";
+import { formatDateByPrecision } from "@/lib/date-utils";
+import { PrecisionDateInput } from "@/components/common/DateInput";
+import { toApiPhaseStatus } from "@/lib/mappers/status-mapper";
 
 type Priority = DeadlineItem["priority"];
 
@@ -30,6 +32,26 @@ const PRIORITY_ORDER: Priority[] = ["critical", "ethics", "high", "medium", "nor
 
 type DeadlineSortKey = "researchCode" | "researchName" | "type" | "assignee" | "dueDate" | "daysRemaining" | "status";
 type SortDirection = "asc" | "desc";
+
+type DeadlineForm = {
+  projectId: string;
+  deadlineType: string;
+  title: string;
+  dueDate: string;
+  dueDatePrecision: DatePrecision;
+  priority: Priority;
+  status: PhaseStatus;
+};
+
+const emptyDeadlineForm: DeadlineForm = {
+  projectId: "",
+  deadlineType: "project_deadline",
+  title: "",
+  dueDate: "",
+  dueDatePrecision: "DAY",
+  priority: "normal",
+  status: "Chưa bắt đầu",
+};
 
 const deadlineColumns: Array<{ label: string; key?: DeadlineSortKey; className: string }> = [
   { label: "Mã đề tài", key: "researchCode", className: "w-[140px]" },
@@ -53,6 +75,12 @@ function deadlineTypeLabel(type: string) {
   return map[normalized] ?? type;
 }
 
+function toApiDeadlinePriority(priority: Priority) {
+  if (priority === "critical") return "urgent";
+  if (priority === "ethics") return "high";
+  return priority;
+}
+
 function DaysChip({ days }: { days: number }) {
   if (days < 0) return <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700">Quá hạn {Math.abs(days)} ngày</span>;
   if (days === 0) return <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700">Hôm nay</span>;
@@ -66,12 +94,17 @@ export default function HanChotPage() {
   const [filterResearch, setFilterResearch] = useState("all");
   const [filterType, setFilterType] = useState("all");
   const [selectedDeadline, setSelectedDeadline] = useState<DeadlineItem | null>(null);
+  const [editingDeadline, setEditingDeadline] = useState<DeadlineItem | null>(null);
+  const [deadlineForm, setDeadlineForm] = useState<DeadlineForm>(emptyDeadlineForm);
+  const [deadlineFormOpen, setDeadlineFormOpen] = useState(false);
+  const [deadlineFormError, setDeadlineFormError] = useState("");
+  const [savingDeadline, setSavingDeadline] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [sortKey, setSortKey] = useState<DeadlineSortKey>("daysRemaining");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-  const { formatDate } = useDateFormat();
+  const formatDeadlineDate = (value?: string | null, precision?: string | null) => formatDateByPrecision(value, precision);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -121,6 +154,7 @@ export default function HanChotPage() {
     return acc;
   }, {} as Record<Priority, number>);
   const selectedProject = projects.find((project) => project.id === filterResearch);
+  const formProject = projects.find((project) => project.id === deadlineForm.projectId);
   const handleSort = (key: DeadlineSortKey) => {
     setSortKey((currentKey) => {
       if (currentKey === key) {
@@ -146,11 +180,99 @@ export default function HanChotPage() {
     }
   };
 
+  const openCreateDeadline = () => {
+    setEditingDeadline(null);
+    setDeadlineForm({ ...emptyDeadlineForm, projectId: filterResearch === "all" ? "" : filterResearch });
+    setDeadlineFormError("");
+    setDeadlineFormOpen(true);
+  };
+
+  const openEditDeadline = (item: DeadlineItem) => {
+    setEditingDeadline(item);
+    setDeadlineForm({
+      projectId: item.researchId,
+      deadlineType: item.type,
+      title: item.type,
+      dueDate: item.dueDate,
+      dueDatePrecision: item.dueDatePrecision,
+      priority: item.priority,
+      status: item.status === "Quá hạn" ? "Đang thực hiện" : item.status as PhaseStatus,
+    });
+    setDeadlineFormError("");
+    setDeadlineFormOpen(true);
+  };
+
+  const handleDeadlineFormChange = (field: keyof DeadlineForm, value: string | DatePrecision | Priority) => {
+    setDeadlineForm((prev) => ({ ...prev, [field]: value }));
+    setDeadlineFormError("");
+  };
+
+  const handleSaveDeadline = async () => {
+    if (!deadlineForm.projectId) {
+      setDeadlineFormError("Vui lòng chọn đề tài.");
+      return;
+    }
+    if (!deadlineForm.deadlineType.trim()) {
+      setDeadlineFormError("Vui lòng nhập loại hạn chót.");
+      return;
+    }
+    if (!deadlineForm.title.trim()) {
+      setDeadlineFormError("Vui lòng nhập tiêu đề hạn chót.");
+      return;
+    }
+    if (!deadlineForm.dueDate) {
+      setDeadlineFormError("Vui lòng chọn ngày hạn.");
+      return;
+    }
+
+    const payload = {
+      projectId: Number(deadlineForm.projectId),
+      phaseId: null,
+      milestoneId: null,
+      deadlineType: deadlineForm.deadlineType.trim(),
+      title: deadlineForm.title.trim(),
+      description: null,
+      dueDate: deadlineForm.dueDate,
+      dueDatePrecision: deadlineForm.dueDatePrecision,
+      responsibleUserId: null,
+      priorityLevel: toApiDeadlinePriority(deadlineForm.priority),
+      deadlineStatus: toApiPhaseStatus(deadlineForm.status),
+      ...(editingDeadline ? { completedAt: null } : {}),
+    };
+
+    try {
+      setSavingDeadline(true);
+      if (editingDeadline) {
+        await projectDeadlineApi.updateDeadline(editingDeadline.id, payload);
+        toast.success("Đã cập nhật hạn chót.");
+      } else {
+        await projectDeadlineApi.createDeadline(payload);
+        toast.success("Đã tạo hạn chót.");
+      }
+      setDeadlineFormOpen(false);
+      await loadData();
+    } catch (saveError) {
+      const message = saveError instanceof Error ? saveError.message : "Không lưu được hạn chót.";
+      setDeadlineFormError(message);
+      toast.error({ title: "Không lưu được hạn chót", description: message });
+    } finally {
+      setSavingDeadline(false);
+    }
+  };
+
   return (
     <div>
       <div className="border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8 py-5">
-        <h1 className="text-lg font-bold text-slate-800">Hạn chót & Cảnh báo</h1>
-        <p className="mt-0.5 text-sm text-slate-500">Theo dõi hạn chót của đề tài, giai đoạn và mốc tiến độ từ backend RMS.</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-lg font-bold text-slate-800">Hạn chót & Cảnh báo</h1>
+            <p className="mt-0.5 text-sm text-slate-500">Theo dõi hạn chót của đề tài, giai đoạn và mốc tiến độ từ backend RMS.</p>
+          </div>
+          <Button className="gap-2" onClick={openCreateDeadline}>
+            <Plus className="h-4 w-4" />
+            Thêm hạn chót
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-6 px-4 sm:px-6 lg:px-8 py-6">
@@ -251,13 +373,16 @@ export default function HanChotPage() {
                     <TableCell className="px-2 py-3 align-top text-sm text-slate-800 whitespace-normal break-words">{item.researchName || "—"}</TableCell>
                     <TableCell className="px-2 py-3 align-top"><span className={cn("inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold whitespace-normal", PRIORITY_CONFIG[item.priority].badge)}>{deadlineTypeLabel(item.type)}</span></TableCell>
                     <TableCell className="px-2 py-3 align-top text-xs text-slate-600 whitespace-normal break-words">{item.assignee}</TableCell>
-                    <TableCell className="px-2 py-3 align-top text-xs text-slate-700"><Calendar className="mr-1 inline h-3 w-3 text-slate-400" />{formatDate(item.dueDate)}</TableCell>
+                    <TableCell className="px-2 py-3 align-top text-xs text-slate-700"><Calendar className="mr-1 inline h-3 w-3 text-slate-400" />{formatDeadlineDate(item.dueDate, item.dueDatePrecision)}</TableCell>
                     <TableCell className="px-2 py-3 align-top"><DaysChip days={item.daysRemaining} /></TableCell>
                     <TableCell className="px-2 py-3 align-top text-xs font-semibold text-slate-600 whitespace-normal break-words">{item.status}</TableCell>
                     <TableCell className="sticky right-0 z-10 bg-white px-2 py-3 align-top whitespace-nowrap shadow-[-4px_0_6px_-5px_rgba(15,23,42,0.45)]">
                       <div className="flex flex-nowrap justify-end gap-1">
                         <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50" title="Xem chi tiết" aria-label="Xem chi tiết" onClick={() => setSelectedDeadline(item)}>
                           <Eye className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-600 hover:bg-slate-100" title="Sửa hạn chót" aria-label="Sửa hạn chót" onClick={() => openEditDeadline(item)}>
+                          <Pencil className="h-3 w-3" />
                         </Button>
                         <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" disabled={item.status === "Hoàn thành" || completingId === item.id} onClick={() => void handleMarkCompleted(item)}>
                           Xong
@@ -281,12 +406,75 @@ export default function HanChotPage() {
               <InfoLine label="Đề tài" value={`${selectedDeadline.researchCode} - ${selectedDeadline.researchName}`} wide />
               <InfoLine label="Loại hạn chót" value={deadlineTypeLabel(selectedDeadline.type)} />
               <InfoLine label="Người phụ trách" value={selectedDeadline.assignee || "—"} />
-              <InfoLine label="Ngày hạn" value={formatDate(selectedDeadline.dueDate)} />
+              <InfoLine label="Ngày hạn" value={formatDeadlineDate(selectedDeadline.dueDate, selectedDeadline.dueDatePrecision)} />
               <InfoLine label="Còn lại" value={selectedDeadline.daysRemaining < 0 ? `Quá hạn ${Math.abs(selectedDeadline.daysRemaining)} ngày` : `${selectedDeadline.daysRemaining} ngày`} />
               <InfoLine label="Trạng thái" value={selectedDeadline.status} />
               <InfoLine label="Mức cảnh báo" value={PRIORITY_CONFIG[selectedDeadline.priority].label} />
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={deadlineFormOpen} onOpenChange={(open) => !savingDeadline && setDeadlineFormOpen(open)}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{editingDeadline ? "Sửa hạn chót" : "Thêm hạn chót"}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 text-sm sm:grid-cols-2">
+            {deadlineFormError && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 font-medium text-red-700 sm:col-span-2">{deadlineFormError}</div>}
+            <div className="sm:col-span-2">
+              <label className="mb-1.5 block text-xs font-semibold text-slate-700">Đề tài <span className="text-red-500">*</span></label>
+              <Select value={deadlineForm.projectId} onValueChange={(value) => handleDeadlineFormChange("projectId", value ?? "")}>
+                <SelectTrigger className="h-10 border-slate-200">
+                  <SelectValue placeholder="Chọn đề tài" />
+                </SelectTrigger>
+                <SelectContent className="max-w-xl">
+                  {projects.map((project) => <SelectItem key={project.id} value={project.id}>{project.code} - {project.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {formProject && <p className="mt-1 text-xs text-slate-500">{formProject.code} - {formProject.name}</p>}
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-700">Loại hạn chót <span className="text-red-500">*</span></label>
+              <Input value={deadlineForm.deadlineType} onChange={(event) => handleDeadlineFormChange("deadlineType", event.target.value)} placeholder="VD: project_deadline" className="h-10 border-slate-200" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-700">Tiêu đề <span className="text-red-500">*</span></label>
+              <Input value={deadlineForm.title} onChange={(event) => handleDeadlineFormChange("title", event.target.value)} placeholder="VD: Nộp báo cáo nghiệm thu" className="h-10 border-slate-200" />
+            </div>
+            <PrecisionDateInput
+              label="Ngày hạn"
+              required
+              value={deadlineForm.dueDate}
+              precision={deadlineForm.dueDatePrecision}
+              onValueChange={(value) => handleDeadlineFormChange("dueDate", value)}
+              onPrecisionChange={(precision) => handleDeadlineFormChange("dueDatePrecision", precision)}
+            />
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-700">Mức cảnh báo</label>
+              <Select value={deadlineForm.priority} onValueChange={(value) => handleDeadlineFormChange("priority", value as Priority)}>
+                <SelectTrigger className="h-10 border-slate-200"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PRIORITY_ORDER.map((priority) => <SelectItem key={priority} value={priority}>{PRIORITY_CONFIG[priority].label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-700">Trạng thái</label>
+              <Select value={deadlineForm.status} onValueChange={(value) => handleDeadlineFormChange("status", value as PhaseStatus)}>
+                <SelectTrigger className="h-10 border-slate-200"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Chưa bắt đầu">Chưa bắt đầu</SelectItem>
+                  <SelectItem value="Đang thực hiện">Đang thực hiện</SelectItem>
+                  <SelectItem value="Hoàn thành">Hoàn thành</SelectItem>
+                  <SelectItem value="Tạm dừng">Tạm dừng</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2 sm:col-span-2">
+              <Button variant="outline" disabled={savingDeadline} onClick={() => setDeadlineFormOpen(false)}>Hủy</Button>
+              <Button disabled={savingDeadline} onClick={() => void handleSaveDeadline()}>{savingDeadline ? "Đang lưu..." : "Lưu hạn chót"}</Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

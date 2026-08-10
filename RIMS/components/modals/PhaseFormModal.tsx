@@ -7,7 +7,8 @@ import { FormDrawer, FormDrawerField, FormDrawerSection } from "@/components/com
 import type { ResearchPhase, PhaseStatus } from "@/lib/types";
 import type { ProjectPhasePayload } from "@/lib/api/research-api";
 import { toApiPhaseStatus } from "@/lib/mappers/status-mapper";
-import { useDateFormat } from "@/lib/date-format";
+import { PrecisionDateInput } from "@/components/common/DateInput";
+import type { DatePrecision } from "@/lib/types";
 
 const STATUS_OPTIONS: PhaseStatus[] = [
   "Chưa bắt đầu",
@@ -59,17 +60,21 @@ export default function PhaseFormModal({ open, onClose, phase, projectId, nextOr
   const isEdit = !!phase;
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState("");
-  const { inputType, toInputValue, fromInputValue, dateFormat } = useDateFormat();
 
   const [form, setForm] = useState({
     name: "",
     description: "",
     assignee: "",
     plannedStartDate: "",
+    plannedStartDatePrecision: "DAY" as DatePrecision,
     plannedEndDate: "",
+    plannedEndDatePrecision: "DAY" as DatePrecision,
     deadline: "",
+    deadlinePrecision: "DAY" as DatePrecision,
     actualStartDate: "",
+    actualStartDatePrecision: "DAY" as DatePrecision,
     actualEndDate: "",
+    actualEndDatePrecision: "DAY" as DatePrecision,
     progress: "0",
     status: "Chưa bắt đầu" as PhaseStatus,
     notes: "",
@@ -83,10 +88,15 @@ export default function PhaseFormModal({ open, onClose, phase, projectId, nextOr
         description: phase.description ?? "",
         assignee: phase.assignee ?? "",
         plannedStartDate: phase.plannedStartDate,
+        plannedStartDatePrecision: phase.plannedStartDatePrecision ?? "DAY",
         plannedEndDate: phase.plannedEndDate,
+        plannedEndDatePrecision: phase.plannedEndDatePrecision ?? "DAY",
         deadline: phase.deadline,
+        deadlinePrecision: phase.deadlinePrecision ?? "DAY",
         actualStartDate: phase.actualStartDate ?? "",
+        actualStartDatePrecision: phase.actualStartDatePrecision ?? "DAY",
         actualEndDate: phase.actualEndDate ?? "",
+        actualEndDatePrecision: phase.actualEndDatePrecision ?? "DAY",
         progress: String(phase.progress),
         status: phase.status,
         notes: phase.notes ?? "",
@@ -97,10 +107,15 @@ export default function PhaseFormModal({ open, onClose, phase, projectId, nextOr
         description: "",
         assignee: "",
         plannedStartDate: "",
+        plannedStartDatePrecision: "DAY",
         plannedEndDate: "",
+        plannedEndDatePrecision: "DAY",
         deadline: "",
+        deadlinePrecision: "DAY",
         actualStartDate: "",
+        actualStartDatePrecision: "DAY",
         actualEndDate: "",
+        actualEndDatePrecision: "DAY",
         progress: "0",
         status: "Chưa bắt đầu",
         notes: "",
@@ -108,7 +123,7 @@ export default function PhaseFormModal({ open, onClose, phase, projectId, nextOr
     }
   }, [phase, open]);
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: string, value: string | DatePrecision) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -143,10 +158,15 @@ export default function PhaseFormModal({ open, onClose, phase, projectId, nextOr
       description: form.description.trim() || null,
       responsibleUserId: toNumberOrNull(phase?.responsibleUserId),
       plannedStartDate: toOptionalDate(form.plannedStartDate),
+      plannedStartDatePrecision: form.plannedStartDatePrecision,
       plannedEndDate: toOptionalDate(form.plannedEndDate),
+      plannedEndDatePrecision: form.plannedEndDatePrecision,
       deadlineDate: toOptionalDate(form.deadline),
+      deadlineDatePrecision: form.deadlinePrecision,
       actualStartDate: toOptionalDate(form.actualStartDate),
+      actualStartDatePrecision: form.actualStartDatePrecision,
       actualEndDate: toOptionalDate(form.actualEndDate),
+      actualEndDatePrecision: form.actualEndDatePrecision,
       progressPercent: progress,
       phaseStatus: toApiPhaseStatus(form.status),
       notes: form.notes.trim() || null,
@@ -220,35 +240,11 @@ export default function PhaseFormModal({ open, onClose, phase, projectId, nextOr
       </FormDrawerSection>
 
       <FormDrawerSection title="Kế hoạch và trạng thái">
-        <FormDrawerField label="Ngày bắt đầu dự kiến">
-          <Input
-            type={inputType}
-            lang="vi-VN"
-            value={toInputValue(form.plannedStartDate)}
-            onChange={(e) => handleChange("plannedStartDate", fromInputValue(e.target.value))}
-            className="h-10 border-slate-200"
-          />
-        </FormDrawerField>
+        <PrecisionDateInput label="Ngày bắt đầu dự kiến" value={form.plannedStartDate} precision={form.plannedStartDatePrecision} onValueChange={(value) => handleChange("plannedStartDate", value)} onPrecisionChange={(precision) => handleChange("plannedStartDatePrecision", precision)} />
 
-        <FormDrawerField label="Ngày kết thúc dự kiến">
-          <Input
-            type={inputType}
-            lang="vi-VN"
-            value={toInputValue(form.plannedEndDate)}
-            onChange={(e) => handleChange("plannedEndDate", fromInputValue(e.target.value))}
-            className="h-10 border-slate-200"
-          />
-        </FormDrawerField>
+        <PrecisionDateInput label="Ngày kết thúc dự kiến" value={form.plannedEndDate} precision={form.plannedEndDatePrecision} onValueChange={(value) => handleChange("plannedEndDate", value)} onPrecisionChange={(precision) => handleChange("plannedEndDatePrecision", precision)} />
 
-        <FormDrawerField label="Hạn chót">
-          <Input
-            type={inputType}
-            lang="vi-VN"
-            value={toInputValue(form.deadline)}
-            onChange={(e) => handleChange("deadline", fromInputValue(e.target.value))}
-            className="h-10 border-slate-200"
-          />
-        </FormDrawerField>
+        <PrecisionDateInput label="Hạn chót" value={form.deadline} precision={form.deadlinePrecision} onValueChange={(value) => handleChange("deadline", value)} onPrecisionChange={(precision) => handleChange("deadlinePrecision", precision)} />
 
         <FormDrawerField label="Trạng thái" required>
           <Select value={form.status} onValueChange={(v) => v && handleChange("status", v)}>
@@ -265,29 +261,9 @@ export default function PhaseFormModal({ open, onClose, phase, projectId, nextOr
       </FormDrawerSection>
 
       <FormDrawerSection title="Thực tế và ghi chú">
-        <FormDrawerField label="Ngày bắt đầu thực tế">
-          <Input
-            type={inputType}
-            lang="vi-VN"
-            value={toInputValue(form.actualStartDate)}
-            onChange={(e) => handleChange("actualStartDate", fromInputValue(e.target.value))}
-            className="h-10 border-slate-200"
-          />
-        </FormDrawerField>
+        <PrecisionDateInput label="Ngày bắt đầu thực tế" value={form.actualStartDate} precision={form.actualStartDatePrecision} onValueChange={(value) => handleChange("actualStartDate", value)} onPrecisionChange={(precision) => handleChange("actualStartDatePrecision", precision)} />
 
-        <FormDrawerField label="Ngày kết thúc thực tế">
-          <Input
-            type={inputType}
-            lang="vi-VN"
-            value={toInputValue(form.actualEndDate)}
-            onChange={(e) => handleChange("actualEndDate", fromInputValue(e.target.value))}
-            className="h-10 border-slate-200"
-          />
-        </FormDrawerField>
-
-        <div className="col-span-2 rounded-md bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700">
-          Tiến độ tự tính theo ngày bắt đầu, deadline và ngày thực tế. Định dạng hiện tại: {dateFormat}.
-        </div>
+        <PrecisionDateInput label="Ngày kết thúc thực tế" value={form.actualEndDate} precision={form.actualEndDatePrecision} onValueChange={(value) => handleChange("actualEndDate", value)} onPrecisionChange={(precision) => handleChange("actualEndDatePrecision", precision)} />
 
         <FormDrawerField label="Ghi chú" colSpan={2}>
           <textarea

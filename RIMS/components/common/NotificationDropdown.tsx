@@ -14,6 +14,7 @@ import { notificationApi } from "@/lib/api/notification-api";
 import { mapApiNotificationToUi } from "@/lib/mappers/notification-mapper";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
+import { formatDateVN } from "@/lib/date-utils";
 import type { PageKey } from "@/components/layout/Sidebar";
 
 interface NotificationDropdownProps {
@@ -238,5 +239,5 @@ function formatTime(date: Date): string {
   if (minutes < 60) return `${minutes}p trước`;
   if (hours < 24) return `${hours}g trước`;
   if (days < 7) return `${days}n trước`;
-  return date.toLocaleDateString("vi-VN");
+  return formatDateVN(date);
 }

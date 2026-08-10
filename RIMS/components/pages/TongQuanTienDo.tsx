@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/common/DateInput";
 import {
   Select,
   SelectContent,
@@ -18,6 +19,7 @@ import { dashboardApi, type DashboardDeadlinesDto, type ResearchOverviewDto } fr
 import { mapGanttProjectToUi } from "@/lib/mappers/project-mapper";
 import { mapDashboardPhaseToUi } from "@/lib/mappers/phase-mapper";
 import { mapApiDeadlineToUi } from "@/lib/mappers/deadline-mapper";
+import { formatDateByPrecision, formatDateVN } from "@/lib/date-utils";
 import {
   FlaskConical,
   Activity,
@@ -57,7 +59,7 @@ function getTimelineRange(year: number, scope: TimeScope, segment: number, custo
     return {
       start,
       end: new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59),
-      label: `${start.toLocaleDateString("vi-VN")} - ${end.toLocaleDateString("vi-VN")}`,
+      label: `${formatDateVN(start)} - ${formatDateVN(end)}`,
       shortLabel: "Tùy chỉnh",
     };
   }
@@ -92,9 +94,8 @@ function dateToPct(date: Date, range: TimelineRange): number {
   return Math.min(100, Math.max(0, ((date.getTime() - range.start.getTime()) / totalMs) * 100));
 }
 
-function fmtShort(s: string): string {
-  const d = parseDate(s);
-  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+function fmtShort(s: string, precision?: string | null): string {
+  return formatDateByPrecision(s, precision);
 }
 
 // ─── Phase color ──────────────────────────────────────────────────────────────
@@ -486,11 +487,11 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                   <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
                     <label className="min-w-0 text-xs font-semibold text-slate-500">
                       Từ ngày
-                      <Input type="date" lang="vi-VN" value={customStartDate} onChange={(event) => handleCustomStartChange(event.target.value)} className="mt-1 h-9 bg-white text-sm" />
+                      <DateInput value={customStartDate} onChange={handleCustomStartChange} className="mt-1 h-9 bg-white text-sm" />
                     </label>
                     <label className="min-w-0 text-xs font-semibold text-slate-500">
                       Đến ngày
-                      <Input type="date" lang="vi-VN" value={customEndDate} onChange={(event) => setCustomEndDate(event.target.value)} className="mt-1 h-9 bg-white text-sm" />
+                      <DateInput value={customEndDate} onChange={setCustomEndDate} className="mt-1 h-9 bg-white text-sm" />
                     </label>
                   </div>
                 )}
@@ -501,7 +502,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
               <CalendarRange className="h-4 w-4 text-blue-600" />
               <span className="font-semibold text-blue-700">Khoảng đang xem</span>
               <span className="rounded-md bg-white px-2 py-1 font-medium text-slate-700">
-                {range.start.toLocaleDateString("vi-VN")} - {range.end.toLocaleDateString("vi-VN")}
+                {formatDateVN(range.start)} - {formatDateVN(range.end)}
               </span>
             </div>
           </CardContent>
@@ -799,7 +800,7 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
                             <div className="relative h-full space-y-0.5">
                               {projectPhases.filter((phase) => overlapsRange(phase.plannedStartDate, phase.plannedEndDate, range)).map((phase) => {
                                 const position = clampPhasePosition(phase.plannedStartDate, phase.plannedEndDate, range);
-                                const tooltip = `${phase.order}. ${phase.name}\nTT: ${phase.status} | ${phase.progress}%\n${fmtShort(phase.plannedStartDate)} – ${fmtShort(phase.plannedEndDate)}`;
+                                const tooltip = `${phase.order}. ${phase.name}\nTT: ${phase.status} | ${phase.progress}%\n${fmtShort(phase.plannedStartDate, phase.plannedStartDatePrecision)} – ${fmtShort(phase.plannedEndDate, phase.plannedEndDatePrecision)}`;
                                 return (
                                   <div key={phase.id} className="relative h-4">
                                     <PhaseBar

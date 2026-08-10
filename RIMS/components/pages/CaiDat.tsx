@@ -38,10 +38,12 @@ import { cn } from "@/lib/utils";
 import UserManagementTab from "@/components/admin/UserManagementTab";
 import RoleManagementTab from "@/components/admin/RoleManagementTab";
 import DepartmentManagementTab from "@/components/admin/DepartmentManagementTab";
+import { DateInput } from "@/components/common/DateInput";
 import { adminApi, type ApiAdminRole, type ApiPermission, type ApiRolePermissionMatrix, type ApiSetting } from "@/lib/api/admin-api";
 import { auditApi, type ApiAuditLog } from "@/lib/api/audit-api";
 import { notificationApi, type ApiNotificationRule, type ApiNotificationSettings } from "@/lib/api/notification-api";
 import { notifyDateFormatChanged, type DateFormat } from "@/lib/date-format";
+import { formatDateTimeVN } from "@/lib/date-utils";
 
 type SettingsTab = "general" | "departments" | "notifications" | "rules" | "users" | "roles" | "permissions" | "audit";
 
@@ -67,7 +69,7 @@ const GENERAL_SETTING_DEFS = [
   { key: "system.organization", label: "Đơn vị triển khai", valueType: "string", group: "general", name: "Đơn vị triển khai", defaultValue: "Bệnh viện Đa khoa Thành phố" },
   { key: "system.timezone", label: "Múi giờ", valueType: "string", group: "general", name: "Múi giờ", defaultValue: "Asia/Ho_Chi_Minh" },
   { key: "system.language", label: "Ngôn ngữ mặc định", valueType: "string", group: "general", name: "Ngôn ngữ mặc định", defaultValue: "Tiếng Việt" },
-  { key: "system.date_format", label: "Định dạng ngày", valueType: "string", group: "general", name: "Định dạng ngày", defaultValue: "MM/yyyy" },
+  { key: "system.date_format", label: "Định dạng ngày", valueType: "string", group: "general", name: "Định dạng ngày", defaultValue: "dd/MM/yyyy" },
   { key: "system.working_year", label: "Năm làm việc", valueType: "number", group: "general", name: "Năm làm việc", defaultValue: "2026" },
   { key: "research.warning_days", label: "Ngưỡng cảnh báo sắp trễ", valueType: "number", group: "research", name: "Ngưỡng cảnh báo sắp trễ", defaultValue: "7" },
   { key: "research.low_progress_threshold", label: "Ngưỡng tiến độ thấp hơn kế hoạch", valueType: "number", group: "research", name: "Ngưỡng tiến độ thấp hơn kế hoạch", defaultValue: "20" },
@@ -132,10 +134,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 function formatDateTime(value?: string | null) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("vi-VN");
+  return formatDateTimeVN(value);
 }
 
 function settingPayload(def: typeof GENERAL_SETTING_DEFS[number], value: string) {
@@ -330,12 +329,11 @@ function GeneralSettingsTab() {
               <div key={def.key} className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
                 <p className="text-xs text-slate-500 dark:text-slate-400">{def.label}</p>
                 {def.key === "system.date_format" ? (
-                  <Select value={settings[def.key]} onValueChange={(value) => updateSettingValue(def.key, value)}>
+                  <Select value={settings[def.key]} onValueChange={(value) => updateSettingValue(def.key, value ?? "dd/MM/yyyy")}>
                     <SelectTrigger className="mt-1 h-9 text-sm font-semibold" disabled={loading || saving}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="MM/yyyy">MM/yyyy</SelectItem>
                       <SelectItem value="dd/MM/yyyy">dd/MM/yyyy</SelectItem>
                     </SelectContent>
                   </Select>
@@ -884,7 +882,7 @@ function AuditLogTab() {
               {["Tất cả", "Đăng nhập", "Thêm", "Sửa", "Xóa", "Xuất dữ liệu"].map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Input type="date" className="h-9 w-40" value={date} onChange={(event) => setDate(event.target.value)} />
+          <DateInput className="h-9 w-40" value={date} onChange={setDate} aria-label="Chọn ngày lọc nhật ký" />
         </div>
         <Table>
           <TableHeader>

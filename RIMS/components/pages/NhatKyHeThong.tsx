@@ -7,8 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/common/DateInput";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { formatDateTimeVN } from "@/lib/date-utils";
 
 type LogTab = "activity" | "login";
 
@@ -59,15 +61,15 @@ export default function NhatKyHeThong() {
           <Input className="lg:col-span-2" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm người dùng, nội dung..." />
           <Select value={type} onValueChange={(value) => value && setType(value)}><SelectTrigger><SelectValue placeholder="Loại sự kiện" /></SelectTrigger><SelectContent><SelectItem value="all">Tất cả loại</SelectItem>{(tab === "activity" ? activityTypes : loginTypes).map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select>
           <Select value={result} onValueChange={(value) => value && setResult(value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Mọi kết quả</SelectItem><SelectItem value="success">Thành công</SelectItem><SelectItem value="failure">Thất bại</SelectItem></SelectContent></Select>
-          <Input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} aria-label="Từ ngày" />
-          <Input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} aria-label="Đến ngày" />
+          <DateInput value={fromDate} onChange={setFromDate} aria-label="Từ ngày" />
+          <DateInput value={toDate} onChange={setToDate} aria-label="Đến ngày" />
           <Button variant="outline" className="gap-2 lg:col-start-6" onClick={() => void load()} disabled={loading}><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />Tải lại</Button>
         </CardContent>
       </Card>
       <Card><CardContent className="p-0">
         {loading ? <div className="p-10 text-center text-sm text-slate-500">Đang tải nhật ký...</div> : error ? <div className="p-8 text-center text-sm text-red-600">{error}<Button size="sm" variant="outline" className="ml-3" onClick={() => void load()}>Thử lại</Button></div> : (
           <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Bảng dữ liệu có thể cuộn ngang"><table className="w-max min-w-[1100px] text-sm"><thead className="bg-slate-50 text-left"><tr>{tab === "activity" ? <><th className="p-3">Thời gian</th><th className="p-3">Người thực hiện</th><th className="p-3">Module</th><th className="p-3">Hành động</th><th className="p-3">Nội dung</th></> : <><th className="p-3">Thời gian</th><th className="p-3">Tài khoản</th><th className="p-3">Sự kiện</th><th className="p-3">Địa chỉ IP</th><th className="p-3">Lý do thất bại</th></>}<th className="p-3">Kết quả</th></tr></thead>
-          <tbody className="divide-y">{tab === "activity" ? visibleActivities.map((item) => <tr key={item.activityLogId}><td className="p-3 whitespace-nowrap">{new Date(item.performedAt).toLocaleString("vi-VN")}</td><td className="p-3">{item.performedByName ?? "Hệ thống"}</td><td className="p-3">{item.moduleCode}</td><td className="p-3">{item.actionType}</td><td className="p-3">{item.actionSummary}</td><ResultBadge success={item.success} /></tr>) : logins.map((item) => <tr key={item.loginEventId}><td className="p-3 whitespace-nowrap">{new Date(item.createdAt).toLocaleString("vi-VN")}</td><td className="p-3">{item.usernameOrEmail ?? "—"}</td><td className="p-3">{item.eventType}</td><td className="p-3">{item.ipAddress ?? "—"}</td><td className="p-3">{item.failureReason ?? "—"}</td><ResultBadge success={item.success} /></tr>)}</tbody></table>
+          <tbody className="divide-y">{tab === "activity" ? visibleActivities.map((item) => <tr key={item.activityLogId}><td className="p-3 whitespace-nowrap">{formatDateTimeVN(item.performedAt)}</td><td className="p-3">{item.performedByName ?? "Hệ thống"}</td><td className="p-3">{item.moduleCode}</td><td className="p-3">{item.actionType}</td><td className="p-3">{item.actionSummary}</td><ResultBadge success={item.success} /></tr>) : logins.map((item) => <tr key={item.loginEventId}><td className="p-3 whitespace-nowrap">{formatDateTimeVN(item.createdAt)}</td><td className="p-3">{item.usernameOrEmail ?? "—"}</td><td className="p-3">{item.eventType}</td><td className="p-3">{item.ipAddress ?? "—"}</td><td className="p-3">{item.failureReason ?? "—"}</td><ResultBadge success={item.success} /></tr>)}</tbody></table>
           {(tab === "activity" ? visibleActivities.length : logins.length) === 0 && <div className="p-10 text-center text-sm text-slate-500">Không có dữ liệu phù hợp.</div>}</div>
         )}
       </CardContent></Card>

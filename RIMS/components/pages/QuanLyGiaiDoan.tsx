@@ -16,7 +16,7 @@ import { mapApiPhaseToUi } from "@/lib/mappers/phase-mapper";
 import PhaseFormModal from "@/components/modals/PhaseFormModal";
 import { ConfirmationDialog } from "@/components/common/ConfirmationDialog";
 import { toast } from "@/lib/toast";
-import { useDateFormat } from "@/lib/date-format";
+import { formatDateByPrecision } from "@/lib/date-utils";
 
 function PhaseBadge({ status }: { status: PhaseStatus }) {
   const map: Record<string, string> = {
@@ -68,7 +68,7 @@ export default function QuanLyGiaiDoan() {
   const [actionError, setActionError] = useState("");
   const [sortKey, setSortKey] = useState<PhaseSortKey>("order");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-  const { formatDate } = useDateFormat();
+  const formatPhaseDate = (value?: string | null, precision?: string | null) => formatDateByPrecision(value, precision);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -250,9 +250,9 @@ export default function QuanLyGiaiDoan() {
                     <TableCell className="px-2 py-3 align-top text-sm text-slate-600">{phase.order}</TableCell>
                     <TableCell className="px-2 py-3 align-top text-sm font-medium text-slate-800 whitespace-normal break-words">{phase.name}</TableCell>
                     <TableCell className="px-2 py-3 align-top text-xs text-slate-600 whitespace-normal break-words">{phase.assignee ?? "—"}</TableCell>
-                    <TableCell className="px-2 py-3 align-top text-xs text-slate-500">{formatDate(phase.plannedStartDate)}</TableCell>
-                    <TableCell className="px-2 py-3 align-top text-xs text-slate-500">{formatDate(phase.plannedEndDate)}</TableCell>
-                    <TableCell className="px-2 py-3 align-top text-xs font-medium text-red-500">{formatDate(phase.deadline)}</TableCell>
+                    <TableCell className="px-2 py-3 align-top text-xs text-slate-500">{formatPhaseDate(phase.plannedStartDate, phase.plannedStartDatePrecision)}</TableCell>
+                    <TableCell className="px-2 py-3 align-top text-xs text-slate-500">{formatPhaseDate(phase.plannedEndDate, phase.plannedEndDatePrecision)}</TableCell>
+                    <TableCell className="px-2 py-3 align-top text-xs font-medium text-red-500">{formatPhaseDate(phase.deadline, phase.deadlinePrecision)}</TableCell>
                     <TableCell className="px-2 py-3 align-top text-xs font-semibold text-slate-600">{phase.progress}%</TableCell>
                     <TableCell className="px-2 py-3 align-top"><PhaseBadge status={phase.status} /></TableCell>
                     <TableCell className="sticky right-0 z-10 bg-white px-2 py-3 align-top whitespace-nowrap shadow-[-4px_0_6px_-5px_rgba(15,23,42,0.45)]">
@@ -307,9 +307,9 @@ export default function QuanLyGiaiDoan() {
               <div className="grid gap-3 text-sm sm:grid-cols-2">
                 <InfoLine label="Người phụ trách" value={viewingPhase.assignee ?? "—"} />
                 <InfoLine label="Trạng thái" value={viewingPhase.status} />
-                <InfoLine label="Bắt đầu dự kiến" value={formatDate(viewingPhase.plannedStartDate)} />
-                <InfoLine label="Kết thúc dự kiến" value={formatDate(viewingPhase.plannedEndDate)} />
-                <InfoLine label="Hạn chót" value={formatDate(viewingPhase.deadline)} />
+                <InfoLine label="Bắt đầu dự kiến" value={formatPhaseDate(viewingPhase.plannedStartDate, viewingPhase.plannedStartDatePrecision)} />
+                <InfoLine label="Kết thúc dự kiến" value={formatPhaseDate(viewingPhase.plannedEndDate, viewingPhase.plannedEndDatePrecision)} />
+                <InfoLine label="Hạn chót" value={formatPhaseDate(viewingPhase.deadline, viewingPhase.deadlinePrecision)} />
                 <InfoLine label="Ghi chú" value={viewingPhase.notes || "—"} wide />
               </div>
             </div>

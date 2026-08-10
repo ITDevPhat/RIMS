@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FormDrawer, FormDrawerField, FormDrawerSection } from "@/components/common/FormDrawer";
+import { DateInput } from "@/components/common/DateInput";
 import {
   LOAI_HOAT_DONG_OPTIONS,
   LOAI_KE_HOACH_OPTIONS,
@@ -210,12 +211,9 @@ export default function HoiNghiFormModal({
 
       <FormDrawerSection>
         <FormDrawerField label="Ngày dự kiến" required>
-          <Input
-            type="date"
-            lang="vi-VN"
+          <DateInput
             value={form.ngayDuKien}
-            onChange={(e) => {
-              const value = e.target.value;
+            onChange={(value) => {
               set("ngayDuKien", value);
               if (value) {
                 const month = Number(value.slice(5, 7));
@@ -228,11 +226,9 @@ export default function HoiNghiFormModal({
 
         {needsThucTe && (
           <FormDrawerField label="Ngày thực tế">
-              <Input
-              type="date"
-              lang="vi-VN"
+              <DateInput
               value={form.ngayThucTe}
-              onChange={(e) => set("ngayThucTe", e.target.value)}
+              onChange={(value) => set("ngayThucTe", value)}
               className="h-9 border-slate-200"
             />
           </FormDrawerField>

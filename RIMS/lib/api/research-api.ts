@@ -1,4 +1,5 @@
 import { apiClient, type PagedResult, type QueryParams } from "./api-client";
+import type { DatePrecision } from "@/lib/types";
 
 export interface ApiResearchProject {
   projectId: number;
@@ -17,12 +18,19 @@ export interface ApiResearchProject {
   ethicsStatus: string;
   ethicsExpiryDate?: string | null;
   plannedStartDate?: string | null;
+  plannedStartDatePrecision?: DatePrecision | null;
   plannedEndDate?: string | null;
+  plannedEndDatePrecision?: DatePrecision | null;
+  actualStartDate?: string | null;
+  actualStartDatePrecision?: DatePrecision | null;
+  actualEndDate?: string | null;
+  actualEndDatePrecision?: DatePrecision | null;
   currentPhaseName?: string | null;
   progressPercent: number;
   projectStatus: string;
   riskLevel: string;
   nearestDeadlineDate?: string | null;
+  nearestDeadlineDatePrecision?: DatePrecision | null;
   notes?: string | null;
 }
 
@@ -36,10 +44,15 @@ export interface ApiProjectPhase {
   responsibleUserId?: number | null;
   responsibleUserName?: string | null;
   plannedStartDate?: string | null;
+  plannedStartDatePrecision?: DatePrecision | null;
   plannedEndDate?: string | null;
+  plannedEndDatePrecision?: DatePrecision | null;
   deadlineDate?: string | null;
+  deadlineDatePrecision?: DatePrecision | null;
   actualStartDate?: string | null;
+  actualStartDatePrecision?: DatePrecision | null;
   actualEndDate?: string | null;
+  actualEndDatePrecision?: DatePrecision | null;
   progressPercent: number;
   phaseStatus: string;
   notes?: string | null;
@@ -56,11 +69,13 @@ export interface ApiProjectMilestone {
   milestoneName: string;
   description?: string | null;
   dueDate: string;
+  dueDatePrecision?: DatePrecision | null;
   responsibleUserId?: number | null;
   responsibleUserName?: string | null;
   milestoneStatus: string;
   priorityLevel: string;
   completedAt?: string | null;
+  completedAtPrecision?: DatePrecision | null;
   notes?: string | null;
 }
 
@@ -77,6 +92,7 @@ export interface ApiProjectDeadline {
   title: string;
   description?: string | null;
   dueDate: string;
+  dueDatePrecision?: DatePrecision | null;
   responsibleUserName?: string | null;
   priorityLevel: string;
   deadlineStatus: string;
@@ -92,10 +108,15 @@ export interface ProjectPhasePayload {
   description?: string | null;
   responsibleUserId?: number | null;
   plannedStartDate?: string | null;
+  plannedStartDatePrecision?: DatePrecision | null;
   plannedEndDate?: string | null;
+  plannedEndDatePrecision?: DatePrecision | null;
   deadlineDate?: string | null;
+  deadlineDatePrecision?: DatePrecision | null;
   actualStartDate?: string | null;
+  actualStartDatePrecision?: DatePrecision | null;
   actualEndDate?: string | null;
+  actualEndDatePrecision?: DatePrecision | null;
   progressPercent: number;
   phaseStatus: string;
   notes?: string | null;
@@ -108,10 +129,12 @@ export interface ProjectMilestonePayload {
   milestoneName: string;
   description?: string | null;
   dueDate: string;
+  dueDatePrecision?: DatePrecision | null;
   responsibleUserId?: number | null;
   milestoneStatus: string;
   priorityLevel: string;
   completedAt?: string | null;
+  completedAtPrecision?: DatePrecision | null;
   notes?: string | null;
 }
 

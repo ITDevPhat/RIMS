@@ -73,6 +73,10 @@ public sealed class ResearchService : IResearchService
     {
         ValidateProgress(request.ProgressPercent);
         ValidateDateRange(request.PlannedStartDate, request.PlannedEndDate);
+        var plannedStartDatePrecision = NormalizeDatePrecision(request.PlannedStartDatePrecision);
+        var plannedEndDatePrecision = NormalizeDatePrecision(request.PlannedEndDatePrecision);
+        var actualStartDatePrecision = NormalizeDatePrecision(request.ActualStartDatePrecision);
+        var actualEndDatePrecision = NormalizeDatePrecision(request.ActualEndDatePrecision);
         if (await _dbContext.ResearchProjects.AnyAsync(x => x.ProjectCode == request.ProjectCode, cancellationToken))
         {
             throw new InvalidOperationException("Project code already exists.");
@@ -93,10 +97,14 @@ public sealed class ResearchService : IResearchService
             EthicsStatus = string.IsNullOrWhiteSpace(request.EthicsStatus) ? "not_required" : request.EthicsStatus,
             EthicsApprovalDate = request.EthicsApprovalDate,
             EthicsExpiryDate = request.EthicsExpiryDate,
-            PlannedStartDate = request.PlannedStartDate,
-            PlannedEndDate = request.PlannedEndDate,
-            ActualStartDate = request.ActualStartDate,
-            ActualEndDate = request.ActualEndDate,
+            PlannedStartDate = NormalizeDateValue(request.PlannedStartDate, plannedStartDatePrecision),
+            PlannedStartDatePrecision = plannedStartDatePrecision,
+            PlannedEndDate = NormalizeDateValue(request.PlannedEndDate, plannedEndDatePrecision),
+            PlannedEndDatePrecision = plannedEndDatePrecision,
+            ActualStartDate = NormalizeDateValue(request.ActualStartDate, actualStartDatePrecision),
+            ActualStartDatePrecision = actualStartDatePrecision,
+            ActualEndDate = NormalizeDateValue(request.ActualEndDate, actualEndDatePrecision),
+            ActualEndDatePrecision = actualEndDatePrecision,
             CurrentPhaseName = request.CurrentPhaseName,
             ProgressPercent = request.ProgressPercent,
             ProjectStatus = string.IsNullOrWhiteSpace(request.ProjectStatus) ? "not_started" : request.ProjectStatus,
@@ -119,6 +127,10 @@ public sealed class ResearchService : IResearchService
     {
         ValidateProgress(request.ProgressPercent);
         ValidateDateRange(request.PlannedStartDate, request.PlannedEndDate);
+        var plannedStartDatePrecision = NormalizeDatePrecision(request.PlannedStartDatePrecision);
+        var plannedEndDatePrecision = NormalizeDatePrecision(request.PlannedEndDatePrecision);
+        var actualStartDatePrecision = NormalizeDatePrecision(request.ActualStartDatePrecision);
+        var actualEndDatePrecision = NormalizeDatePrecision(request.ActualEndDatePrecision);
         var project = await _dbContext.ResearchProjects.FirstOrDefaultAsync(x => x.ProjectId == id && x.DeletedAt == null, cancellationToken);
         if (project is null) throw new NotFoundException("Research project not found.");
 
@@ -146,10 +158,14 @@ public sealed class ResearchService : IResearchService
         project.EthicsStatus = request.EthicsStatus;
         project.EthicsApprovalDate = request.EthicsApprovalDate;
         project.EthicsExpiryDate = request.EthicsExpiryDate;
-        project.PlannedStartDate = request.PlannedStartDate;
-        project.PlannedEndDate = request.PlannedEndDate;
-        project.ActualStartDate = request.ActualStartDate;
-        project.ActualEndDate = request.ActualEndDate;
+        project.PlannedStartDate = NormalizeDateValue(request.PlannedStartDate, plannedStartDatePrecision);
+        project.PlannedStartDatePrecision = plannedStartDatePrecision;
+        project.PlannedEndDate = NormalizeDateValue(request.PlannedEndDate, plannedEndDatePrecision);
+        project.PlannedEndDatePrecision = plannedEndDatePrecision;
+        project.ActualStartDate = NormalizeDateValue(request.ActualStartDate, actualStartDatePrecision);
+        project.ActualStartDatePrecision = actualStartDatePrecision;
+        project.ActualEndDate = NormalizeDateValue(request.ActualEndDate, actualEndDatePrecision);
+        project.ActualEndDatePrecision = actualEndDatePrecision;
         project.CurrentPhaseName = request.CurrentPhaseName;
         project.ProgressPercent = request.ProgressPercent;
         project.ProjectStatus = request.ProjectStatus;
@@ -196,17 +212,27 @@ public sealed class ResearchService : IResearchService
     {
         ValidateProgress(request.ProgressPercent);
         ValidateDateRange(request.PlannedStartDate, request.PlannedEndDate);
+        var plannedStartDatePrecision = NormalizeDatePrecision(request.PlannedStartDatePrecision);
+        var plannedEndDatePrecision = NormalizeDatePrecision(request.PlannedEndDatePrecision);
+        var deadlineDatePrecision = NormalizeDatePrecision(request.DeadlineDatePrecision);
+        var actualStartDatePrecision = NormalizeDatePrecision(request.ActualStartDatePrecision);
+        var actualEndDatePrecision = NormalizeDatePrecision(request.ActualEndDatePrecision);
         var phase = new ProjectPhase
         {
             ProjectId = request.ProjectId,
             PhaseName = request.PhaseName,
             PhaseDescription = request.Description,
             OwnerUserId = request.ResponsibleUserId,
-            PlannedStartDate = request.PlannedStartDate,
-            PlannedEndDate = request.PlannedEndDate,
-            DeadlineDate = request.DeadlineDate,
-            ActualStartDate = request.ActualStartDate,
-            ActualEndDate = request.ActualEndDate,
+            PlannedStartDate = NormalizeDateValue(request.PlannedStartDate, plannedStartDatePrecision),
+            PlannedStartDatePrecision = plannedStartDatePrecision,
+            PlannedEndDate = NormalizeDateValue(request.PlannedEndDate, plannedEndDatePrecision),
+            PlannedEndDatePrecision = plannedEndDatePrecision,
+            DeadlineDate = NormalizeDateValue(request.DeadlineDate, deadlineDatePrecision),
+            DeadlineDatePrecision = deadlineDatePrecision,
+            ActualStartDate = NormalizeDateValue(request.ActualStartDate, actualStartDatePrecision),
+            ActualStartDatePrecision = actualStartDatePrecision,
+            ActualEndDate = NormalizeDateValue(request.ActualEndDate, actualEndDatePrecision),
+            ActualEndDatePrecision = actualEndDatePrecision,
             ProgressPercent = request.ProgressPercent,
             PhaseStatus = string.IsNullOrWhiteSpace(request.PhaseStatus) ? "not_started" : request.PhaseStatus,
             Notes = request.Notes,
@@ -226,16 +252,26 @@ public sealed class ResearchService : IResearchService
     {
         ValidateProgress(request.ProgressPercent);
         ValidateDateRange(request.PlannedStartDate, request.PlannedEndDate);
+        var plannedStartDatePrecision = NormalizeDatePrecision(request.PlannedStartDatePrecision);
+        var plannedEndDatePrecision = NormalizeDatePrecision(request.PlannedEndDatePrecision);
+        var deadlineDatePrecision = NormalizeDatePrecision(request.DeadlineDatePrecision);
+        var actualStartDatePrecision = NormalizeDatePrecision(request.ActualStartDatePrecision);
+        var actualEndDatePrecision = NormalizeDatePrecision(request.ActualEndDatePrecision);
         var phase = await _dbContext.ProjectPhases.FirstOrDefaultAsync(x => x.PhaseId == id && x.DeletedAt == null, cancellationToken);
         if (phase is null) throw new NotFoundException("Project phase not found.");
         phase.PhaseName = request.PhaseName;
         phase.PhaseDescription = request.Description;
         phase.OwnerUserId = request.ResponsibleUserId;
-        phase.PlannedStartDate = request.PlannedStartDate;
-        phase.PlannedEndDate = request.PlannedEndDate;
-        phase.DeadlineDate = request.DeadlineDate;
-        phase.ActualStartDate = request.ActualStartDate;
-        phase.ActualEndDate = request.ActualEndDate;
+        phase.PlannedStartDate = NormalizeDateValue(request.PlannedStartDate, plannedStartDatePrecision);
+        phase.PlannedStartDatePrecision = plannedStartDatePrecision;
+        phase.PlannedEndDate = NormalizeDateValue(request.PlannedEndDate, plannedEndDatePrecision);
+        phase.PlannedEndDatePrecision = plannedEndDatePrecision;
+        phase.DeadlineDate = NormalizeDateValue(request.DeadlineDate, deadlineDatePrecision);
+        phase.DeadlineDatePrecision = deadlineDatePrecision;
+        phase.ActualStartDate = NormalizeDateValue(request.ActualStartDate, actualStartDatePrecision);
+        phase.ActualStartDatePrecision = actualStartDatePrecision;
+        phase.ActualEndDate = NormalizeDateValue(request.ActualEndDate, actualEndDatePrecision);
+        phase.ActualEndDatePrecision = actualEndDatePrecision;
         phase.ProgressPercent = request.ProgressPercent;
         phase.PhaseStatus = request.PhaseStatus;
         phase.Notes = request.Notes;
@@ -283,17 +319,21 @@ public sealed class ResearchService : IResearchService
 
     public async Task<ProjectMilestoneDto> CreateMilestoneAsync(CreateProjectMilestoneRequest request, CancellationToken cancellationToken = default)
     {
+        var dueDatePrecision = NormalizeDatePrecision(request.DueDatePrecision);
+        var completedAtPrecision = NormalizeDatePrecision(request.CompletedAtPrecision);
         var milestone = new ProjectMilestone
         {
             ProjectId = request.ProjectId,
             PhaseId = request.PhaseId,
             MilestoneName = request.MilestoneName,
             MilestoneDescription = request.Description,
-            DueDate = request.DueDate,
+            DueDate = NormalizeRequiredDateValue(request.DueDate, dueDatePrecision),
+            DueDatePrecision = dueDatePrecision,
             OwnerUserId = request.ResponsibleUserId,
             MilestoneStatus = string.IsNullOrWhiteSpace(request.MilestoneStatus) ? "not_started" : request.MilestoneStatus,
             PriorityLevel = string.IsNullOrWhiteSpace(request.PriorityLevel) ? "normal" : request.PriorityLevel,
-            CompletedDate = request.CompletedAt,
+            CompletedDate = NormalizeDateValue(request.CompletedAt, completedAtPrecision),
+            CompletedDatePrecision = completedAtPrecision,
             Notes = request.Notes,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
@@ -307,16 +347,20 @@ public sealed class ResearchService : IResearchService
 
     public async Task<ProjectMilestoneDto> UpdateMilestoneAsync(long id, UpdateProjectMilestoneRequest request, CancellationToken cancellationToken = default)
     {
+        var dueDatePrecision = NormalizeDatePrecision(request.DueDatePrecision);
+        var completedAtPrecision = NormalizeDatePrecision(request.CompletedAtPrecision);
         var milestone = await _dbContext.ProjectMilestones.FirstOrDefaultAsync(x => x.MilestoneId == id && x.DeletedAt == null, cancellationToken);
         if (milestone is null) throw new NotFoundException("Project milestone not found.");
         milestone.PhaseId = request.PhaseId;
         milestone.MilestoneName = request.MilestoneName;
         milestone.MilestoneDescription = request.Description;
-        milestone.DueDate = request.DueDate;
+        milestone.DueDate = NormalizeRequiredDateValue(request.DueDate, dueDatePrecision);
+        milestone.DueDatePrecision = dueDatePrecision;
         milestone.OwnerUserId = request.ResponsibleUserId;
         milestone.MilestoneStatus = request.MilestoneStatus;
         milestone.PriorityLevel = request.PriorityLevel;
-        milestone.CompletedDate = request.CompletedAt;
+        milestone.CompletedDate = NormalizeDateValue(request.CompletedAt, completedAtPrecision);
+        milestone.CompletedDatePrecision = completedAtPrecision;
         milestone.Notes = request.Notes;
         milestone.UpdatedAt = DateTime.UtcNow;
         milestone.UpdatedBy = _userContext.User?.UserId;
@@ -363,6 +407,7 @@ public sealed class ResearchService : IResearchService
 
     public async Task<ProjectDeadlineDto> CreateDeadlineAsync(CreateProjectDeadlineRequest request, CancellationToken cancellationToken = default)
     {
+        var dueDatePrecision = NormalizeDatePrecision(request.DueDatePrecision);
         var deadline = new ProjectDeadline
         {
             ProjectId = request.ProjectId,
@@ -371,7 +416,8 @@ public sealed class ResearchService : IResearchService
             DeadlineType = request.DeadlineType,
             DeadlineTitle = request.Title,
             DeadlineDescription = request.Description,
-            DueDate = request.DueDate,
+            DueDate = NormalizeRequiredDateValue(request.DueDate, dueDatePrecision),
+            DueDatePrecision = dueDatePrecision,
             ResponsibleUserId = request.ResponsibleUserId,
             PriorityLevel = string.IsNullOrWhiteSpace(request.PriorityLevel) ? "normal" : request.PriorityLevel,
             DeadlineStatus = string.IsNullOrWhiteSpace(request.DeadlineStatus) ? "open" : request.DeadlineStatus,
@@ -386,6 +432,7 @@ public sealed class ResearchService : IResearchService
 
     public async Task<ProjectDeadlineDto> UpdateDeadlineAsync(long id, UpdateProjectDeadlineRequest request, CancellationToken cancellationToken = default)
     {
+        var dueDatePrecision = NormalizeDatePrecision(request.DueDatePrecision);
         var deadline = await _dbContext.ProjectDeadlines.FirstOrDefaultAsync(x => x.DeadlineId == id && x.DeletedAt == null, cancellationToken);
         if (deadline is null) throw new NotFoundException("Project deadline not found.");
         deadline.ProjectId = request.ProjectId;
@@ -394,7 +441,8 @@ public sealed class ResearchService : IResearchService
         deadline.DeadlineType = request.DeadlineType;
         deadline.DeadlineTitle = request.Title;
         deadline.DeadlineDescription = request.Description;
-        deadline.DueDate = request.DueDate;
+        deadline.DueDate = NormalizeRequiredDateValue(request.DueDate, dueDatePrecision);
+        deadline.DueDatePrecision = dueDatePrecision;
         deadline.ResponsibleUserId = request.ResponsibleUserId;
         deadline.PriorityLevel = request.PriorityLevel;
         deadline.DeadlineStatus = request.DeadlineStatus;
@@ -598,14 +646,34 @@ public sealed class ResearchService : IResearchService
         if (start is not null && end is not null && start > end) throw new InvalidOperationException("Start date must be before or equal to end date.");
     }
 
+    private static string NormalizeDatePrecision(string? precision)
+    {
+        if (string.IsNullOrWhiteSpace(precision)) return "DAY";
+        var normalized = precision.Trim().ToUpperInvariant();
+        return normalized is "DAY" or "MONTH"
+            ? normalized
+            : throw new InvalidOperationException("Date precision must be DAY or MONTH.");
+    }
+
+    private static DateOnly? NormalizeDateValue(DateOnly? value, string precision)
+    {
+        if (value is null) return null;
+        return precision == "MONTH" ? new DateOnly(value.Value.Year, value.Value.Month, 1) : value;
+    }
+
+    private static DateOnly NormalizeRequiredDateValue(DateOnly value, string precision)
+    {
+        return precision == "MONTH" ? new DateOnly(value.Year, value.Month, 1) : value;
+    }
+
     private static ResearchProjectDto MapProject(ResearchProject project)
     {
         var nearestDeadline = project.ProjectDeadlines.Where(x => x.DeletedAt == null && x.DeadlineStatus != "completed").OrderBy(x => x.DueDate).FirstOrDefault();
-        return new ResearchProjectDto(project.ProjectId, project.ProjectCode, project.ProjectTitle, project.ProjectDescription, project.LeadDepartmentId, project.LeadDepartment?.DepartmentName, project.PrincipalInvestigatorId, project.PrincipalInvestigator?.FullName, project.SponsorId, project.Sponsor?.SponsorName ?? project.SponsorNameText, project.ResearchType, project.ProtocolNumber, project.ProtocolVersion, project.EthicsStatus, project.EthicsApprovalDate, project.EthicsExpiryDate, project.PlannedStartDate, project.PlannedEndDate, project.ActualStartDate, project.ActualEndDate, project.CurrentPhaseName, project.ProgressPercent, project.ProjectStatus, project.RiskLevel, nearestDeadline?.DueDate, project.Notes);
+        return new ResearchProjectDto(project.ProjectId, project.ProjectCode, project.ProjectTitle, project.ProjectDescription, project.LeadDepartmentId, project.LeadDepartment?.DepartmentName, project.PrincipalInvestigatorId, project.PrincipalInvestigator?.FullName, project.SponsorId, project.Sponsor?.SponsorName ?? project.SponsorNameText, project.ResearchType, project.ProtocolNumber, project.ProtocolVersion, project.EthicsStatus, project.EthicsApprovalDate, project.EthicsExpiryDate, project.PlannedStartDate, NormalizeDatePrecision(project.PlannedStartDatePrecision), project.PlannedEndDate, NormalizeDatePrecision(project.PlannedEndDatePrecision), project.ActualStartDate, NormalizeDatePrecision(project.ActualStartDatePrecision), project.ActualEndDate, NormalizeDatePrecision(project.ActualEndDatePrecision), project.CurrentPhaseName, project.ProgressPercent, project.ProjectStatus, project.RiskLevel, nearestDeadline?.DueDate, NormalizeDatePrecision(nearestDeadline?.DueDatePrecision), project.Notes);
     }
 
-    private static ProjectPhaseDto MapPhase(ProjectPhase phase) => new(phase.PhaseId, phase.ProjectId, phase.Project.ProjectCode, phase.Project.ProjectTitle, phase.PhaseName, phase.PhaseDescription, phase.OwnerUserId, phase.OwnerUser?.FullName, phase.PlannedStartDate, phase.PlannedEndDate, phase.DeadlineDate, phase.ActualStartDate, phase.ActualEndDate, phase.ProgressPercent, phase.PhaseStatus, phase.Notes, phase.SortOrder);
-    private static ProjectMilestoneDto MapMilestone(ProjectMilestone milestone) => new(milestone.MilestoneId, milestone.ProjectId, milestone.Project.ProjectCode, milestone.Project.ProjectTitle, milestone.PhaseId, milestone.Phase?.PhaseName, milestone.MilestoneName, milestone.MilestoneDescription, milestone.DueDate, milestone.OwnerUserId, milestone.OwnerUser?.FullName, milestone.MilestoneStatus, milestone.PriorityLevel, milestone.CompletedDate, milestone.Notes);
+    private static ProjectPhaseDto MapPhase(ProjectPhase phase) => new(phase.PhaseId, phase.ProjectId, phase.Project.ProjectCode, phase.Project.ProjectTitle, phase.PhaseName, phase.PhaseDescription, phase.OwnerUserId, phase.OwnerUser?.FullName, phase.PlannedStartDate, NormalizeDatePrecision(phase.PlannedStartDatePrecision), phase.PlannedEndDate, NormalizeDatePrecision(phase.PlannedEndDatePrecision), phase.DeadlineDate, NormalizeDatePrecision(phase.DeadlineDatePrecision), phase.ActualStartDate, NormalizeDatePrecision(phase.ActualStartDatePrecision), phase.ActualEndDate, NormalizeDatePrecision(phase.ActualEndDatePrecision), phase.ProgressPercent, phase.PhaseStatus, phase.Notes, phase.SortOrder);
+    private static ProjectMilestoneDto MapMilestone(ProjectMilestone milestone) => new(milestone.MilestoneId, milestone.ProjectId, milestone.Project.ProjectCode, milestone.Project.ProjectTitle, milestone.PhaseId, milestone.Phase?.PhaseName, milestone.MilestoneName, milestone.MilestoneDescription, milestone.DueDate, NormalizeDatePrecision(milestone.DueDatePrecision), milestone.OwnerUserId, milestone.OwnerUser?.FullName, milestone.MilestoneStatus, milestone.PriorityLevel, milestone.CompletedDate, NormalizeDatePrecision(milestone.CompletedDatePrecision), milestone.Notes);
 
     private static ProjectDeadlineDto MapDeadline(ProjectDeadline deadline)
     {
@@ -613,7 +681,7 @@ public sealed class ResearchService : IResearchService
         var daysRemaining = deadline.DueDate.DayNumber - today.DayNumber;
         var isOverdue = daysRemaining < 0 && deadline.DeadlineStatus != "completed";
         var severity = deadline.DeadlineStatus == "completed" ? "completed" : isOverdue ? "overdue" : daysRemaining <= 3 ? "urgent" : daysRemaining <= 7 ? "soon" : "normal";
-        return new ProjectDeadlineDto(deadline.DeadlineId, deadline.ProjectId, deadline.Project?.ProjectCode, deadline.Project?.ProjectTitle, deadline.PhaseId, deadline.Phase?.PhaseName, deadline.MilestoneId, deadline.Milestone?.MilestoneName, deadline.DeadlineType, deadline.DeadlineTitle, deadline.DeadlineDescription, deadline.DueDate, deadline.ResponsibleUserId, deadline.ResponsibleUser?.FullName, deadline.PriorityLevel, deadline.DeadlineStatus, deadline.CompletedAt, null, daysRemaining, isOverdue, severity);
+        return new ProjectDeadlineDto(deadline.DeadlineId, deadline.ProjectId, deadline.Project?.ProjectCode, deadline.Project?.ProjectTitle, deadline.PhaseId, deadline.Phase?.PhaseName, deadline.MilestoneId, deadline.Milestone?.MilestoneName, deadline.DeadlineType, deadline.DeadlineTitle, deadline.DeadlineDescription, deadline.DueDate, NormalizeDatePrecision(deadline.DueDatePrecision), deadline.ResponsibleUserId, deadline.ResponsibleUser?.FullName, deadline.PriorityLevel, deadline.DeadlineStatus, deadline.CompletedAt, null, daysRemaining, isOverdue, severity);
     }
 
     private static SponsorDto MapSponsor(Sponsor sponsor) => new(sponsor.SponsorId, sponsor.SponsorCode, sponsor.SponsorName, sponsor.SponsorType, sponsor.IsActive);

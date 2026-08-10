@@ -21,6 +21,8 @@ public partial class ProjectDeadline
 
     public DateOnly DueDate { get; set; }
 
+    public string DueDatePrecision { get; set; } = "DAY";
+
     public DateTime? CompletedAt { get; set; }
 
     public long? ResponsibleUserId { get; set; }

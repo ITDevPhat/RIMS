@@ -20,7 +20,7 @@ import { mapApiMilestoneToUi } from "@/lib/mappers/milestone-mapper";
 import { mapApiPhaseToUi } from "@/lib/mappers/phase-mapper";
 import { mapApiProjectToUi } from "@/lib/mappers/project-mapper";
 import { adminApi, type ApiDepartment } from "@/lib/api/admin-api";
-import { useDateFormat } from "@/lib/date-format";
+import { formatDateByPrecision, formatDateVN } from "@/lib/date-utils";
 import {
   ArrowLeft,
   Activity,
@@ -126,7 +126,7 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
   const [detailError, setDetailError] = useState("");
   const [exportingExcel, setExportingExcel] = useState(false);
   const [projectEditOpen, setProjectEditOpen] = useState(false);
-  const { formatDate } = useDateFormat();
+  const formatProjectDate = (value?: string | null, precision?: string | null) => formatDateByPrecision(value, precision);
 
   const handleProjectSave = async (data: DeTaiFormData) => {
     await researchApi.updateProject(currentProject.id, buildProjectPayload(data, currentProject));
@@ -192,9 +192,7 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
   }[type] ?? <Circle className="h-3.5 w-3.5 text-slate-400" />);
 
   const formatDateTime = (value: string) => {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleDateString("vi-VN");
+    return formatDateVN(value);
   };
 
   const handleSubmitPhase = async (payload: ProjectPhasePayload) => {
@@ -287,8 +285,8 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
           {[
             { label: "Tiến độ tổng", value: `${currentProject.progress}%`, color: "text-blue-600" },
             { label: "Giai đoạn hiện tại", value: currentProject.currentPhase, color: "text-slate-800" },
-            { label: "Bắt đầu", value: formatDate(currentProject.startDate), color: "text-slate-700" },
-            { label: "Dự kiến kết thúc", value: formatDate(currentProject.plannedEndDate), color: "text-slate-700" },
+            { label: "Bắt đầu", value: formatProjectDate(currentProject.startDate, currentProject.startDatePrecision), color: "text-slate-700" },
+            { label: "Dự kiến kết thúc", value: formatProjectDate(currentProject.plannedEndDate, currentProject.plannedEndDatePrecision), color: "text-slate-700" },
             { label: "Đạo đức", value: currentProject.ethicsStatus, color: "text-slate-700", badge: <EthicsBadge status={currentProject.ethicsStatus} /> },
           ].map((item) => (
             <div key={item.label} className="flex flex-col gap-0.5">
@@ -383,7 +381,7 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
                     <InfoRow label="Ngày hết hạn đạo đức">
                       {currentProject.ethicsExpiry ? (
                         <span className={cn("font-semibold", currentProject.ethicsStatus === "Sắp hết hạn" || currentProject.ethicsStatus === "Hết hạn" ? "text-red-600" : "text-slate-800")}>
-                          {formatDate(currentProject.ethicsExpiry)}
+                          {formatProjectDate(currentProject.ethicsExpiry, "DAY")}
                         </span>
                       ) : "—"}
                     </InfoRow>
@@ -398,8 +396,8 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="px-5 py-2">
-                    <InfoRow label="Ngày bắt đầu">{formatDate(currentProject.startDate)}</InfoRow>
-                    <InfoRow label="Ngày kết thúc dự kiến">{formatDate(currentProject.plannedEndDate)}</InfoRow>
+                    <InfoRow label="Ngày bắt đầu">{formatProjectDate(currentProject.startDate, currentProject.startDatePrecision)}</InfoRow>
+                    <InfoRow label="Ngày kết thúc dự kiến">{formatProjectDate(currentProject.plannedEndDate, currentProject.plannedEndDatePrecision)}</InfoRow>
                     <InfoRow label="Tiến độ tổng">
                       <div className="flex items-center gap-3">
                         <Progress value={currentProject.progress} className="flex-1 h-2" />
@@ -408,7 +406,7 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
                     </InfoRow>
                     <InfoRow label="Giai đoạn hiện tại">{currentProject.currentPhase}</InfoRow>
                     <InfoRow label="Hạn chót gần nhất">
-                      <span className="text-red-500 font-semibold">{formatDate(currentProject.nearestDeadline)}</span>
+                      <span className="text-red-500 font-semibold">{formatProjectDate(currentProject.nearestDeadline, currentProject.nearestDeadlinePrecision)}</span>
                     </InfoRow>
                     <InfoRow label="Tình trạng dự án">
                       <HealthBadge health={currentProject.health} />
@@ -474,9 +472,9 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
                           )}
                         </div>
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 text-[10px] text-slate-500 mb-2">
-                          <span>Dự kiến: <span className="text-slate-700">{formatDate(phase.plannedStartDate)} – {formatDate(phase.plannedEndDate)}</span></span>
-                          <span>Thực tế: <span className="text-slate-700">{formatDate(phase.actualStartDate)} – {formatDate(phase.actualEndDate)}</span></span>
-                          <span>Hạn chót: <span className="text-red-500 font-medium">{formatDate(phase.deadline)}</span></span>
+                          <span>Dự kiến: <span className="text-slate-700">{formatProjectDate(phase.plannedStartDate, phase.plannedStartDatePrecision)} – {formatProjectDate(phase.plannedEndDate, phase.plannedEndDatePrecision)}</span></span>
+                          <span>Thực tế: <span className="text-slate-700">{formatProjectDate(phase.actualStartDate, phase.actualStartDatePrecision)} – {formatProjectDate(phase.actualEndDate, phase.actualEndDatePrecision)}</span></span>
+                          <span>Hạn chót: <span className="text-red-500 font-medium">{formatProjectDate(phase.deadline, phase.deadlinePrecision)}</span></span>
                           <span>Phụ trách: <span className="text-slate-700">{phase.assignee ?? "—"}</span></span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -537,7 +535,7 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
                           <p className="text-[10px] text-slate-500">Phụ trách: {d.assignee}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-xs font-semibold text-slate-700">{formatDate(d.dueDate)}</p>
+                          <p className="text-xs font-semibold text-slate-700">{formatProjectDate(d.dueDate, d.dueDatePrecision)}</p>
                           <p className={cn("text-[10px] font-bold", d.daysRemaining < 0 ? "text-red-600" : d.daysRemaining <= 7 ? "text-orange-600" : "text-slate-500")}>
                             {d.daysRemaining < 0 ? `Trễ ${Math.abs(d.daysRemaining)} ngày` : `Còn ${d.daysRemaining} ngày`}
                           </p>

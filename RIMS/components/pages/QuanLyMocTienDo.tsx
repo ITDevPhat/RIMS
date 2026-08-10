@@ -17,7 +17,7 @@ import { mapApiMilestoneToUi } from "@/lib/mappers/milestone-mapper";
 import MocTienDoFormModal from "@/components/modals/MocTienDoFormModal";
 import { ConfirmationDialog } from "@/components/common/ConfirmationDialog";
 import { toast } from "@/lib/toast";
-import { useDateFormat } from "@/lib/date-format";
+import { formatDateByPrecision } from "@/lib/date-utils";
 
 function StatusBadge({ status }: { status: PhaseStatus }) {
   const map: Record<string, string> = {
@@ -79,7 +79,7 @@ export default function QuanLyMocTienDo() {
   const [actionError, setActionError] = useState("");
   const [sortKey, setSortKey] = useState<MilestoneSortKey>("order");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-  const { formatDate } = useDateFormat();
+  const formatMilestoneDate = (value?: string | null, precision?: string | null) => formatDateByPrecision(value, precision);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -267,7 +267,7 @@ export default function QuanLyMocTienDo() {
                       <TableCell className="px-2 py-3 align-top text-sm font-medium text-slate-800 whitespace-normal break-words">{ms.name}</TableCell>
                       <TableCell className="px-2 py-3 align-top text-xs text-slate-500 whitespace-normal break-words">{phase ? `${phase.order}. ${phase.name}` : "—"}</TableCell>
                       <TableCell className="px-2 py-3 align-top text-xs text-slate-600 whitespace-normal break-words">{ms.assignee ?? "—"}</TableCell>
-                      <TableCell className="px-2 py-3 align-top text-xs font-medium text-red-500">{formatDate(ms.deadline)}</TableCell>
+                      <TableCell className="px-2 py-3 align-top text-xs font-medium text-red-500">{formatMilestoneDate(ms.deadline, ms.deadlinePrecision)}</TableCell>
                       <TableCell className="px-2 py-3 align-top text-xs font-semibold text-slate-600">{ms.progress}%</TableCell>
                       <TableCell className="px-2 py-3 align-top"><RiskBadge risk={ms.risk} /></TableCell>
                       <TableCell className="px-2 py-3 align-top"><StatusBadge status={ms.status} /></TableCell>
@@ -320,7 +320,7 @@ export default function QuanLyMocTienDo() {
               </div>
               <div className="grid gap-3 text-sm sm:grid-cols-2">
                 <InfoLine label="Người phụ trách" value={viewingMs.assignee ?? "—"} />
-                <InfoLine label="Hạn chót" value={formatDate(viewingMs.deadline)} />
+                <InfoLine label="Hạn chót" value={formatMilestoneDate(viewingMs.deadline, viewingMs.deadlinePrecision)} />
                 <InfoLine label="Tiến độ" value={`${viewingMs.progress}%`} />
                 <InfoLine label="Rủi ro" value={viewingMs.risk} />
                 <InfoLine label="Trạng thái" value={viewingMs.status} />

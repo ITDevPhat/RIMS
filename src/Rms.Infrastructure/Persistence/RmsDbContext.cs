@@ -762,6 +762,10 @@ public partial class RmsDbContext : DbContext
                 .HasColumnName("deleted_at");
             entity.Property(e => e.DeletedBy).HasColumnName("deleted_by");
             entity.Property(e => e.DueDate).HasColumnName("due_date");
+            entity.Property(e => e.DueDatePrecision)
+                .HasMaxLength(10)
+                .HasDefaultValue("DAY")
+                .HasColumnName("due_date_precision");
             entity.Property(e => e.MilestoneId).HasColumnName("milestone_id");
             entity.Property(e => e.PhaseId).HasColumnName("phase_id");
             entity.Property(e => e.PriorityLevel)
@@ -913,6 +917,10 @@ public partial class RmsDbContext : DbContext
 
             entity.Property(e => e.MilestoneId).HasColumnName("milestone_id");
             entity.Property(e => e.CompletedDate).HasColumnName("completed_date");
+            entity.Property(e => e.CompletedDatePrecision)
+                .HasMaxLength(10)
+                .HasDefaultValue("DAY")
+                .HasColumnName("completed_date_precision");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
@@ -923,6 +931,10 @@ public partial class RmsDbContext : DbContext
                 .HasColumnName("deleted_at");
             entity.Property(e => e.DeletedBy).HasColumnName("deleted_by");
             entity.Property(e => e.DueDate).HasColumnName("due_date");
+            entity.Property(e => e.DueDatePrecision)
+                .HasMaxLength(10)
+                .HasDefaultValue("DAY")
+                .HasColumnName("due_date_precision");
             entity.Property(e => e.IsActive)
                 .HasDefaultValue(true)
                 .HasColumnName("is_active");
@@ -988,13 +1000,25 @@ public partial class RmsDbContext : DbContext
 
             entity.Property(e => e.PhaseId).HasColumnName("phase_id");
             entity.Property(e => e.ActualEndDate).HasColumnName("actual_end_date");
+            entity.Property(e => e.ActualEndDatePrecision)
+                .HasMaxLength(10)
+                .HasDefaultValue("DAY")
+                .HasColumnName("actual_end_date_precision");
             entity.Property(e => e.ActualStartDate).HasColumnName("actual_start_date");
+            entity.Property(e => e.ActualStartDatePrecision)
+                .HasMaxLength(10)
+                .HasDefaultValue("DAY")
+                .HasColumnName("actual_start_date_precision");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.DeadlineDate).HasColumnName("deadline_date");
+            entity.Property(e => e.DeadlineDatePrecision)
+                .HasMaxLength(10)
+                .HasDefaultValue("DAY")
+                .HasColumnName("deadline_date_precision");
             entity.Property(e => e.DeletedAt)
                 .HasPrecision(0)
                 .HasColumnName("deleted_at");
@@ -1016,7 +1040,15 @@ public partial class RmsDbContext : DbContext
                 .HasDefaultValue("not_started")
                 .HasColumnName("phase_status");
             entity.Property(e => e.PlannedEndDate).HasColumnName("planned_end_date");
+            entity.Property(e => e.PlannedEndDatePrecision)
+                .HasMaxLength(10)
+                .HasDefaultValue("DAY")
+                .HasColumnName("planned_end_date_precision");
             entity.Property(e => e.PlannedStartDate).HasColumnName("planned_start_date");
+            entity.Property(e => e.PlannedStartDatePrecision)
+                .HasMaxLength(10)
+                .HasDefaultValue("DAY")
+                .HasColumnName("planned_start_date_precision");
             entity.Property(e => e.ProgressPercent)
                 .HasColumnType("decimal(5, 2)")
                 .HasColumnName("progress_percent");
@@ -1065,7 +1097,15 @@ public partial class RmsDbContext : DbContext
 
             entity.Property(e => e.ProjectId).HasColumnName("project_id");
             entity.Property(e => e.ActualEndDate).HasColumnName("actual_end_date");
+            entity.Property(e => e.ActualEndDatePrecision)
+                .HasMaxLength(10)
+                .HasDefaultValue("DAY")
+                .HasColumnName("actual_end_date_precision");
             entity.Property(e => e.ActualStartDate).HasColumnName("actual_start_date");
+            entity.Property(e => e.ActualStartDatePrecision)
+                .HasMaxLength(10)
+                .HasDefaultValue("DAY")
+                .HasColumnName("actual_start_date_precision");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
@@ -1097,7 +1137,15 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.LeadDepartmentId).HasColumnName("lead_department_id");
             entity.Property(e => e.Notes).HasColumnName("notes");
             entity.Property(e => e.PlannedEndDate).HasColumnName("planned_end_date");
+            entity.Property(e => e.PlannedEndDatePrecision)
+                .HasMaxLength(10)
+                .HasDefaultValue("DAY")
+                .HasColumnName("planned_end_date_precision");
             entity.Property(e => e.PlannedStartDate).HasColumnName("planned_start_date");
+            entity.Property(e => e.PlannedStartDatePrecision)
+                .HasMaxLength(10)
+                .HasDefaultValue("DAY")
+                .HasColumnName("planned_start_date_precision");
             entity.Property(e => e.PrincipalInvestigatorId).HasColumnName("principal_investigator_id");
             entity.Property(e => e.PriorityLevel)
                 .HasMaxLength(50)

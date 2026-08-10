@@ -1,4 +1,5 @@
 import { apiClient } from "./api-client";
+import type { DatePrecision } from "@/lib/types";
 
 export interface DashboardBucketDto {
   key: string;
@@ -10,9 +11,13 @@ export interface DashboardPhaseDto {
   phaseId: number;
   phaseName: string;
   plannedStartDate?: string | null;
+  plannedStartDatePrecision?: DatePrecision | null;
   plannedEndDate?: string | null;
+  plannedEndDatePrecision?: DatePrecision | null;
   actualStartDate?: string | null;
+  actualStartDatePrecision?: DatePrecision | null;
   actualEndDate?: string | null;
+  actualEndDatePrecision?: DatePrecision | null;
   progressPercent: number;
   phaseStatus: string;
 }
@@ -34,6 +39,7 @@ export interface DashboardDeadlineDto {
   deadlineType: string;
   title: string;
   dueDate: string;
+  dueDatePrecision?: DatePrecision | null;
   priorityLevel: string;
   deadlineStatus: string;
   projectId?: number | null;

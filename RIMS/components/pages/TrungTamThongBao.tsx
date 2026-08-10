@@ -8,6 +8,7 @@ import type { Notification } from "@/lib/types/notification";
 import { notificationApi } from "@/lib/api/notification-api";
 import { mapApiNotificationToUi } from "@/lib/mappers/notification-mapper";
 import { cn } from "@/lib/utils";
+import { formatDateVN } from "@/lib/date-utils";
 
 type FilterStatus = "all" | "unread" | "read";
 
@@ -161,7 +162,7 @@ export default function TrungTamThongBao() {
                   <div>
                     <h2 className="text-xl font-bold text-slate-800">{selectedNotification.title}</h2>
                     <p className="text-sm text-slate-500 mt-1">
-                      {selectedNotification.timestamp.toLocaleDateString("vi-VN")} lúc{" "}
+                      {formatDateVN(selectedNotification.timestamp)} lúc{" "}
                       {selectedNotification.timestamp.toLocaleTimeString("vi-VN")}
                     </p>
                   </div>
@@ -241,7 +242,7 @@ export default function TrungTamThongBao() {
                             {getPriorityLabel(notif.priority)}
                           </Badge>
                           <span className="text-xs text-slate-400">
-                            {notif.timestamp.toLocaleDateString("vi-VN")}
+                            {formatDateVN(notif.timestamp)}
                           </span>
                         </div>
                       </div>

@@ -19,13 +19,23 @@ public partial class ProjectPhase
 
     public DateOnly? PlannedStartDate { get; set; }
 
+    public string PlannedStartDatePrecision { get; set; } = "DAY";
+
     public DateOnly? PlannedEndDate { get; set; }
+
+    public string PlannedEndDatePrecision { get; set; } = "DAY";
 
     public DateOnly? DeadlineDate { get; set; }
 
+    public string DeadlineDatePrecision { get; set; } = "DAY";
+
     public DateOnly? ActualStartDate { get; set; }
 
+    public string ActualStartDatePrecision { get; set; } = "DAY";
+
     public DateOnly? ActualEndDate { get; set; }
+
+    public string ActualEndDatePrecision { get; set; } = "DAY";
 
     public decimal ProgressPercent { get; set; }
 

@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { adminApi, type ApiAdminRole, type ApiPermission } from "@/lib/api/admin-api";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
+import { formatDateVN } from "@/lib/date-utils";
 
 type RoleForm = {
   roleCode: string;
@@ -318,7 +319,5 @@ function Field({ label, required, children }: { label: string; required?: boolea
 }
 
 function formatDate(value?: string | null) {
-  if (!value) return "—";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("vi-VN");
+  return formatDateVN(value);
 }

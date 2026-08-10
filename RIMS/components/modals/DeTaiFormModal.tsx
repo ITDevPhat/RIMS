@@ -13,9 +13,10 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { DEPARTMENTS, SPONSORS } from "@/lib/constants/research";
-import { useDateFormat } from "@/lib/date-format";
+import { PrecisionDateInput } from "@/components/common/DateInput";
 import type { ApiDepartment } from "@/lib/api/admin-api";
-import type { ResearchProject } from "@/lib/types";
+import { projectPhaseApi, type ApiProjectPhase } from "@/lib/api/research-api";
+import type { DatePrecision, ResearchProject } from "@/lib/types";
 
 export interface DeTaiFormData {
   code: string;
@@ -30,8 +31,11 @@ export interface DeTaiFormData {
   protocolVersion: string;
   ethicsStatus: string;
   startDate: string;
+  startDatePrecision: DatePrecision;
   endDate: string;
+  endDatePrecision: DatePrecision;
   actualProgressDate: string;
+  actualProgressDatePrecision: DatePrecision;
   status: string;
   progress: string;
   currentPhase: string;
@@ -64,11 +68,14 @@ const emptyForm: DeTaiFormData = {
   protocolVersion: "1.0",
   ethicsStatus: "Không yêu cầu",
   startDate: "",
+  startDatePrecision: "DAY",
   endDate: "",
+  endDatePrecision: "DAY",
   actualProgressDate: "",
+  actualProgressDatePrecision: "DAY",
   status: "Chưa bắt đầu",
   progress: "0",
-  currentPhase: "Chưa bắt đầu",
+  currentPhase: "",
   notes: "",
 };
 
@@ -87,8 +94,11 @@ function fromProject(project?: ResearchProject | null): DeTaiFormData {
     protocolVersion: project.protocolVersion || "1.0",
     ethicsStatus: project.ethicsStatus,
     startDate: project.startDate ?? "",
+    startDatePrecision: project.startDatePrecision ?? "DAY",
     endDate: project.plannedEndDate ?? "",
-    actualProgressDate: "",
+    endDatePrecision: project.plannedEndDatePrecision ?? "DAY",
+    actualProgressDate: project.actualEndDate ?? "",
+    actualProgressDatePrecision: project.actualEndDatePrecision ?? "DAY",
     status: project.status,
     progress: String(project.progress ?? 0),
     currentPhase: project.currentPhase ?? "Chưa bắt đầu",
@@ -110,10 +120,10 @@ function calculateProgress(startDate: string, endDate: string, actualProgressDat
 
 export default function DeTaiFormModal({ open, mode = "create", project, departments = [], onOpenChange, onSave }: DeTaiFormModalProps) {
   const [formData, setFormData] = useState<DeTaiFormData>(emptyForm);
+  const [phaseOptions, setPhaseOptions] = useState<ApiProjectPhase[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState("");
   const [saving, setSaving] = useState(false);
-  const { inputType, toInputValue, fromInputValue, dateFormat } = useDateFormat();
 
   useEffect(() => {
     if (open) {
@@ -122,6 +132,26 @@ export default function DeTaiFormModal({ open, mode = "create", project, departm
       setSubmitError("");
     }
   }, [open, project]);
+
+  useEffect(() => {
+    if (!open || !project?.id) {
+      setPhaseOptions([]);
+      return;
+    }
+    let cancelled = false;
+    const loadPhases = async () => {
+      try {
+        const result = await projectPhaseApi.getPhases({ projectId: project.id, pageSize: 200 });
+        if (!cancelled) setPhaseOptions(result.items);
+      } catch {
+        if (!cancelled) setPhaseOptions([]);
+      }
+    };
+    void loadPhases();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, project?.id]);
 
   const title = mode === "edit" ? "Cập nhật đề tài nghiên cứu" : "Thêm đề tài nghiên cứu";
   const saveLabel = mode === "edit" ? "Lưu thay đổi" : "Tạo đề tài";
@@ -146,6 +176,8 @@ export default function DeTaiFormModal({ open, mode = "create", project, departm
     } satisfies ApiDepartment));
   }, [departments]);
 
+  const hasCurrentPhaseOption = phaseOptions.some((phase) => phase.phaseName === formData.currentPhase);
+
   useEffect(() => {
     const progress = calculateProgress(formData.startDate, formData.endDate, formData.actualProgressDate);
     if (progress === null) return;
@@ -165,6 +197,10 @@ export default function DeTaiFormModal({ open, mode = "create", project, departm
       delete next[field];
       return next;
     });
+  };
+
+  const handlePrecisionChange = (field: keyof DeTaiFormData, precision: DatePrecision) => {
+    setFormData((prev) => ({ ...prev, [field]: precision }));
   };
 
   const validate = () => {
@@ -220,7 +256,7 @@ export default function DeTaiFormModal({ open, mode = "create", project, departm
     <>
       <div className="fixed inset-0 z-40 bg-slate-950/45" onClick={() => !saving && onOpenChange(false)} />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div role="dialog" aria-modal="true" aria-labelledby="research-project-dialog-title" className="flex max-h-[calc(100dvh-2rem)] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl ring-1 ring-slate-200">
+        <div role="dialog" aria-modal="true" aria-labelledby="research-project-dialog-title" className="flex max-h-[calc(100dvh-2rem)] w-full max-w-7xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl ring-1 ring-slate-200">
           <div className="border-b border-slate-200 bg-white px-6 py-4">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -280,7 +316,68 @@ export default function DeTaiFormModal({ open, mode = "create", project, departm
                   </Field>
                 </div>
               </section>
-
+<section className="rounded-lg border border-slate-200 bg-white p-4">
+                <SectionTitle icon={<CalendarDays className="h-4 w-4" />} title="Tiến độ" />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <PrecisionDateInput
+                    label="Ngày bắt đầu"
+                    required
+                    value={formData.startDate}
+                    precision={formData.startDatePrecision}
+                    onValueChange={(value) => handleChange("startDate", value)}
+                    onPrecisionChange={(precision) => handlePrecisionChange("startDatePrecision", precision)}
+                    error={errors.startDate}
+                  />
+                  <PrecisionDateInput
+                    label="Deadline/kết thúc dự kiến"
+                    required
+                    value={formData.endDate}
+                    precision={formData.endDatePrecision}
+                    onValueChange={(value) => handleChange("endDate", value)}
+                    onPrecisionChange={(precision) => handlePrecisionChange("endDatePrecision", precision)}
+                    error={errors.endDate}
+                  />
+                  <PrecisionDateInput
+                    label="Ngày thực tế thực hiện"
+                    value={formData.actualProgressDate}
+                    precision={formData.actualProgressDatePrecision}
+                    onValueChange={(value) => handleChange("actualProgressDate", value)}
+                    onPrecisionChange={(precision) => handlePrecisionChange("actualProgressDatePrecision", precision)}
+                  />
+                  <Field label="Trạng thái đề tài" error={errors.status}>
+                    <Select value={formData.status} onValueChange={(value) => handleChange("status", value ?? "")}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{STATUS_OPTIONS.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="Tiến độ (%)" error={errors.progress}>
+                    <Input type="number" min={0} max={100} value={formData.progress} readOnly className="bg-slate-50 font-semibold text-slate-700" />
+                  </Field>
+                  <Field label="Giai đoạn hiện tại" wide>
+                    <Select value={formData.currentPhase} onValueChange={(value) => handleChange("currentPhase", value ?? "")}>
+                      <SelectTrigger><SelectValue placeholder="Chọn giai đoạn" /></SelectTrigger>
+                      <SelectContent>
+                        {phaseOptions.length === 0 ? (
+                          <SelectItem value="Chưa bắt đầu">Chưa có giai đoạn phù hợp</SelectItem>
+                        ) : (
+                          <>
+                            {formData.currentPhase && !hasCurrentPhaseOption && (
+                              <SelectItem value={formData.currentPhase}>{formData.currentPhase}</SelectItem>
+                            )}
+                            {phaseOptions.map((phase) => (
+                              <SelectItem key={phase.phaseId} value={phase.phaseName}>{phase.phaseName}</SelectItem>
+                            ))}
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="Ghi chú" wide>
+                    <textarea className="min-h-20 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" value={formData.notes} onChange={(e) => handleChange("notes", e.target.value)} placeholder="Các vấn đề, rủi ro hoặc ghi chú theo dõi" />
+                  </Field>
+                </div>
+                {completionHint && <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">{completionHint}</p>}
+              </section>
               <section className="rounded-lg border border-slate-200 bg-white p-4">
                 <SectionTitle icon={<FileText className="h-4 w-4" />} title="Đề cương và đạo đức" />
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -299,39 +396,7 @@ export default function DeTaiFormModal({ open, mode = "create", project, departm
                 </div>
               </section>
 
-              <section className="rounded-lg border border-slate-200 bg-white p-4">
-                <SectionTitle icon={<CalendarDays className="h-4 w-4" />} title="Tiến độ" />
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Ngày bắt đầu" required error={errors.startDate}>
-                    <Input type={inputType} lang="vi-VN" value={toInputValue(formData.startDate)} onChange={(e) => handleChange("startDate", fromInputValue(e.target.value))} />
-                  </Field>
-                  <Field label="Deadline/kết thúc dự kiến" required error={errors.endDate}>
-                    <Input type={inputType} lang="vi-VN" value={toInputValue(formData.endDate)} onChange={(e) => handleChange("endDate", fromInputValue(e.target.value))} />
-                  </Field>
-                  <Field label="Ngày thực tế thực hiện">
-                    <Input type={inputType} lang="vi-VN" value={toInputValue(formData.actualProgressDate)} onChange={(e) => handleChange("actualProgressDate", fromInputValue(e.target.value))} />
-                  </Field>
-                  <Field label="Trạng thái đề tài" error={errors.status}>
-                    <Select value={formData.status} onValueChange={(value) => handleChange("status", value ?? "")}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{STATUS_OPTIONS.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </Field>
-                  <Field label="Tiến độ (%)" error={errors.progress}>
-                    <Input type="number" min={0} max={100} value={formData.progress} readOnly className="bg-slate-50 font-semibold text-slate-700" />
-                  </Field>
-                  <Field label="Giai đoạn hiện tại" wide>
-                    <Input value={formData.currentPhase} onChange={(e) => handleChange("currentPhase", e.target.value)} placeholder="VD: Thu thập số liệu" />
-                  </Field>
-                  <Field label="Ghi chú" wide>
-                    <textarea className="min-h-20 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" value={formData.notes} onChange={(e) => handleChange("notes", e.target.value)} placeholder="Các vấn đề, rủi ro hoặc ghi chú theo dõi" />
-                  </Field>
-                </div>
-                <p className="mt-3 rounded-md bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700">
-                  Tiến độ tự tính theo ngày bắt đầu, deadline và ngày thực tế thực hiện. Định dạng hiện tại: {dateFormat}.
-                </p>
-                {completionHint && <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">{completionHint}</p>}
-              </section>
+              
             </div>
           </div>
 
