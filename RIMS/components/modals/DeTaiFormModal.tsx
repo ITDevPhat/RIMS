@@ -163,10 +163,14 @@ export default function DeTaiFormModal({ open, mode = "create", project, departm
     return "";
   }, [formData.progress, formData.status]);
 
-  const departmentOptions = useMemo(() => {
-    const active = departments.filter((item) => item.isActive);
-    if (active.length > 0) return active;
-    return DEPARTMENTS.filter((item) => item !== "Tất cả").map((name, index) => ({
+const departmentOptions = useMemo(() => {
+  const active = departments.filter((item) => item.isActive);
+
+  if (active.length > 0) return active;
+
+  return DEPARTMENTS
+    .filter((item) => item !== "Tất cả")
+    .map((name, index) => ({
       departmentId: -(index + 1),
       departmentCode: name.toUpperCase().replace(/\s+/g, "_"),
       departmentName: name,
@@ -174,9 +178,20 @@ export default function DeTaiFormModal({ open, mode = "create", project, departm
       sortOrder: index + 1,
       createdAt: "",
     } satisfies ApiDepartment));
-  }, [departments]);
+}, [departments]);
 
-  const hasCurrentPhaseOption = phaseOptions.some((phase) => phase.phaseName === formData.currentPhase);
+const selectedDepartment = useMemo(
+  () =>
+    departmentOptions.find(
+      (item) =>
+        String(item.departmentId) === String(formData.departmentId)
+    ),
+  [departmentOptions, formData.departmentId]
+);
+
+const hasCurrentPhaseOption = phaseOptions.some(
+  (phase) => phase.phaseName === formData.currentPhase
+);
 
   useEffect(() => {
     const progress = calculateProgress(formData.startDate, formData.endDate, formData.actualProgressDate);
