@@ -109,7 +109,8 @@ function AppInner() {
   };
 
   return (
-    <AdminLayout
+    <DateFormatProvider>
+      <AdminLayout
       activePage={activePage}
       onNavigate={handleSidebarNavigate}
       onOpenProfile={() => setShowProfile(true)}
@@ -118,18 +119,17 @@ function AppInner() {
       onLogout={handleLogout}
     >
       {renderContent()}
-    </AdminLayout>
+      </AdminLayout>
+    </DateFormatProvider>
   );
 }
 
 export default function App() {
   return (
     <ThemeModeProvider>
-      <DateFormatProvider>
-        <AuthProvider>
-          <AppInner />
-        </AuthProvider>
-      </DateFormatProvider>
+      <AuthProvider>
+        <AppInner />
+      </AuthProvider>
     </ThemeModeProvider>
   );
 }
