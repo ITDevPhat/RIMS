@@ -9,6 +9,12 @@ namespace Rms.Infrastructure.Services;
 
 public sealed class ResearchService : IResearchService
 {
+    private const string ResearchTypeCategory = "research_type";
+    private const string ProjectStatusCategory = "project_status";
+    private const string EthicsStatusCategory = "ethics_status";
+    private const string CurrentStageCategory = "current_stage";
+    private const string RiskLevelCategory = "risk_level";
+
     private readonly RmsDbContext _dbContext;
     private readonly IAuditService _auditService;
     private readonly IUserContext _userContext;
@@ -41,14 +47,17 @@ public sealed class ResearchService : IResearchService
             .Skip((query.Page - 1) * query.PageSize)
             .Take(query.PageSize)
             .ToListAsync(cancellationToken);
+        var masterNames = await GetMasterDataNamesAsync(cancellationToken);
 
-        return PagedResult<ResearchProjectDto>.Create(items.Select(MapProject).ToList(), query.Page, query.PageSize, total);
+        return PagedResult<ResearchProjectDto>.Create(items.Select(project => MapProject(project, masterNames)).ToList(), query.Page, query.PageSize, total);
     }
 
     public async Task<ResearchProjectDto> GetProjectAsync(long id, CancellationToken cancellationToken = default)
     {
         var project = await ProjectGraph().FirstOrDefaultAsync(x => x.ProjectId == id && x.DeletedAt == null, cancellationToken);
-        return project is null ? throw new NotFoundException("Research project not found.") : MapProject(project);
+        if (project is null) throw new NotFoundException("Research project not found.");
+        var masterNames = await GetMasterDataNamesAsync(cancellationToken);
+        return MapProject(project, masterNames);
     }
 
     public async Task<ResearchProjectOverviewDto> GetProjectOverviewAsync(long id, CancellationToken cancellationToken = default)
@@ -62,7 +71,7 @@ public sealed class ResearchService : IResearchService
 
         var openDeadlines = project.ProjectDeadlines.Where(x => x.DeletedAt == null && x.DeadlineStatus != "completed").ToList();
         return new ResearchProjectOverviewDto(
-            MapProject(project),
+            MapProject(project, await GetMasterDataNamesAsync(cancellationToken)),
             project.ProjectPhases.Count(x => x.DeletedAt == null),
             project.ProjectMilestones.Count(x => x.DeletedAt == null),
             openDeadlines.Count,
@@ -77,6 +86,12 @@ public sealed class ResearchService : IResearchService
         var plannedEndDatePrecision = NormalizeDatePrecision(request.PlannedEndDatePrecision);
         var actualStartDatePrecision = NormalizeDatePrecision(request.ActualStartDatePrecision);
         var actualEndDatePrecision = NormalizeDatePrecision(request.ActualEndDatePrecision);
+        await ValidateSponsorAsync(request.SponsorId, null, cancellationToken);
+        await ValidateMasterDataValueAsync(ResearchTypeCategory, request.ResearchType, null, "Loại nghiên cứu không hợp lệ.", cancellationToken);
+        await ValidateMasterDataValueAsync(EthicsStatusCategory, request.EthicsStatus, null, "Trạng thái phê duyệt đạo đức không hợp lệ.", cancellationToken);
+        await ValidateMasterDataValueAsync(ProjectStatusCategory, request.ProjectStatus, null, "Trạng thái đề tài không hợp lệ.", cancellationToken);
+        await ValidateMasterDataValueAsync(CurrentStageCategory, request.CurrentPhaseName, null, "Giai đoạn hiện tại không hợp lệ.", cancellationToken);
+        await ValidateMasterDataValueAsync(RiskLevelCategory, request.RiskLevel, null, "Mức độ rủi ro không hợp lệ.", cancellationToken);
         if (await _dbContext.ResearchProjects.AnyAsync(x => x.ProjectCode == request.ProjectCode, cancellationToken))
         {
             throw new InvalidOperationException("Project code already exists.");
@@ -133,6 +148,12 @@ public sealed class ResearchService : IResearchService
         var actualEndDatePrecision = NormalizeDatePrecision(request.ActualEndDatePrecision);
         var project = await _dbContext.ResearchProjects.FirstOrDefaultAsync(x => x.ProjectId == id && x.DeletedAt == null, cancellationToken);
         if (project is null) throw new NotFoundException("Research project not found.");
+        await ValidateSponsorAsync(request.SponsorId, project.SponsorId, cancellationToken);
+        await ValidateMasterDataValueAsync(ResearchTypeCategory, request.ResearchType, project.ResearchType, "Loại nghiên cứu không hợp lệ.", cancellationToken);
+        await ValidateMasterDataValueAsync(EthicsStatusCategory, request.EthicsStatus, project.EthicsStatus, "Trạng thái phê duyệt đạo đức không hợp lệ.", cancellationToken);
+        await ValidateMasterDataValueAsync(ProjectStatusCategory, request.ProjectStatus, project.ProjectStatus, "Trạng thái đề tài không hợp lệ.", cancellationToken);
+        await ValidateMasterDataValueAsync(CurrentStageCategory, request.CurrentPhaseName, project.CurrentPhaseName, "Giai đoạn hiện tại không hợp lệ.", cancellationToken);
+        await ValidateMasterDataValueAsync(RiskLevelCategory, request.RiskLevel, project.RiskLevel, "Mức độ rủi ro không hợp lệ.", cancellationToken);
 
         if (!string.IsNullOrWhiteSpace(request.ProjectCode))
         {
@@ -308,19 +329,23 @@ public sealed class ResearchService : IResearchService
         if (!string.IsNullOrWhiteSpace(query.Search)) milestones = milestones.Where(x => x.MilestoneName.Contains(query.Search));
         var total = await milestones.CountAsync(cancellationToken);
         var items = await milestones.OrderBy(x => x.DueDate).Skip((query.Page - 1) * query.PageSize).Take(query.PageSize).ToListAsync(cancellationToken);
-        return PagedResult<ProjectMilestoneDto>.Create(items.Select(MapMilestone).ToList(), query.Page, query.PageSize, total);
+        var masterNames = await GetMasterDataNamesAsync(cancellationToken);
+        return PagedResult<ProjectMilestoneDto>.Create(items.Select(item => MapMilestone(item, masterNames)).ToList(), query.Page, query.PageSize, total);
     }
 
     public async Task<ProjectMilestoneDto> GetMilestoneAsync(long id, CancellationToken cancellationToken = default)
     {
         var milestone = await MilestoneGraph().FirstOrDefaultAsync(x => x.MilestoneId == id && x.DeletedAt == null, cancellationToken);
-        return milestone is null ? throw new NotFoundException("Project milestone not found.") : MapMilestone(milestone);
+        if (milestone is null) throw new NotFoundException("Project milestone not found.");
+        var masterNames = await GetMasterDataNamesAsync(cancellationToken);
+        return MapMilestone(milestone, masterNames);
     }
 
     public async Task<ProjectMilestoneDto> CreateMilestoneAsync(CreateProjectMilestoneRequest request, CancellationToken cancellationToken = default)
     {
         var dueDatePrecision = NormalizeDatePrecision(request.DueDatePrecision);
         var completedAtPrecision = NormalizeDatePrecision(request.CompletedAtPrecision);
+        await ValidateMasterDataValueAsync(RiskLevelCategory, request.PriorityLevel, null, "Mức độ rủi ro không hợp lệ.", cancellationToken);
         var milestone = new ProjectMilestone
         {
             ProjectId = request.ProjectId,
@@ -351,6 +376,7 @@ public sealed class ResearchService : IResearchService
         var completedAtPrecision = NormalizeDatePrecision(request.CompletedAtPrecision);
         var milestone = await _dbContext.ProjectMilestones.FirstOrDefaultAsync(x => x.MilestoneId == id && x.DeletedAt == null, cancellationToken);
         if (milestone is null) throw new NotFoundException("Project milestone not found.");
+        await ValidateMasterDataValueAsync(RiskLevelCategory, request.PriorityLevel, milestone.PriorityLevel, "Mức độ rủi ro không hợp lệ.", cancellationToken);
         milestone.PhaseId = request.PhaseId;
         milestone.MilestoneName = request.MilestoneName;
         milestone.MilestoneDescription = request.Description;
@@ -477,10 +503,11 @@ public sealed class ResearchService : IResearchService
         return await GetDeadlineAsync(id, cancellationToken);
     }
 
-    public async Task<PagedResult<SponsorDto>> GetSponsorsAsync(PaginationQuery query, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<SponsorDto>> GetSponsorsAsync(SponsorQuery query, CancellationToken cancellationToken = default)
     {
         var sponsors = _dbContext.Sponsors.Where(x => x.DeletedAt == null);
         if (!string.IsNullOrWhiteSpace(query.Search)) sponsors = sponsors.Where(x => x.SponsorCode.Contains(query.Search) || x.SponsorName.Contains(query.Search));
+        if (query.IsActive is not null) sponsors = sponsors.Where(x => x.IsActive == query.IsActive.Value);
         var total = await sponsors.CountAsync(cancellationToken);
         var items = await sponsors.OrderBy(x => x.SponsorName).Skip((query.Page - 1) * query.PageSize).Take(query.PageSize).ToListAsync(cancellationToken);
         return PagedResult<SponsorDto>.Create(items.Select(MapSponsor).ToList(), query.Page, query.PageSize, total);
@@ -488,7 +515,12 @@ public sealed class ResearchService : IResearchService
 
     public async Task<SponsorDto> CreateSponsorAsync(CreateSponsorRequest request, CancellationToken cancellationToken = default)
     {
-        var sponsor = new Sponsor { SponsorCode = request.SponsorCode, SponsorName = request.SponsorName, SponsorType = request.SponsorType, ContactPerson = request.ContactPerson, ContactEmail = request.ContactEmail, ContactPhone = request.ContactPhone, Address = request.Address, IsActive = request.IsActive, CreatedAt = DateTime.UtcNow, CreatedBy = _userContext.User?.UserId };
+        var code = request.SponsorCode.Trim();
+        var name = request.SponsorName.Trim();
+        if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("Mã và tên nhà tài trợ không được rỗng.");
+        var exists = await _dbContext.Sponsors.AnyAsync(x => x.DeletedAt == null && (x.SponsorCode.ToUpper() == code.ToUpper() || x.SponsorName.ToUpper() == name.ToUpper()), cancellationToken);
+        if (exists) throw new InvalidOperationException("Mã hoặc tên nhà tài trợ đã tồn tại.");
+        var sponsor = new Sponsor { SponsorCode = code, SponsorName = name, SponsorType = request.SponsorType, ContactPerson = request.ContactPerson, ContactEmail = request.ContactEmail, ContactPhone = request.ContactPhone, Address = request.Address, IsActive = request.IsActive, CreatedAt = DateTime.UtcNow, CreatedBy = _userContext.User?.UserId };
         _dbContext.Sponsors.Add(sponsor);
         await _dbContext.SaveChangesAsync(cancellationToken);
         await _auditService.WriteActivityAsync("research_project", "create", $"Created sponsor {sponsor.SponsorCode}", "Sponsor", sponsor.SponsorId, sponsor.SponsorCode, cancellationToken: cancellationToken);
@@ -499,7 +531,11 @@ public sealed class ResearchService : IResearchService
     {
         var sponsor = await _dbContext.Sponsors.FirstOrDefaultAsync(x => x.SponsorId == id && x.DeletedAt == null, cancellationToken);
         if (sponsor is null) throw new NotFoundException("Sponsor not found.");
-        sponsor.SponsorName = request.SponsorName;
+        var name = request.SponsorName.Trim();
+        if (string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("Tên nhà tài trợ không được rỗng.");
+        var duplicateName = await _dbContext.Sponsors.AnyAsync(x => x.SponsorId != id && x.DeletedAt == null && x.SponsorName.ToUpper() == name.ToUpper(), cancellationToken);
+        if (duplicateName) throw new InvalidOperationException("Tên nhà tài trợ đã tồn tại.");
+        sponsor.SponsorName = name;
         sponsor.SponsorType = request.SponsorType;
         sponsor.ContactPerson = request.ContactPerson;
         sponsor.ContactEmail = request.ContactEmail;
@@ -517,8 +553,9 @@ public sealed class ResearchService : IResearchService
     {
         var sponsor = await _dbContext.Sponsors.FirstOrDefaultAsync(x => x.SponsorId == id && x.DeletedAt == null, cancellationToken);
         if (sponsor is null) throw new NotFoundException("Sponsor not found.");
-        sponsor.DeletedAt = DateTime.UtcNow;
-        sponsor.DeletedBy = _userContext.User?.UserId;
+        sponsor.IsActive = false;
+        sponsor.UpdatedAt = DateTime.UtcNow;
+        sponsor.UpdatedBy = _userContext.User?.UserId;
         await _dbContext.SaveChangesAsync(cancellationToken);
         await _auditService.WriteActivityAsync("research_project", "delete", $"Deleted sponsor {sponsor.SponsorCode}", "Sponsor", sponsor.SponsorId, sponsor.SponsorCode, cancellationToken: cancellationToken);
     }
@@ -666,14 +703,55 @@ public sealed class ResearchService : IResearchService
         return precision == "MONTH" ? new DateOnly(value.Year, value.Month, 1) : value;
     }
 
-    private static ResearchProjectDto MapProject(ResearchProject project)
+    private async Task<Dictionary<string, string>> GetMasterDataNamesAsync(CancellationToken cancellationToken)
+    {
+        return await _dbContext.MasterDataItems
+            .Where(x => x.DeletedAt == null)
+            .ToDictionaryAsync(x => $"{x.CategoryCode}|{x.ItemCode}", x => x.ItemName, cancellationToken);
+    }
+
+    private async Task ValidateSponsorAsync(long? sponsorId, long? currentSponsorId, CancellationToken cancellationToken)
+    {
+        if (sponsorId is null) return;
+        var sponsor = await _dbContext.Sponsors.FirstOrDefaultAsync(x => x.SponsorId == sponsorId.Value && x.DeletedAt == null, cancellationToken);
+        if (sponsor is null) throw new InvalidOperationException("Nhà tài trợ/nguồn kinh phí không hợp lệ.");
+        if (!sponsor.IsActive && sponsor.SponsorId != currentSponsorId) throw new InvalidOperationException("Nhà tài trợ/nguồn kinh phí đã ngừng sử dụng.");
+    }
+
+    private async Task ValidateMasterDataValueAsync(string category, string? value, string? currentValue, string message, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return;
+        var normalized = value.Trim();
+        if (!string.IsNullOrWhiteSpace(currentValue) && string.Equals(normalized, currentValue.Trim(), StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var hasCategory = await _dbContext.MasterDataItems.AnyAsync(x => x.CategoryCode == category && x.DeletedAt == null, cancellationToken);
+        if (!hasCategory) return;
+
+        var exists = await _dbContext.MasterDataItems.AnyAsync(x =>
+            x.CategoryCode == category &&
+            x.ItemCode == normalized &&
+            x.IsActive &&
+            x.DeletedAt == null, cancellationToken);
+        if (!exists) throw new InvalidOperationException(message);
+    }
+
+    private static string? MasterName(IReadOnlyDictionary<string, string> names, string category, string? code)
+    {
+        if (string.IsNullOrWhiteSpace(code)) return null;
+        return names.TryGetValue($"{category}|{code}", out var name) ? name : null;
+    }
+
+    private static ResearchProjectDto MapProject(ResearchProject project, IReadOnlyDictionary<string, string> masterNames)
     {
         var nearestDeadline = project.ProjectDeadlines.Where(x => x.DeletedAt == null && x.DeadlineStatus != "completed").OrderBy(x => x.DueDate).FirstOrDefault();
-        return new ResearchProjectDto(project.ProjectId, project.ProjectCode, project.ProjectTitle, project.ProjectDescription, project.LeadDepartmentId, project.LeadDepartment?.DepartmentName, project.PrincipalInvestigatorId, project.PrincipalInvestigator?.FullName, project.SponsorId, project.Sponsor?.SponsorName ?? project.SponsorNameText, project.ResearchType, project.ProtocolNumber, project.ProtocolVersion, project.EthicsStatus, project.EthicsApprovalDate, project.EthicsExpiryDate, project.PlannedStartDate, NormalizeDatePrecision(project.PlannedStartDatePrecision), project.PlannedEndDate, NormalizeDatePrecision(project.PlannedEndDatePrecision), project.ActualStartDate, NormalizeDatePrecision(project.ActualStartDatePrecision), project.ActualEndDate, NormalizeDatePrecision(project.ActualEndDatePrecision), project.CurrentPhaseName, project.ProgressPercent, project.ProjectStatus, project.RiskLevel, nearestDeadline?.DueDate, NormalizeDatePrecision(nearestDeadline?.DueDatePrecision), project.Notes);
+        return new ResearchProjectDto(project.ProjectId, project.ProjectCode, project.ProjectTitle, project.ProjectDescription, project.LeadDepartmentId, project.LeadDepartment?.DepartmentName, project.PrincipalInvestigatorId, project.PrincipalInvestigator?.FullName, project.SponsorId, project.Sponsor?.SponsorName ?? project.SponsorNameText, project.ResearchType, MasterName(masterNames, ResearchTypeCategory, project.ResearchType), project.ProtocolNumber, project.ProtocolVersion, project.EthicsStatus, MasterName(masterNames, EthicsStatusCategory, project.EthicsStatus), project.EthicsApprovalDate, project.EthicsExpiryDate, project.PlannedStartDate, NormalizeDatePrecision(project.PlannedStartDatePrecision), project.PlannedEndDate, NormalizeDatePrecision(project.PlannedEndDatePrecision), project.ActualStartDate, NormalizeDatePrecision(project.ActualStartDatePrecision), project.ActualEndDate, NormalizeDatePrecision(project.ActualEndDatePrecision), project.CurrentPhaseName, MasterName(masterNames, CurrentStageCategory, project.CurrentPhaseName), project.ProgressPercent, project.ProjectStatus, MasterName(masterNames, ProjectStatusCategory, project.ProjectStatus), project.RiskLevel, MasterName(masterNames, RiskLevelCategory, project.RiskLevel), nearestDeadline?.DueDate, NormalizeDatePrecision(nearestDeadline?.DueDatePrecision), project.Notes);
     }
 
     private static ProjectPhaseDto MapPhase(ProjectPhase phase) => new(phase.PhaseId, phase.ProjectId, phase.Project.ProjectCode, phase.Project.ProjectTitle, phase.PhaseName, phase.PhaseDescription, phase.OwnerUserId, phase.OwnerUser?.FullName, phase.PlannedStartDate, NormalizeDatePrecision(phase.PlannedStartDatePrecision), phase.PlannedEndDate, NormalizeDatePrecision(phase.PlannedEndDatePrecision), phase.DeadlineDate, NormalizeDatePrecision(phase.DeadlineDatePrecision), phase.ActualStartDate, NormalizeDatePrecision(phase.ActualStartDatePrecision), phase.ActualEndDate, NormalizeDatePrecision(phase.ActualEndDatePrecision), phase.ProgressPercent, phase.PhaseStatus, phase.Notes, phase.SortOrder);
-    private static ProjectMilestoneDto MapMilestone(ProjectMilestone milestone) => new(milestone.MilestoneId, milestone.ProjectId, milestone.Project.ProjectCode, milestone.Project.ProjectTitle, milestone.PhaseId, milestone.Phase?.PhaseName, milestone.MilestoneName, milestone.MilestoneDescription, milestone.DueDate, NormalizeDatePrecision(milestone.DueDatePrecision), milestone.OwnerUserId, milestone.OwnerUser?.FullName, milestone.MilestoneStatus, milestone.PriorityLevel, milestone.CompletedDate, NormalizeDatePrecision(milestone.CompletedDatePrecision), milestone.Notes);
+    private static ProjectMilestoneDto MapMilestone(ProjectMilestone milestone, IReadOnlyDictionary<string, string>? masterNames = null) => new(milestone.MilestoneId, milestone.ProjectId, milestone.Project.ProjectCode, milestone.Project.ProjectTitle, milestone.PhaseId, milestone.Phase?.PhaseName, milestone.MilestoneName, milestone.MilestoneDescription, milestone.DueDate, NormalizeDatePrecision(milestone.DueDatePrecision), milestone.OwnerUserId, milestone.OwnerUser?.FullName, milestone.MilestoneStatus, milestone.PriorityLevel, masterNames is null ? milestone.PriorityLevel : MasterName(masterNames, RiskLevelCategory, milestone.PriorityLevel), milestone.CompletedDate, NormalizeDatePrecision(milestone.CompletedDatePrecision), milestone.Notes);
 
     private static ProjectDeadlineDto MapDeadline(ProjectDeadline deadline)
     {

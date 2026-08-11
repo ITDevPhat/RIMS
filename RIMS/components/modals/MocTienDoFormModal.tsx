@@ -10,11 +10,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FormDrawer, FormDrawerField, FormDrawerSection } from "@/components/common/FormDrawer";
-import type { PhaseStatus, ResearchMilestone, ResearchPhase, RiskLevel } from "@/lib/types";
+import type { PhaseStatus, ResearchMilestone, ResearchPhase } from "@/lib/types";
 import type { ProjectMilestonePayload } from "@/lib/api/research-api";
-import { toApiPhaseStatus, toApiPriorityLevel } from "@/lib/mappers/status-mapper";
+import { toApiPhaseStatus } from "@/lib/mappers/status-mapper";
 import { PrecisionDateInput } from "@/components/common/DateInput";
 import type { DatePrecision } from "@/lib/types";
+import { adminApi, type ApiMasterDataItem } from "@/lib/api/admin-api";
 
 const STATUS_OPTIONS: PhaseStatus[] = [
   "Chưa bắt đầu",
@@ -27,15 +28,6 @@ const STATUS_OPTIONS: PhaseStatus[] = [
   "Trễ hạn",
   "Tạm dừng",
   "Hủy",
-];
-
-const RISK_OPTIONS: RiskLevel[] = [
-  "Đúng tiến độ",
-  "Có nguy cơ",
-  "Trễ hạn",
-  "Đã hoàn thành",
-  "Hoàn thành trễ",
-  "Tạm dừng",
 ];
 
 interface MocTienDoFormModalProps {
@@ -82,6 +74,8 @@ export default function MocTienDoFormModal({
   const isEdit = !!milestone;
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [riskOptions, setRiskOptions] = useState<ApiMasterDataItem[]>([]);
+  const [lookupLoading, setLookupLoading] = useState(false);
 
   const [form, setForm] = useState({
     phaseId: phases[0]?.id ?? "",
@@ -96,7 +90,7 @@ export default function MocTienDoFormModal({
     actualEndDatePrecision: "DAY" as DatePrecision,
     progress: "0",
     status: "Chưa bắt đầu" as PhaseStatus,
-    risk: "Đúng tiến độ" as RiskLevel,
+    risk: "",
     hasIssue: "Không" as "Có" | "Không",
     issueReason: "",
     notes: "",
@@ -118,7 +112,7 @@ export default function MocTienDoFormModal({
         actualEndDatePrecision: milestone.actualEndDatePrecision ?? "DAY",
         progress: String(milestone.progress),
         status: milestone.status,
-        risk: milestone.risk,
+        risk: milestone.riskCode || milestone.risk,
         hasIssue: milestone.hasIssue ? "Có" : "Không",
         issueReason: milestone.issueReason ?? "",
         notes: milestone.notes ?? "",
@@ -137,13 +131,33 @@ export default function MocTienDoFormModal({
         actualEndDatePrecision: "DAY",
         progress: "0",
         status: "Chưa bắt đầu",
-        risk: "Đúng tiến độ",
+        risk: "",
         hasIssue: "Không",
         issueReason: "",
         notes: "",
       });
     }
   }, [milestone, open, phases]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    const loadRiskOptions = async () => {
+      setLookupLoading(true);
+      try {
+        const result = await adminApi.getMasterDataItems({ categoryCode: "risk_level", pageSize: 200 });
+        if (!cancelled) setRiskOptions(result.items);
+      } catch {
+        if (!cancelled) setRiskOptions([]);
+      } finally {
+        if (!cancelled) setLookupLoading(false);
+      }
+    };
+    void loadRiskOptions();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   const handleChange = (field: string, value: string | DatePrecision) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -163,6 +177,10 @@ export default function MocTienDoFormModal({
     }
     if (!form.name.trim()) {
       setSubmitError("Vui lòng nhập tên mốc tiến độ.");
+      return;
+    }
+    if (!form.risk) {
+      setSubmitError("Vui lòng chọn mức độ rủi ro.");
       return;
     }
 
@@ -188,7 +206,7 @@ export default function MocTienDoFormModal({
       dueDatePrecision: form.deadlinePrecision,
       responsibleUserId: toNumberOrNull(milestone?.responsibleUserId),
       milestoneStatus: toApiPhaseStatus(form.status),
-      priorityLevel: toApiPriorityLevel(form.risk),
+      priorityLevel: form.risk,
       completedAt: toOptionalDate(form.actualEndDate),
       completedAtPrecision: form.actualEndDatePrecision,
       notes: form.hasIssue === "Có"
@@ -298,11 +316,15 @@ export default function MocTienDoFormModal({
             onValueChange={(v) => v && handleChange("risk", v)}
           >
             <SelectTrigger className="h-10 border-slate-200">
-              <SelectValue />
+              <SelectValue placeholder={lookupLoading ? "Đang tải..." : "Chọn mức độ rủi ro"} />
             </SelectTrigger>
             <SelectContent>
-              {RISK_OPTIONS.map((r) => (
-                <SelectItem key={r} value={r}>{r}</SelectItem>
+              {riskOptions.filter((item) => item.isActive || item.itemCode === form.risk).length === 0 ? (
+                <SelectItem value="__empty" disabled>Không có dữ liệu</SelectItem>
+              ) : riskOptions.filter((item) => item.isActive || item.itemCode === form.risk).map((item) => (
+                <SelectItem key={item.masterDataItemId} value={item.itemCode}>
+                  {item.itemName}{item.isActive ? "" : " (Ngừng sử dụng)"}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>

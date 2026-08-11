@@ -62,10 +62,13 @@ export interface ResearchProject {
   managerName?: string;
   sponsorId?: number | null;
   sponsor: string;         // Nhà tài trợ
+  sponsorCode?: string | null;
+  researchTypeCode?: string | null;
   researchType: string;    // Loại nghiên cứu
   protocolNumber: string;
   protocolVersion: string;
   ethicsStatus: EthicsStatus;
+  ethicsStatusCode?: string | null;
   ethicsExpiry: string | null;  // ISO date
   startDate: string;
   startDatePrecision: DatePrecision;
@@ -78,9 +81,12 @@ export interface ResearchProject {
   progress: number;
   progressPercent?: number;
   status: ResearchStatus;
+  statusCode?: string | null;
   health: ProjectHealth;
+  riskLevelCode?: string | null;
   riskLevel?: RiskLevel;
   currentPhase: string;
+  currentPhaseCode?: string | null;
   nearestDeadline: string | null;
   nearestDeadlinePrecision?: DatePrecision;
   notes?: string | null;
@@ -144,6 +150,7 @@ export interface ResearchMilestone {
   progressPercent?: number;
   status: PhaseStatus;
   risk: RiskLevel;
+  riskCode?: string | null;
   riskLevel?: RiskLevel;
   delayDays?: number;
   hasIssue: boolean;

@@ -13,9 +13,11 @@ export interface ApiResearchProject {
   sponsorId?: number | null;
   sponsorName?: string | null;
   researchType?: string | null;
+  researchTypeName?: string | null;
   protocolNumber?: string | null;
   protocolVersion?: string | null;
   ethicsStatus: string;
+  ethicsStatusName?: string | null;
   ethicsExpiryDate?: string | null;
   plannedStartDate?: string | null;
   plannedStartDatePrecision?: DatePrecision | null;
@@ -26,9 +28,12 @@ export interface ApiResearchProject {
   actualEndDate?: string | null;
   actualEndDatePrecision?: DatePrecision | null;
   currentPhaseName?: string | null;
+  currentPhaseDisplayName?: string | null;
   progressPercent: number;
   projectStatus: string;
+  projectStatusName?: string | null;
   riskLevel: string;
+  riskLevelName?: string | null;
   nearestDeadlineDate?: string | null;
   nearestDeadlineDatePrecision?: DatePrecision | null;
   notes?: string | null;
@@ -74,9 +79,18 @@ export interface ApiProjectMilestone {
   responsibleUserName?: string | null;
   milestoneStatus: string;
   priorityLevel: string;
+  priorityLevelName?: string | null;
   completedAt?: string | null;
   completedAtPrecision?: DatePrecision | null;
   notes?: string | null;
+}
+
+export interface ApiSponsor {
+  sponsorId: number;
+  sponsorCode: string;
+  sponsorName: string;
+  sponsorType?: string | null;
+  isActive: boolean;
 }
 
 export interface ApiProjectDeadline {
@@ -171,4 +185,11 @@ export const projectDeadlineApi = {
   updateDeadline: (id: string | number, payload: unknown) => apiClient.put<ApiProjectDeadline>(`/project-deadlines/${id}`, payload),
   deleteDeadline: (id: string | number) => apiClient.delete<null>(`/project-deadlines/${id}`),
   markCompleted: (id: string | number) => apiClient.put<ApiProjectDeadline>(`/project-deadlines/${id}/mark-completed`),
+};
+
+export const sponsorApi = {
+  getSponsors: (filters?: QueryParams) => apiClient.get<PagedResult<ApiSponsor>>("/sponsors", filters),
+  createSponsor: (payload: unknown) => apiClient.post<ApiSponsor>("/sponsors", payload),
+  updateSponsor: (id: string | number, payload: unknown) => apiClient.put<ApiSponsor>(`/sponsors/${id}`, payload),
+  deleteSponsor: (id: string | number) => apiClient.delete<null>(`/sponsors/${id}`),
 };

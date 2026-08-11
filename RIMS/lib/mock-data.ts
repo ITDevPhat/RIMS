@@ -398,12 +398,5 @@ export const DEPARTMENTS = [
   "Khoa Xét nghiệm",
 ];
 
-export const SPONSORS = [
-  "Tất cả",
-  DEFAULT_SPONSOR,
-  "Nguồn kinh phí khoa/phòng",
-  "Chương trình cải tiến chất lượng bệnh viện",
-];
-
 export const mockModules = mockPhases;
 export const mockResearchModules = mockPhases;

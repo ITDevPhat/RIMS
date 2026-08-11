@@ -22,7 +22,6 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import {
   DEPARTMENTS,
-  SPONSORS,
 } from "@/lib/constants/research";
 import type { ResearchProject, EthicsStatus, ProjectHealth } from "@/lib/types";
 import { Search, Plus, Eye, Pencil, Trash2, Filter, ArrowUpDown } from "lucide-react";
@@ -120,40 +119,21 @@ const columns: Array<{ label: string; key?: SortKey; className?: string }> = [
   { label: "Chức năng", className: "sticky right-0 z-20 w-[120px] min-w-[120px] bg-slate-50 shadow-[-4px_0_6px_-5px_rgba(15,23,42,0.45)]" },
 ];
 
-function mapEthicsToApi(status: string) {
-  if (status === "Đã duyệt" || status === "Sắp hết hạn") return "approved";
-  if (status === "Chờ duyệt") return "pending";
-  if (status === "Hết hạn") return "expired";
-  return "not_required";
-}
-
-function mapStatusToApi(status: string) {
-  if (status === "Hoàn thành") return "completed";
-  if (status === "Chưa bắt đầu") return "not_started";
-  if (status === "Tạm dừng") return "paused";
-  return "in_progress";
-}
-
-function mapHealthToApi(health?: ProjectHealth) {
-  if (health === "Trễ hạn" || health === "Hoàn thành trễ") return "high";
-  if (health === "Có nguy cơ") return "medium";
-  return "low";
-}
-
 export function buildProjectPayload(data: DeTaiFormData, existing?: ResearchProject | null) {
   const departmentId = Number(data.departmentId || existing?.departmentId || 0);
+  const sponsorId = Number(data.sponsorId || existing?.sponsorId || 0);
   return {
     projectCode: data.code.trim(),
     projectTitle: data.name.trim(),
     description: data.description.trim() || null,
     departmentId: Number.isFinite(departmentId) && departmentId > 0 ? departmentId : null,
     principalInvestigatorId: existing?.principalInvestigatorId ?? null,
-    sponsorId: existing?.sponsorId ?? null,
+    sponsorId: Number.isFinite(sponsorId) && sponsorId > 0 ? sponsorId : null,
     sponsorName: data.sponsor.trim() || null,
     researchType: data.type || null,
     protocolNumber: data.protocolNumber.trim() || null,
     protocolVersion: data.protocolVersion.trim() || null,
-    ethicsStatus: mapEthicsToApi(data.ethicsStatus),
+    ethicsStatus: data.ethicsStatus,
     ethicsApprovalDate: null,
     ethicsExpiryDate: null,
     plannedStartDate: data.startDate || null,
@@ -164,10 +144,10 @@ export function buildProjectPayload(data: DeTaiFormData, existing?: ResearchProj
     actualStartDatePrecision: "DAY",
     actualEndDate: data.actualProgressDate || null,
     actualEndDatePrecision: data.actualProgressDatePrecision,
-    currentPhaseName: data.currentPhase.trim() || "Chưa bắt đầu",
+    currentPhaseName: data.currentPhase.trim() || null,
     progressPercent: Number(data.progress || 0),
-    projectStatus: mapStatusToApi(data.status),
-    riskLevel: mapHealthToApi(existing?.health),
+    projectStatus: data.status,
+    riskLevel: existing?.riskLevelCode ?? "low",
     notes: data.notes.trim() || null,
   };
 }
@@ -238,6 +218,10 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
       : DEPARTMENTS.filter((item) => item !== "Tất cả");
     return ["Tất cả", ...Array.from(new Set(names))];
   }, [departments]);
+
+  const sponsorFilterOptions = useMemo(() => ["Tất cả", ...Array.from(new Set(projects.map((item) => item.sponsor).filter(Boolean)))], [projects]);
+  const statusFilterOptions = useMemo(() => ["Tất cả", ...Array.from(new Set(projects.map((item) => item.status).filter(Boolean)))], [projects]);
+  const ethicsFilterOptions = useMemo(() => ["Tất cả", ...Array.from(new Set(projects.map((item) => item.ethicsStatus).filter(Boolean)))], [projects]);
 
   const handleDeleteProject = async () => {
     if (!projectToDelete) return;
@@ -382,9 +366,9 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
 
               {[
                 { label: "Khoa/phòng", value: filterDept, setter: setFilterDept, options: departmentFilterOptions },
-                { label: "Nhà tài trợ", value: filterSponsor, setter: setFilterSponsor, options: SPONSORS },
-                { label: "Trạng thái", value: filterStatus, setter: setFilterStatus, options: ["Tất cả", "Đang thực hiện", "Hoàn thành", "Tạm dừng", "Chưa bắt đầu"] },
-                { label: "Đạo đức", value: filterEthics, setter: setFilterEthics, options: ["Tất cả", "Không yêu cầu", "Chờ duyệt", "Đã duyệt", "Sắp hết hạn", "Hết hạn"] },
+                { label: "Nhà tài trợ", value: filterSponsor, setter: setFilterSponsor, options: sponsorFilterOptions },
+                { label: "Trạng thái", value: filterStatus, setter: setFilterStatus, options: statusFilterOptions },
+                { label: "Đạo đức", value: filterEthics, setter: setFilterEthics, options: ethicsFilterOptions },
               ].map((f) => (
                 <div key={f.label} className="min-w-0">
                   <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">{f.label}</label>

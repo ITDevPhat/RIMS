@@ -5,6 +5,7 @@ import {
   Bell,
   Building2,
   Check,
+  Database,
   FileText,
   KeyRound,
   Lock,
@@ -38,6 +39,7 @@ import { cn } from "@/lib/utils";
 import UserManagementTab from "@/components/admin/UserManagementTab";
 import RoleManagementTab from "@/components/admin/RoleManagementTab";
 import DepartmentManagementTab from "@/components/admin/DepartmentManagementTab";
+import MasterDataManagementTab from "@/components/admin/MasterDataManagementTab";
 import { DateInput } from "@/components/common/DateInput";
 import { adminApi, type ApiAdminRole, type ApiPermission, type ApiRolePermissionMatrix, type ApiSetting } from "@/lib/api/admin-api";
 import { auditApi, type ApiAuditLog } from "@/lib/api/audit-api";
@@ -45,11 +47,12 @@ import { notificationApi, type ApiNotificationRule, type ApiNotificationSettings
 import { notifyDateFormatChanged, type DateFormat } from "@/lib/date-format";
 import { formatDateTimeVN } from "@/lib/date-utils";
 
-type SettingsTab = "general" | "departments" | "notifications" | "rules" | "users" | "roles" | "permissions" | "audit";
+type SettingsTab = "general" | "departments" | "master-data" | "notifications" | "rules" | "users" | "roles" | "permissions" | "audit";
 
 const tabs: Array<{ id: SettingsTab; label: string; icon: React.ElementType }> = [
   { id: "general", label: "Cài đặt chung", icon: SettingsIcon },
   { id: "departments", label: "Đơn vị", icon: Building2 },
+  { id: "master-data", label: "Danh mục hệ thống", icon: Database },
   { id: "notifications", label: "Thông báo", icon: Bell },
   { id: "rules", label: "Quy tắc thông báo", icon: FileText },
   { id: "users", label: "Người dùng", icon: Users },
@@ -225,6 +228,9 @@ export default function CaiDat() {
           </TabsContent>
           <TabsContent value="departments" className="mt-5">
             <DepartmentManagementTab />
+          </TabsContent>
+          <TabsContent value="master-data" className="mt-5">
+            <MasterDataManagementTab />
           </TabsContent>
           <TabsContent value="notifications" className="mt-5">
             <NotificationSettingsTab />

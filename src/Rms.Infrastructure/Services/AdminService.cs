@@ -629,6 +629,104 @@ public sealed class AdminService : IAdminService
         await _auditService.WriteActivityAsync("department", "delete", $"Deleted department {department.DepartmentCode}", "Department", id, department.DepartmentCode, before, cancellationToken: cancellationToken);
     }
 
+    public async Task<PagedResult<MasterDataItemDto>> GetMasterDataItemsAsync(MasterDataQuery query, CancellationToken cancellationToken = default)
+    {
+        var items = _dbContext.MasterDataItems.Where(x => x.DeletedAt == null);
+        if (!string.IsNullOrWhiteSpace(query.CategoryCode))
+        {
+            var category = query.CategoryCode.Trim();
+            items = items.Where(x => x.CategoryCode == category);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim();
+            items = items.Where(x => x.ItemCode.Contains(search) || x.ItemName.Contains(search) || (x.Description != null && x.Description.Contains(search)));
+        }
+
+        if (query.IsActive is not null)
+        {
+            items = items.Where(x => x.IsActive == query.IsActive.Value);
+        }
+
+        var total = await items.CountAsync(cancellationToken);
+        var pageItems = await items
+            .OrderBy(x => x.CategoryCode)
+            .ThenBy(x => x.SortOrder)
+            .ThenBy(x => x.ItemName)
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .Select(x => MapMasterDataItem(x))
+            .ToListAsync(cancellationToken);
+
+        return PagedResult<MasterDataItemDto>.Create(pageItems, query.Page, query.PageSize, total);
+    }
+
+    public async Task<MasterDataItemDto> GetMasterDataItemAsync(long id, CancellationToken cancellationToken = default)
+    {
+        var item = await _dbContext.MasterDataItems.FirstOrDefaultAsync(x => x.MasterDataItemId == id && x.DeletedAt == null, cancellationToken);
+        return item is null ? throw new NotFoundException("Master data item not found.") : MapMasterDataItem(item);
+    }
+
+    public async Task<MasterDataItemDto> CreateMasterDataItemAsync(CreateMasterDataItemRequest request, CancellationToken cancellationToken = default)
+    {
+        var category = NormalizeMasterCode(request.CategoryCode, "Mã danh mục không được rỗng.");
+        var code = NormalizeMasterCode(request.ItemCode, "Mã không được rỗng.");
+        var name = NormalizeMasterName(request.ItemName);
+        await EnsureMasterDataCodeIsUniqueAsync(category, code, null, cancellationToken);
+        await EnsureMasterDataNameIsUniqueAsync(category, name, null, cancellationToken);
+
+        var item = new MasterDataItem
+        {
+            CategoryCode = category,
+            ItemCode = code,
+            ItemName = name,
+            Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+            SortOrder = Math.Max(0, request.SortOrder),
+            IsActive = request.IsActive,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = _userContext.User?.UserId
+        };
+
+        _dbContext.MasterDataItems.Add(item);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _auditService.WriteActivityAsync("master_data", "create", $"Created master data {category}/{code}", "MasterDataItem", item.MasterDataItemId, code, newValueJson: Serialize(MapMasterDataItem(item)), cancellationToken: cancellationToken);
+        return MapMasterDataItem(item);
+    }
+
+    public async Task<MasterDataItemDto> UpdateMasterDataItemAsync(long id, UpdateMasterDataItemRequest request, CancellationToken cancellationToken = default)
+    {
+        var item = await _dbContext.MasterDataItems.FirstOrDefaultAsync(x => x.MasterDataItemId == id && x.DeletedAt == null, cancellationToken);
+        if (item is null) throw new NotFoundException("Master data item not found.");
+
+        var before = MapMasterDataItem(item);
+        var name = NormalizeMasterName(request.ItemName);
+        await EnsureMasterDataNameIsUniqueAsync(item.CategoryCode, name, id, cancellationToken);
+        item.ItemName = name;
+        item.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+        item.SortOrder = Math.Max(0, request.SortOrder);
+        item.IsActive = request.IsActive;
+        item.UpdatedAt = DateTime.UtcNow;
+        item.UpdatedBy = _userContext.User?.UserId;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _auditService.WriteActivityAsync("master_data", "update", $"Updated master data {item.CategoryCode}/{item.ItemCode}", "MasterDataItem", item.MasterDataItemId, item.ItemCode, Serialize(before), Serialize(MapMasterDataItem(item)), cancellationToken);
+        return MapMasterDataItem(item);
+    }
+
+    public async Task DeleteMasterDataItemAsync(long id, CancellationToken cancellationToken = default)
+    {
+        var item = await _dbContext.MasterDataItems.FirstOrDefaultAsync(x => x.MasterDataItemId == id && x.DeletedAt == null, cancellationToken);
+        if (item is null) throw new NotFoundException("Master data item not found.");
+
+        var before = Serialize(MapMasterDataItem(item));
+        item.IsActive = false;
+        item.UpdatedAt = DateTime.UtcNow;
+        item.UpdatedBy = _userContext.User?.UserId;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _auditService.WriteActivityAsync("master_data", "delete", $"Disabled master data {item.CategoryCode}/{item.ItemCode}", "MasterDataItem", id, item.ItemCode, before, cancellationToken: cancellationToken);
+    }
+
     private async Task<UserDto> ChangeUserStatusAsync(long id, string status, string summary, CancellationToken cancellationToken)
     {
         var user = await GetUserEntityAsync(id, cancellationToken);
@@ -652,6 +750,40 @@ public sealed class AdminService : IAdminService
     private IQueryable<Department> DepartmentGraph()
     {
         return _dbContext.Departments.Include(x => x.ParentDepartment);
+    }
+
+    private async Task EnsureMasterDataCodeIsUniqueAsync(string category, string code, long? currentId, CancellationToken cancellationToken)
+    {
+        var exists = await _dbContext.MasterDataItems.AnyAsync(x =>
+            x.CategoryCode == category &&
+            x.ItemCode.ToUpper() == code.ToUpper() &&
+            x.DeletedAt == null &&
+            (currentId == null || x.MasterDataItemId != currentId.Value), cancellationToken);
+        if (exists) throw new InvalidOperationException("Mã đã tồn tại trong danh mục này.");
+    }
+
+    private async Task EnsureMasterDataNameIsUniqueAsync(string category, string name, long? currentId, CancellationToken cancellationToken)
+    {
+        var exists = await _dbContext.MasterDataItems.AnyAsync(x =>
+            x.CategoryCode == category &&
+            x.ItemName.ToUpper() == name.ToUpper() &&
+            x.DeletedAt == null &&
+            (currentId == null || x.MasterDataItemId != currentId.Value), cancellationToken);
+        if (exists) throw new InvalidOperationException("Tên đã tồn tại trong danh mục này.");
+    }
+
+    private static string NormalizeMasterCode(string value, string message)
+    {
+        var normalized = value.Trim();
+        if (string.IsNullOrWhiteSpace(normalized)) throw new InvalidOperationException(message);
+        return normalized;
+    }
+
+    private static string NormalizeMasterName(string value)
+    {
+        var normalized = value.Trim();
+        if (string.IsNullOrWhiteSpace(normalized)) throw new InvalidOperationException("Tên không được rỗng.");
+        return normalized;
     }
 
     private async Task<User> GetUserEntityAsync(long id, CancellationToken cancellationToken)
@@ -792,6 +924,19 @@ public sealed class AdminService : IAdminService
             department.IsActive,
             department.SortOrder,
             department.CreatedAt);
+    }
+
+    private static MasterDataItemDto MapMasterDataItem(MasterDataItem item)
+    {
+        return new MasterDataItemDto(
+            item.MasterDataItemId,
+            item.CategoryCode,
+            item.ItemCode,
+            item.ItemName,
+            item.Description,
+            item.SortOrder,
+            item.IsActive,
+            item.CreatedAt);
     }
 
     private static string Serialize(object value)

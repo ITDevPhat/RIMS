@@ -72,6 +72,12 @@ public sealed class DepartmentQuery : PaginationQuery
     public bool? IsActive { get; set; }
 }
 
+public sealed class MasterDataQuery : PaginationQuery
+{
+    public string? CategoryCode { get; set; }
+    public bool? IsActive { get; set; }
+}
+
 public sealed record DepartmentDto(
     long DepartmentId,
     string DepartmentCode,
@@ -82,6 +88,16 @@ public sealed record DepartmentDto(
     string? Description,
     bool IsActive,
     int SortOrder,
+    DateTime CreatedAt);
+
+public sealed record MasterDataItemDto(
+    long MasterDataItemId,
+    string CategoryCode,
+    string ItemCode,
+    string ItemName,
+    string? Description,
+    int SortOrder,
+    bool IsActive,
     DateTime CreatedAt);
 
 public sealed record AccountPreferenceDto(
@@ -182,6 +198,20 @@ public sealed record CreateDepartmentRequest(
     string? Description,
     bool IsActive,
     int SortOrder);
+
+public sealed record CreateMasterDataItemRequest(
+    [Required] string CategoryCode,
+    [Required] string ItemCode,
+    [Required] string ItemName,
+    string? Description,
+    int SortOrder,
+    bool IsActive);
+
+public sealed record UpdateMasterDataItemRequest(
+    [Required] string ItemName,
+    string? Description,
+    int SortOrder,
+    bool IsActive);
 
 public sealed record UpdateDepartmentRequest(
     [Required] string DepartmentName,

@@ -60,9 +60,11 @@ public sealed record ResearchProjectDto(
     long? SponsorId,
     string? SponsorName,
     string? ResearchType,
+    string? ResearchTypeName,
     string? ProtocolNumber,
     string? ProtocolVersion,
     string EthicsStatus,
+    string? EthicsStatusName,
     DateOnly? EthicsApprovalDate,
     DateOnly? EthicsExpiryDate,
     DateOnly? PlannedStartDate,
@@ -74,9 +76,12 @@ public sealed record ResearchProjectDto(
     DateOnly? ActualEndDate,
     string ActualEndDatePrecision,
     string? CurrentPhaseName,
+    string? CurrentPhaseDisplayName,
     decimal ProgressPercent,
     string ProjectStatus,
+    string? ProjectStatusName,
     string RiskLevel,
+    string? RiskLevelName,
     DateOnly? NearestDeadlineDate,
     string NearestDeadlineDatePrecision,
     string? Notes);
@@ -127,6 +132,7 @@ public sealed record ProjectMilestoneDto(
     string? ResponsibleUserName,
     string MilestoneStatus,
     string PriorityLevel,
+    string? PriorityLevelName,
     DateOnly? CompletedAt,
     string CompletedAtPrecision,
     string? Notes);
@@ -154,6 +160,11 @@ public sealed record ProjectDeadlineDto(
     int DaysRemaining,
     bool IsOverdue,
     string SeverityLabel);
+
+public sealed class SponsorQuery : PaginationQuery
+{
+    public bool? IsActive { get; set; }
+}
 
 public sealed record SponsorDto(long SponsorId, string SponsorCode, string SponsorName, string? SponsorType, bool IsActive);
 

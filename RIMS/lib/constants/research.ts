@@ -21,4 +21,3 @@ export const DEPARTMENTS = [
   "PTGMHS - DSA",
   "PTGMHS - PM",
 ];
-export const SPONSORS = ["Tất cả", "Bệnh viện", "Nguồn kinh phí khoa/phòng", "Chương trình cải tiến chất lượng bệnh viện"];

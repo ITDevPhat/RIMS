@@ -38,6 +38,12 @@ public interface IAdminService
     Task<DepartmentDto> CreateDepartmentAsync(CreateDepartmentRequest request, CancellationToken cancellationToken = default);
     Task<DepartmentDto> UpdateDepartmentAsync(long id, UpdateDepartmentRequest request, CancellationToken cancellationToken = default);
     Task DeleteDepartmentAsync(long id, CancellationToken cancellationToken = default);
+
+    Task<PagedResult<MasterDataItemDto>> GetMasterDataItemsAsync(MasterDataQuery query, CancellationToken cancellationToken = default);
+    Task<MasterDataItemDto> GetMasterDataItemAsync(long id, CancellationToken cancellationToken = default);
+    Task<MasterDataItemDto> CreateMasterDataItemAsync(CreateMasterDataItemRequest request, CancellationToken cancellationToken = default);
+    Task<MasterDataItemDto> UpdateMasterDataItemAsync(long id, UpdateMasterDataItemRequest request, CancellationToken cancellationToken = default);
+    Task DeleteMasterDataItemAsync(long id, CancellationToken cancellationToken = default);
 }
 
 public interface IAccountPreferenceService

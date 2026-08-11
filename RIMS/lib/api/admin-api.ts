@@ -52,6 +52,17 @@ export interface ApiDepartment {
   createdAt: string;
 }
 
+export interface ApiMasterDataItem {
+  masterDataItemId: number;
+  categoryCode: string;
+  itemCode: string;
+  itemName: string;
+  description?: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
 export interface ApiAccountPreferences {
   appearanceMode: "light" | "dark" | "system";
   languageCode: string;
@@ -111,6 +122,11 @@ export const adminApi = {
   createDepartment: (payload: unknown) => apiClient.post<ApiDepartment>("/departments", payload),
   updateDepartment: (id: string | number, payload: unknown) => apiClient.put<ApiDepartment>(`/departments/${id}`, payload),
   deleteDepartment: (id: string | number) => apiClient.delete<null>(`/departments/${id}`),
+  getMasterDataItems: (filters?: QueryParams) => apiClient.get<PagedResult<ApiMasterDataItem>>("/master-data", filters),
+  getMasterDataItem: (id: string | number) => apiClient.get<ApiMasterDataItem>(`/master-data/${id}`),
+  createMasterDataItem: (payload: unknown) => apiClient.post<ApiMasterDataItem>("/master-data", payload),
+  updateMasterDataItem: (id: string | number, payload: unknown) => apiClient.put<ApiMasterDataItem>(`/master-data/${id}`, payload),
+  deleteMasterDataItem: (id: string | number) => apiClient.delete<null>(`/master-data/${id}`),
   getAccountPreferences: () => apiClient.get<ApiAccountPreferences>("/account/preferences"),
   updateAccountPreferences: (payload: ApiAccountPreferences) => apiClient.put<ApiAccountPreferences>("/account/preferences", payload),
 };
