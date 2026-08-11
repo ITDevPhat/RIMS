@@ -67,12 +67,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (cachedUser) {
         setUser(cachedUser);
         setIsLoggedIn(true);
+        // A usable cached profile must not wait for a remote database/cold start.
+        setIsRestoring(false);
       }
 
       try {
         const profile = await authApi.getMe();
         const mapped = mapProfile(profile);
-        storeUser(mapped);
+        storeUser(mapped, window.localStorage.getItem("rms.accessToken") !== null);
         setUser(mapped);
         setIsLoggedIn(true);
       } catch {
