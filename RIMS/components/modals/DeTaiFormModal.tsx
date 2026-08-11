@@ -299,12 +299,35 @@ export default function DeTaiFormModal({ open, mode = "create", project, departm
               <section className="rounded-lg border border-slate-200 bg-white p-4">
                 <SectionTitle icon={<Hospital className="h-4 w-4" />} title="Đơn vị phụ trách" />
                 <div className="grid gap-4">
-                  <Field label="Khoa/phòng chủ trì" required error={errors.department}>
-                    <Select value={formData.departmentId || formData.department} onValueChange={(value) => handleChange("departmentId", value ?? "")}>
-                      <SelectTrigger><SelectValue placeholder="Chọn khoa/phòng" /></SelectTrigger>
-                      <SelectContent>{departmentOptions.map((item) => <SelectItem key={item.departmentId} value={String(item.departmentId)}>{item.departmentName}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </Field>
+                  <Field
+                        label="Khoa/phòng chủ trì"
+                        required
+                        error={errors.department}
+                      >
+                        <Select
+                          value={formData.departmentId || undefined}
+                          onValueChange={(value) =>
+                            handleChange("departmentId", value ?? "")
+                          }
+                        >
+                          <SelectTrigger>
+                            <span className="min-w-0 flex-1 truncate text-left">
+                              {selectedDepartment?.departmentName || "Chọn khoa/phòng"}
+                            </span>
+                          </SelectTrigger>
+
+                          <SelectContent>
+                            {departmentOptions.map((item) => (
+                              <SelectItem
+                                key={item.departmentId}
+                                value={String(item.departmentId)}
+                              >
+                                {item.departmentName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </Field>
                   <Field label="Chủ nhiệm đề tài" required error={errors.pi}>
                     <Input value={formData.pi} onChange={(e) => handleChange("pi", e.target.value)} placeholder="VD: TS. Nguyễn Minh Anh" />
                   </Field>
