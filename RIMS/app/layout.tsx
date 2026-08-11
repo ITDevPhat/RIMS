@@ -33,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="vi-VN" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} bg-slate-50`}>
+    <html lang="vi-VN" className={`${geistSans.variable} ${geistMono.variable} bg-slate-50`}>
       <body className="font-sans antialiased">
         {children}
         <ToastProvider />

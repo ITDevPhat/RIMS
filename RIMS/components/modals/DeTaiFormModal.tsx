@@ -12,10 +12,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { DEPARTMENTS } from "@/lib/constants/research";
+import { DEPARTMENTS, SPONSORS } from "@/lib/constants/research";
 import { PrecisionDateInput } from "@/components/common/DateInput";
-import { adminApi, type ApiDepartment, type ApiMasterDataItem } from "@/lib/api/admin-api";
-import { sponsorApi, type ApiSponsor } from "@/lib/api/research-api";
+import type { ApiDepartment } from "@/lib/api/admin-api";
+import { projectPhaseApi, type ApiProjectPhase } from "@/lib/api/research-api";
 import type { DatePrecision, ResearchProject } from "@/lib/types";
 
 export interface DeTaiFormData {
@@ -25,7 +25,6 @@ export interface DeTaiFormData {
   departmentId: string;
   department: string;
   pi: string;
-  sponsorId: string;
   sponsor: string;
   type: string;
   protocolNumber: string;
@@ -52,7 +51,9 @@ interface DeTaiFormModalProps {
   onSave?: (data: DeTaiFormData) => Promise<void> | void;
 }
 
-const MASTER_CATEGORIES = ["research_type", "project_status", "ethics_status", "current_stage"] as const;
+const ETHICS_OPTIONS = ["Không yêu cầu", "Chờ duyệt", "Đã duyệt", "Sắp hết hạn", "Hết hạn"];
+const STATUS_OPTIONS = ["Chưa bắt đầu", "Đang thực hiện", "Hoàn thành", "Tạm dừng"];
+const RESEARCH_TYPES = ["Nghiên cứu quan sát", "Can thiệp", "Cắt ngang", "Hồi cứu", "Cải tiến chất lượng", "Khác"];
 
 const emptyForm: DeTaiFormData = {
   code: "",
@@ -61,19 +62,18 @@ const emptyForm: DeTaiFormData = {
   departmentId: "",
   department: "",
   pi: "",
-  sponsorId: "",
   sponsor: "",
-  type: "",
+  type: "Khác",
   protocolNumber: "",
   protocolVersion: "1.0",
-  ethicsStatus: "",
+  ethicsStatus: "Không yêu cầu",
   startDate: "",
   startDatePrecision: "DAY",
   endDate: "",
   endDatePrecision: "DAY",
   actualProgressDate: "",
   actualProgressDatePrecision: "DAY",
-  status: "",
+  status: "Chưa bắt đầu",
   progress: "0",
   currentPhase: "",
   notes: "",
@@ -88,21 +88,20 @@ function fromProject(project?: ResearchProject | null): DeTaiFormData {
     departmentId: project.departmentId ? String(project.departmentId) : "",
     department: project.department === "Chưa phân khoa" ? "" : project.department,
     pi: project.pi === "Chưa phân công" ? "" : project.pi,
-    sponsorId: project.sponsorId ? String(project.sponsorId) : "",
     sponsor: project.sponsor === "Chưa có" ? "" : project.sponsor,
-    type: project.researchTypeCode || project.researchType || "",
+    type: project.researchType || "Khác",
     protocolNumber: project.protocolNumber ?? "",
     protocolVersion: project.protocolVersion || "1.0",
-    ethicsStatus: project.ethicsStatusCode || project.ethicsStatus,
+    ethicsStatus: project.ethicsStatus,
     startDate: project.startDate ?? "",
     startDatePrecision: project.startDatePrecision ?? "DAY",
     endDate: project.plannedEndDate ?? "",
     endDatePrecision: project.plannedEndDatePrecision ?? "DAY",
     actualProgressDate: project.actualEndDate ?? "",
     actualProgressDatePrecision: project.actualEndDatePrecision ?? "DAY",
-    status: project.statusCode || project.status,
+    status: project.status,
     progress: String(project.progress ?? 0),
-    currentPhase: project.currentPhaseCode || project.currentPhase || "",
+    currentPhase: project.currentPhase ?? "Chưa bắt đầu",
     notes: "",
   };
 }
@@ -121,10 +120,7 @@ function calculateProgress(startDate: string, endDate: string, actualProgressDat
 
 export default function DeTaiFormModal({ open, mode = "create", project, departments = [], onOpenChange, onSave }: DeTaiFormModalProps) {
   const [formData, setFormData] = useState<DeTaiFormData>(emptyForm);
-  const [masterItems, setMasterItems] = useState<ApiMasterDataItem[]>([]);
-  const [sponsors, setSponsors] = useState<ApiSponsor[]>([]);
-  const [lookupLoading, setLookupLoading] = useState(false);
-  const [lookupError, setLookupError] = useState("");
+  const [phaseOptions, setPhaseOptions] = useState<ApiProjectPhase[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -138,35 +134,24 @@ export default function DeTaiFormModal({ open, mode = "create", project, departm
   }, [open, project]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !project?.id) {
+      setPhaseOptions([]);
+      return;
+    }
     let cancelled = false;
-    const loadLookups = async () => {
-      setLookupLoading(true);
-      setLookupError("");
+    const loadPhases = async () => {
       try {
-        const [masterResult, sponsorResult] = await Promise.all([
-          adminApi.getMasterDataItems({ pageSize: 500 }),
-          sponsorApi.getSponsors({ pageSize: 300 }),
-        ]);
-        if (!cancelled) {
-          setMasterItems(masterResult.items);
-          setSponsors(sponsorResult.items);
-        }
+        const result = await projectPhaseApi.getPhases({ projectId: project.id, pageSize: 200 });
+        if (!cancelled) setPhaseOptions(result.items);
       } catch {
-        if (!cancelled) {
-          setLookupError("Không tải được danh mục hệ thống.");
-          setMasterItems([]);
-          setSponsors([]);
-        }
-      } finally {
-        if (!cancelled) setLookupLoading(false);
+        if (!cancelled) setPhaseOptions([]);
       }
     };
-    void loadLookups();
+    void loadPhases();
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, project?.id]);
 
   const title = mode === "edit" ? "Cập nhật đề tài nghiên cứu" : "Thêm đề tài nghiên cứu";
   const saveLabel = mode === "edit" ? "Lưu thay đổi" : "Tạo đề tài";
@@ -174,7 +159,7 @@ export default function DeTaiFormModal({ open, mode = "create", project, departm
   const completionHint = useMemo(() => {
     const progress = Number(formData.progress || 0);
     if (progress >= 100) return "Đề tài hoàn tất 100%, trạng thái nên là Hoàn thành.";
-    if (progress > 0 && formData.status === "not_started") return "Đã có tiến độ, nên chuyển trạng thái sang Đang thực hiện.";
+    if (progress > 0 && formData.status === "Chưa bắt đầu") return "Đã có tiến độ, nên chuyển trạng thái sang Đang thực hiện.";
     return "";
   }, [formData.progress, formData.status]);
 
@@ -195,18 +180,6 @@ const departmentOptions = useMemo(() => {
     } satisfies ApiDepartment));
 }, [departments]);
 
-<<<<<<< HEAD
-  const optionsByCategory = useMemo(() => {
-    return Object.fromEntries(MASTER_CATEGORIES.map((category) => [
-      category,
-      masterItems
-        .filter((item) => item.categoryCode === category)
-        .sort((a, b) => a.sortOrder - b.sortOrder || a.itemName.localeCompare(b.itemName, "vi-VN")),
-    ])) as Record<typeof MASTER_CATEGORIES[number], ApiMasterDataItem[]>;
-  }, [masterItems]);
-
-  const selectedSponsor = sponsors.find((item) => String(item.sponsorId) === formData.sponsorId);
-=======
 const selectedDepartment = useMemo(
   () =>
     departmentOptions.find(
@@ -219,7 +192,6 @@ const selectedDepartment = useMemo(
 const hasCurrentPhaseOption = phaseOptions.some(
   (phase) => phase.phaseName === formData.currentPhase
 );
->>>>>>> 73a3700ba2e57b0211c2284b98794b8657daed23
 
   useEffect(() => {
     const progress = calculateProgress(formData.startDate, formData.endDate, formData.actualProgressDate);
@@ -232,10 +204,6 @@ const hasCurrentPhaseOption = phaseOptions.some(
       if (field === "departmentId") {
         const selected = departmentOptions.find((item) => String(item.departmentId) === value);
         return { ...prev, departmentId: value, department: selected?.departmentName ?? "" };
-      }
-      if (field === "sponsorId") {
-        const selected = sponsors.find((item) => String(item.sponsorId) === value);
-        return { ...prev, sponsorId: value, sponsor: selected?.sponsorName ?? "" };
       }
       return { ...prev, [field]: value };
     });
@@ -250,26 +218,6 @@ const hasCurrentPhaseOption = phaseOptions.some(
     setFormData((prev) => ({ ...prev, [field]: precision }));
   };
 
-  const renderMasterOptions = (category: typeof MASTER_CATEGORIES[number], currentValue: string) => {
-    const items = optionsByCategory[category].filter((item) => item.isActive || item.itemCode === currentValue);
-    if (items.length === 0) return <SelectItem value="__empty" disabled>Không có dữ liệu</SelectItem>;
-    return items.map((item) => (
-      <SelectItem key={item.masterDataItemId} value={item.itemCode} disabled={!item.isActive && item.itemCode !== currentValue}>
-        {item.itemName}{item.isActive ? "" : " (Ngừng sử dụng)"}
-      </SelectItem>
-    ));
-  };
-
-  const renderSponsorOptions = () => {
-    const items = sponsors.filter((item) => item.isActive || String(item.sponsorId) === formData.sponsorId);
-    if (items.length === 0) return <SelectItem value="__empty" disabled>Không có dữ liệu</SelectItem>;
-    return items.map((item) => (
-      <SelectItem key={item.sponsorId} value={String(item.sponsorId)} disabled={!item.isActive && String(item.sponsorId) !== formData.sponsorId}>
-        {item.sponsorName}{item.isActive ? "" : " (Ngừng sử dụng)"}
-      </SelectItem>
-    ));
-  };
-
   const validate = () => {
     const next: Record<string, string> = {};
     const progress = Number(formData.progress);
@@ -278,8 +226,6 @@ const hasCurrentPhaseOption = phaseOptions.some(
     if (!/^[A-Za-z0-9._-]+$/.test(formData.code.trim())) next.code = "Mã đề tài chỉ dùng chữ, số, dấu gạch ngang, gạch dưới hoặc dấu chấm.";
     if (!formData.name.trim()) next.name = "Vui lòng nhập tên đề tài.";
     if (formData.name.trim().length < 10) next.name = "Tên đề tài cần tối thiểu 10 ký tự.";
-    if (!formData.type) next.type = "Vui lòng chọn loại nghiên cứu.";
-    if (!formData.ethicsStatus) next.ethicsStatus = "Vui lòng chọn trạng thái phê duyệt đạo đức.";
     if (!formData.departmentId && !formData.department) next.department = "Vui lòng chọn khoa/phòng chủ trì.";
     if (!formData.pi.trim()) next.pi = "Vui lòng nhập chủ nhiệm đề tài.";
     if (!formData.startDate) next.startDate = "Vui lòng chọn ngày bắt đầu.";
@@ -290,8 +236,7 @@ const hasCurrentPhaseOption = phaseOptions.some(
     if (!Number.isFinite(progress) || progress < 0 || progress > 100) {
       next.progress = "Tiến độ phải nằm trong khoảng 0 đến 100.";
     }
-    if (!formData.status) next.status = "Vui lòng chọn trạng thái đề tài.";
-    if (progress === 100 && formData.status !== "completed") {
+    if (progress === 100 && formData.status !== "Hoàn thành") {
       next.status = "Tiến độ 100% cần trạng thái Hoàn thành.";
     }
 
@@ -341,12 +286,6 @@ const hasCurrentPhaseOption = phaseOptions.some(
                 {submitError}
               </div>
             )}
-            {lookupError && (
-              <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700">
-                <AlertCircle className="mt-0.5 h-4 w-4" />
-                {lookupError}
-              </div>
-            )}
           </div>
 
           <div className="flex-1 overflow-y-auto bg-slate-50/60 px-6 py-5">
@@ -357,10 +296,10 @@ const hasCurrentPhaseOption = phaseOptions.some(
                   <Field label="Mã đề tài" required error={errors.code}>
                     <Input value={formData.code} onChange={(e) => handleChange("code", e.target.value)} placeholder="VD: NC-2026-001" />
                   </Field>
-                  <Field label="Loại nghiên cứu" required error={errors.type}>
+                  <Field label="Loại nghiên cứu" required>
                     <Select value={formData.type} onValueChange={(value) => handleChange("type", value ?? "")}>
-                      <SelectTrigger><SelectValue placeholder={lookupLoading ? "Đang tải..." : "Chọn loại nghiên cứu"} /></SelectTrigger>
-                      <SelectContent>{renderMasterOptions("research_type", formData.type)}</SelectContent>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{RESEARCH_TYPES.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
                     </Select>
                   </Field>
                   <Field label="Tên đề tài" required error={errors.name} wide>
@@ -408,13 +347,10 @@ const hasCurrentPhaseOption = phaseOptions.some(
                     <Input value={formData.pi} onChange={(e) => handleChange("pi", e.target.value)} placeholder="VD: TS. Nguyễn Minh Anh" />
                   </Field>
                   <Field label="Nhà tài trợ/nguồn kinh phí">
-                    <Select value={formData.sponsorId} onValueChange={(value) => handleChange("sponsorId", value ?? "")}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={lookupLoading ? "Đang tải..." : "Chọn nguồn kinh phí"} />
-                      </SelectTrigger>
-                      <SelectContent>{renderSponsorOptions()}</SelectContent>
+                    <Select value={formData.sponsor} onValueChange={(value) => handleChange("sponsor", value ?? "")}>
+                      <SelectTrigger><SelectValue placeholder="Chọn nguồn kinh phí" /></SelectTrigger>
+                      <SelectContent>{SPONSORS.filter((item) => item !== "Tất cả").map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
                     </Select>
-                    {selectedSponsor && !selectedSponsor.isActive && <p className="mt-1 text-xs font-medium text-amber-600">Nguồn kinh phí hiện tại đã ngừng sử dụng.</p>}
                   </Field>
                 </div>
               </section>
@@ -448,8 +384,8 @@ const hasCurrentPhaseOption = phaseOptions.some(
                   />
                   <Field label="Trạng thái đề tài" error={errors.status}>
                     <Select value={formData.status} onValueChange={(value) => handleChange("status", value ?? "")}>
-                      <SelectTrigger><SelectValue placeholder={lookupLoading ? "Đang tải..." : "Chọn trạng thái"} /></SelectTrigger>
-                      <SelectContent>{renderMasterOptions("project_status", formData.status)}</SelectContent>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{STATUS_OPTIONS.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
                     </Select>
                   </Field>
                   <Field label="Tiến độ (%)" error={errors.progress}>
@@ -458,7 +394,20 @@ const hasCurrentPhaseOption = phaseOptions.some(
                   <Field label="Giai đoạn hiện tại" wide>
                     <Select value={formData.currentPhase} onValueChange={(value) => handleChange("currentPhase", value ?? "")}>
                       <SelectTrigger><SelectValue placeholder="Chọn giai đoạn" /></SelectTrigger>
-                      <SelectContent>{renderMasterOptions("current_stage", formData.currentPhase)}</SelectContent>
+                      <SelectContent>
+                        {phaseOptions.length === 0 ? (
+                          <SelectItem value="Chưa bắt đầu">Chưa có giai đoạn phù hợp</SelectItem>
+                        ) : (
+                          <>
+                            {formData.currentPhase && !hasCurrentPhaseOption && (
+                              <SelectItem value={formData.currentPhase}>{formData.currentPhase}</SelectItem>
+                            )}
+                            {phaseOptions.map((phase) => (
+                              <SelectItem key={phase.phaseId} value={phase.phaseName}>{phase.phaseName}</SelectItem>
+                            ))}
+                          </>
+                        )}
+                      </SelectContent>
                     </Select>
                   </Field>
                   <Field label="Ghi chú" wide>
@@ -476,10 +425,10 @@ const hasCurrentPhaseOption = phaseOptions.some(
                   <Field label="Phiên bản đề cương">
                     <Input value={formData.protocolVersion} onChange={(e) => handleChange("protocolVersion", e.target.value)} placeholder="VD: 1.0" />
                   </Field>
-                  <Field label="Trạng thái phê duyệt đạo đức" error={errors.ethicsStatus} wide>
+                  <Field label="Trạng thái phê duyệt đạo đức" wide>
                     <Select value={formData.ethicsStatus} onValueChange={(value) => handleChange("ethicsStatus", value ?? "")}>
-                      <SelectTrigger><SelectValue placeholder={lookupLoading ? "Đang tải..." : "Chọn trạng thái phê duyệt"} /></SelectTrigger>
-                      <SelectContent>{renderMasterOptions("ethics_status", formData.ethicsStatus)}</SelectContent>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{ETHICS_OPTIONS.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
                     </Select>
                   </Field>
                 </div>

@@ -361,8 +361,6 @@ public partial class RmsDbContext : DbContext
 
         modelBuilder.Entity<MasterDataItem>(entity =>
         {
-            entity.HasKey(e => e.MasterDataItemId);
-
             entity.ToTable("master_data_items", "ref");
 
             entity.HasIndex(e => new { e.CategoryCode, e.ItemCode }, "UQ_master_data_items_category_code")
@@ -370,19 +368,41 @@ public partial class RmsDbContext : DbContext
                 .HasFilter("deleted_at IS NULL");
 
             entity.Property(e => e.MasterDataItemId).HasColumnName("master_data_item_id");
-            entity.Property(e => e.CategoryCode).HasMaxLength(100).HasColumnName("category_code");
-            entity.Property(e => e.ItemCode).HasMaxLength(100).HasColumnName("item_code");
-            entity.Property(e => e.ItemName).HasMaxLength(255).HasColumnName("item_name");
-            entity.Property(e => e.Description).HasMaxLength(1000).HasColumnName("description");
-            entity.Property(e => e.SortOrder).HasDefaultValue(100).HasColumnName("sort_order");
-            entity.Property(e => e.IsActive).HasDefaultValue(true).HasColumnName("is_active");
-            entity.Property(e => e.CreatedAt).HasPrecision(0).HasDefaultValueSql("CURRENT_TIMESTAMP").HasColumnName("created_at");
+            entity.Property(e => e.CategoryCode)
+                .HasMaxLength(100)
+                .HasColumnName("category_code");
+            entity.Property(e => e.ItemCode)
+                .HasMaxLength(100)
+                .HasColumnName("item_code");
+            entity.Property(e => e.ItemName)
+                .HasMaxLength(255)
+                .HasColumnName("item_name");
+            entity.Property(e => e.Description)
+                .HasMaxLength(1000)
+                .HasColumnName("description");
+            entity.Property(e => e.SortOrder)
+                .HasDefaultValue(100)
+                .HasColumnName("sort_order");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
-            entity.Property(e => e.UpdatedAt).HasPrecision(0).HasColumnName("updated_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(0)
+                .HasColumnName("updated_at");
             entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
-            entity.Property(e => e.DeletedAt).HasPrecision(0).HasColumnName("deleted_at");
+            entity.Property(e => e.DeletedAt)
+                .HasPrecision(0)
+                .HasColumnName("deleted_at");
             entity.Property(e => e.DeletedBy).HasColumnName("deleted_by");
-            entity.Property(e => e.RowVersion).IsConcurrencyToken().HasDefaultValue(1L).HasColumnName("row_version");
+            entity.Property(e => e.RowVersion)
+                .IsConcurrencyToken()
+                .HasDefaultValue(1L)
+                .HasColumnName("row_version");
         });
 
         modelBuilder.Entity<Notification>(entity =>
@@ -1891,4 +1911,3 @@ public partial class RmsDbContext : DbContext
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
 }
-

@@ -1,27 +1,32 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { DateFormatProvider } from "@/lib/date-format";
 import { ThemeModeProvider } from "@/lib/theme-mode";
-import AdminLayout from "@/components/layout/AdminLayout";
 import type { PageKey } from "@/components/layout/Sidebar";
 import LoginPage from "@/components/pages/LoginPage";
-import TongQuanTienDo from "@/components/pages/TongQuanTienDo";
-import DeTaiList from "@/components/pages/DeTaiList";
-import ChiTietDeTai from "@/components/pages/ChiTietDeTai";
-import QuanLyGiaiDoan from "@/components/pages/QuanLyGiaiDoan";
-import QuanLyMocTienDo from "@/components/pages/QuanLyMocTienDo";
-import HanChotPage from "@/components/pages/HanChotPage";
-import MangDaoTaoPage from "@/components/pages/MangDaoTaoPage";
-import ThongTinCaNhan from "@/components/pages/ThongTinCaNhan";
-import CaiDat from "@/components/pages/CaiDat";
-import TrungTamThongBao from "@/components/pages/TrungTamThongBao";
-import NhatKyHeThong from "@/components/pages/NhatKyHeThong";
-import BaoCao from "@/components/pages/BaoCao";
 import type { ResearchProject } from "@/lib/types";
 
-// Inner app — can read auth context
+function PageLoading() {
+  return <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">Đang tải...</div>;
+}
+
+const AdminLayout = dynamic(() => import("@/components/layout/AdminLayout"));
+const TongQuanTienDo = dynamic(() => import("@/components/pages/TongQuanTienDo"), { loading: PageLoading });
+const DeTaiList = dynamic(() => import("@/components/pages/DeTaiList"), { loading: PageLoading });
+const ChiTietDeTai = dynamic(() => import("@/components/pages/ChiTietDeTai"), { loading: PageLoading });
+const QuanLyGiaiDoan = dynamic(() => import("@/components/pages/QuanLyGiaiDoan"), { loading: PageLoading });
+const QuanLyMocTienDo = dynamic(() => import("@/components/pages/QuanLyMocTienDo"), { loading: PageLoading });
+const HanChotPage = dynamic(() => import("@/components/pages/HanChotPage"), { loading: PageLoading });
+const MangDaoTaoPage = dynamic(() => import("@/components/pages/MangDaoTaoPage"), { loading: PageLoading });
+const ThongTinCaNhan = dynamic(() => import("@/components/pages/ThongTinCaNhan"), { loading: PageLoading });
+const CaiDat = dynamic(() => import("@/components/pages/CaiDat"), { loading: PageLoading });
+const TrungTamThongBao = dynamic(() => import("@/components/pages/TrungTamThongBao"), { loading: PageLoading });
+const NhatKyHeThong = dynamic(() => import("@/components/pages/NhatKyHeThong"), { loading: PageLoading });
+const BaoCao = dynamic(() => import("@/components/pages/BaoCao"), { loading: PageLoading });
+
 function AppInner() {
   const { isLoggedIn, isRestoring, logout } = useAuth();
   const [activePage, setActivePage] = useState<PageKey>("tong-quan");
@@ -29,7 +34,6 @@ function AppInner() {
   const [showProfile, setShowProfile] = useState(false);
   const [projectSearch, setProjectSearch] = useState("");
 
-  // Sync logout
   const handleLogout = async () => {
     await logout();
     setShowProfile(false);
@@ -61,14 +65,12 @@ function AppInner() {
   };
 
   const renderContent = () => {
-    // Profile page takes priority
     if (showProfile) {
       return (
         <ThongTinCaNhan onBack={() => setShowProfile(false)} />
       );
     }
 
-    // Project detail view
     if (activePage === "de-tai" && selectedProject) {
       return (
         <ChiTietDeTai

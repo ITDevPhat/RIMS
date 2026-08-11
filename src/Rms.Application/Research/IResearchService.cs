@@ -30,7 +30,7 @@ public interface IResearchService
     Task DeleteDeadlineAsync(long id, CancellationToken cancellationToken = default);
     Task<ProjectDeadlineDto> MarkDeadlineCompletedAsync(long id, CancellationToken cancellationToken = default);
 
-    Task<PagedResult<SponsorDto>> GetSponsorsAsync(SponsorQuery query, CancellationToken cancellationToken = default);
+    Task<PagedResult<SponsorDto>> GetSponsorsAsync(PaginationQuery query, CancellationToken cancellationToken = default);
     Task<SponsorDto> CreateSponsorAsync(CreateSponsorRequest request, CancellationToken cancellationToken = default);
     Task<SponsorDto> UpdateSponsorAsync(long id, UpdateSponsorRequest request, CancellationToken cancellationToken = default);
     Task DeleteSponsorAsync(long id, CancellationToken cancellationToken = default);

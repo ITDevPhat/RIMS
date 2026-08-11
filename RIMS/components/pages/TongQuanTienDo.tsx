@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SPONSORS } from "@/lib/constants/research";
 import type { ResearchProject, ResearchPhase, DeadlineItem, PhaseStatus, EthicsStatus } from "@/lib/types";
 import { dashboardApi, type DashboardDeadlinesDto, type ResearchOverviewDto } from "@/lib/api/dashboard-api";
 import { mapGanttProjectToUi } from "@/lib/mappers/project-mapper";
@@ -359,10 +360,6 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
     return ["Tất cả", ...names];
   }, [projects]);
 
-  const sponsorFilterOptions = useMemo(() => ["Tất cả", ...Array.from(new Set(projects.map((project) => project.sponsor).filter(Boolean))).sort((a, b) => a.localeCompare(b, "vi-VN"))], [projects]);
-  const ethicsFilterOptions = useMemo(() => ["Tất cả", ...Array.from(new Set(projects.map((project) => project.ethicsStatus).filter(Boolean))).sort((a, b) => a.localeCompare(b, "vi-VN"))], [projects]);
-  const statusFilterOptions = useMemo(() => ["Tất cả", ...Array.from(new Set(projects.map((project) => project.status).filter(Boolean))).sort((a, b) => a.localeCompare(b, "vi-VN"))], [projects]);
-
   // KPIs
   const total = timeScopedProjects.length;
   const ongoing = timeScopedProjects.filter((project) => project.status === "Đang thực hiện").length;
@@ -572,9 +569,19 @@ export default function TongQuanTienDo({ onViewDetail }: TongQuanTienDoProps) {
               </div>
               {[
                 { label: "Khoa/phòng", value: filterDept, setter: setFilterDept, options: departmentFilterOptions },
-                { label: "Nhà tài trợ", value: filterSponsor, setter: setFilterSponsor, options: sponsorFilterOptions },
-                { label: "Đạo đức", value: filterEthics, setter: setFilterEthics, options: ethicsFilterOptions },
-                { label: "Trạng thái", value: filterStatus, setter: setFilterStatus, options: statusFilterOptions },
+                { label: "Nhà tài trợ", value: filterSponsor, setter: setFilterSponsor, options: SPONSORS },
+                {
+                  label: "Đạo đức",
+                  value: filterEthics,
+                  setter: setFilterEthics,
+                  options: ["Tất cả", "Không yêu cầu", "Chờ duyệt", "Đã duyệt", "Sắp hết hạn", "Hết hạn"],
+                },
+                {
+                  label: "Trạng thái",
+                  value: filterStatus,
+                  setter: setFilterStatus,
+                  options: ["Tất cả", "Đang thực hiện", "Hoàn thành", "Tạm dừng", "Chưa bắt đầu"],
+                },
               ].map((f) => (
                 <div key={f.label} className="min-w-0">
                   <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">{f.label}</label>
