@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, CalendarDays, ClipboardList, FileText, Hospital, Save } from "lucide-react";
+import { AlertCircle, CalendarDays, ClipboardList, FileText, Hospital, Plus, Save, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +25,8 @@ export interface DeTaiFormData {
   description: string;
   departmentId: string;
   department: string;
-  principalInvestigator: PersonSelection | null;
+  pi: string;
+  piEmail: string;
   registrationDate: string; registrationDatePrecision: DatePrecision;
   proposalReviewDate: string; proposalReviewDatePrecision: DatePrecision;
   acceptanceDate: string; acceptanceDatePrecision: DatePrecision;
@@ -44,7 +45,7 @@ export interface DeTaiFormData {
   progress: string;
   currentPhase: string;
   notes: string;
-  collaborators: PersonSelection[];
+  collaborators: Array<{ memberName: string; email: string; departmentNameText: string }>;
 }
 
 interface DeTaiFormModalProps {
@@ -66,7 +67,8 @@ const emptyForm: DeTaiFormData = {
   description: "",
   departmentId: "",
   department: "",
-  principalInvestigator: null,
+  pi: "",
+  piEmail: "",
   registrationDate: "", registrationDatePrecision: "DAY",
   proposalReviewDate: "", proposalReviewDatePrecision: "DAY",
   acceptanceDate: "", acceptanceDatePrecision: "DAY",
@@ -96,7 +98,8 @@ function fromProject(project?: ResearchProject | null): DeTaiFormData {
     description: project.description ?? "",
     departmentId: project.departmentId ? String(project.departmentId) : "",
     department: project.department === "Chưa phân khoa" ? "" : project.department,
-    principalInvestigator: project.pi === "Chưa phân công" ? null : { source: project.principalInvestigatorId ? "internal" : "manual", userId: project.principalInvestigatorId ?? null, fullName: project.pi, email: project.principalInvestigatorEmail ?? null, departmentId: project.departmentId ?? null, departmentName: project.department },
+    pi: project.pi === "Chưa phân công" ? "" : project.pi,
+    piEmail: project.principalInvestigatorEmail ?? "",
     registrationDate: project.registrationDate ?? "", registrationDatePrecision: project.registrationDatePrecision ?? "DAY",
     proposalReviewDate: project.proposalReviewDate ?? "", proposalReviewDatePrecision: project.proposalReviewDatePrecision ?? "DAY",
     acceptanceDate: project.acceptanceDate ?? "", acceptanceDatePrecision: project.acceptanceDatePrecision ?? "DAY",
@@ -363,8 +366,12 @@ const hasCurrentPhaseOption = phaseOptions.some(
                   <Field label="Chủ nhiệm đề tài" required error={errors.principalInvestigator}>
                     <PersonPicker mode="single" departments={departments} value={formData.principalInvestigator ? [formData.principalInvestigator] : []} onChange={people => setFormData(current => ({ ...current, principalInvestigator: people[0] ?? null }))} />
                   </Field>
-                  <Field label="Cộng sự">
-                    <PersonPicker mode="multiple" departments={departments} value={formData.collaborators} onChange={collaborators => setFormData(current => ({ ...current, collaborators }))} />
+                  <Field label="Email chủ nhiệm"><Input type="email" value={formData.piEmail} onChange={(e) => handleChange("piEmail", e.target.value)} placeholder="email@example.com" /></Field>
+                  <Field label="Nhà tài trợ/nguồn kinh phí">
+                    <Select value={formData.sponsor} onValueChange={(value) => handleChange("sponsor", value ?? "")}>
+                      <SelectTrigger><SelectValue placeholder="Chọn nguồn kinh phí" /></SelectTrigger>
+                      <SelectContent>{SPONSORS.filter((item) => item !== "Tất cả").map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
+                    </Select>
                   </Field>
                 </div>
               </section>
@@ -451,9 +458,15 @@ const hasCurrentPhaseOption = phaseOptions.some(
                 </div>
               </section>
 
-              <section className="rounded-lg border border-slate-200 bg-white p-4">
-                <SectionTitle icon={<FileText className="h-4 w-4" />} title="Nguồn tài trợ" />
-                <Field label="Nhà tài trợ/nguồn kinh phí"><Select value={formData.sponsor} onValueChange={(value) => handleChange("sponsor", value ?? "")}><SelectTrigger><SelectValue placeholder="Chọn nguồn kinh phí" /></SelectTrigger><SelectContent>{SPONSORS.filter((item) => item !== "Tất cả").map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent></Select></Field>
+              <section className="rounded-lg border border-slate-200 bg-white p-4 lg:col-span-2">
+                <SectionTitle icon={<Hospital className="h-4 w-4" />} title="Cộng sự ngoài hệ thống" />
+                <div className="space-y-3">{formData.collaborators.map((member, index) => <div key={index} className="grid gap-2 rounded-lg border border-slate-200 p-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
+                  <Input aria-label="Họ tên cộng sự" placeholder="Họ tên cộng sự" value={member.memberName} onChange={e => setFormData(prev => ({ ...prev, collaborators: prev.collaborators.map((item, i) => i === index ? { ...item, memberName: e.target.value } : item) }))} />
+                  <Input aria-label="Email cộng sự" placeholder="Email (không bắt buộc)" value={member.email} onChange={e => setFormData(prev => ({ ...prev, collaborators: prev.collaborators.map((item, i) => i === index ? { ...item, email: e.target.value } : item) }))} />
+                  <Input aria-label="Đơn vị cộng sự" placeholder="Khoa/phòng hoặc đơn vị" value={member.departmentNameText} onChange={e => setFormData(prev => ({ ...prev, collaborators: prev.collaborators.map((item, i) => i === index ? { ...item, departmentNameText: e.target.value } : item) }))} />
+                  <Button type="button" variant="outline" aria-label="Xóa cộng sự" onClick={() => setFormData(prev => ({ ...prev, collaborators: prev.collaborators.filter((_, i) => i !== index) }))}><X className="h-4 w-4" /></Button>
+                </div>)}</div>
+                <Button type="button" variant="outline" className="mt-3 gap-2" onClick={() => setFormData(prev => ({ ...prev, collaborators: [...prev.collaborators, { memberName: "", email: "", departmentNameText: "" }] }))}><Plus className="h-4 w-4" />Thêm cộng sự</Button>
               </section>
 
               

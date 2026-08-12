@@ -147,9 +147,9 @@ export function buildProjectPayload(data: DeTaiFormData, existing?: ResearchProj
     projectTitle: data.name.trim(),
     description: data.description.trim() || null,
     departmentId: Number.isFinite(departmentId) && departmentId > 0 ? departmentId : null,
-    principalInvestigatorId: data.principalInvestigator?.userId ?? null,
-    principalInvestigatorName: data.principalInvestigator?.fullName ?? null,
-    principalInvestigatorEmail: data.principalInvestigator?.email ?? null,
+    principalInvestigatorId: existing?.principalInvestigatorId ?? null,
+    principalInvestigatorName: data.pi.trim(),
+    principalInvestigatorEmail: data.piEmail.trim() || null,
     registrationDate: data.registrationDate || null,
     registrationDatePrecision: data.registrationDatePrecision,
     proposalReviewDate: data.proposalReviewDate || null,
@@ -282,16 +282,12 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
       const created = await researchApi.createProject({
         ...buildProjectPayload(data),
       });
-      const failedMembers: string[] = [];
-      for (const [index, member] of data.collaborators.entries()) {
-        try { await projectMemberApi.createMember({
-        projectId: created.projectId, userId: member.userId, memberName: member.fullName, email: member.email ?? null,
-        departmentId: member.departmentId ?? null, departmentNameText: member.departmentName ?? null, memberRole: "collaborator",
+      await Promise.all(data.collaborators.filter(member => member.memberName.trim()).map((member, index) => projectMemberApi.createMember({
+        projectId: created.projectId, userId: null, memberName: member.memberName.trim(), email: member.email.trim() || null,
+        departmentId: null, departmentNameText: member.departmentNameText.trim() || null, memberRole: "collaborator",
         responsibility: null, sortOrder: index, joinedAt: new Date().toISOString().slice(0, 10), leftAt: null, isActive: true,
-      }); } catch { failedMembers.push(member.fullName); }
-      }
-      if (failedMembers.length) toast.warning({ title: "Đề tài đã được tạo nhưng chưa thêm đủ cộng sự", description: `Chưa thêm được: ${failedMembers.join(", ")}.` });
-      else toast.success({ title: "Đã thêm đề tài", description: data.code.trim() });
+      })));
+      toast.success({ title: "Đã thêm đề tài", description: data.code.trim() });
       await loadProjects();
     } catch (createError) {
       const message = createError instanceof Error ? createError.message : "Không thêm được đề tài.";
