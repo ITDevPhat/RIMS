@@ -69,6 +69,12 @@ export function storeUser<T>(user: T, remember = true) {
   secondary.removeItem(USER_KEY);
 }
 
+export function replaceStoredUser<T>(user: T) {
+  if (typeof window === "undefined") return;
+  const storage = window.localStorage.getItem(TOKEN_KEY) ? window.localStorage : window.sessionStorage;
+  storage.setItem(USER_KEY, JSON.stringify(user));
+}
+
 export function getStoredUser<T>(): T | null {
   if (typeof window === "undefined") return null;
   const raw = window.localStorage.getItem(USER_KEY) ?? window.sessionStorage.getItem(USER_KEY);
@@ -162,6 +168,7 @@ export const apiClient = {
   get: <T>(path: string, params?: QueryParams) => request<T>("GET", path, undefined, params),
   post: <T>(path: string, body?: unknown, params?: QueryParams) => request<T>("POST", path, body, params),
   put: <T>(path: string, body?: unknown, params?: QueryParams) => request<T>("PUT", path, body, params),
+  patch: <T>(path: string, body?: unknown, params?: QueryParams) => request<T>("PATCH", path, body, params),
   delete: <T>(path: string, params?: QueryParams) => request<T>("DELETE", path, undefined, params),
   download,
 };

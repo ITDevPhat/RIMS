@@ -38,11 +38,18 @@ export interface ChangePasswordPayload {
   confirmPassword: string;
 }
 
+export interface UpdateMyProfilePayload {
+  fullName: string;
+  phoneNumber?: string | null;
+  avatarUrl?: string | null;
+}
+
 export const authApi = {
   login: (usernameOrEmail: string, password: string) =>
     apiClient.post<LoginResponse>("/auth/login", { usernameOrEmail, password }),
   logout: () => apiClient.post<null>("/auth/logout"),
   getMe: () => apiClient.get<ApiUserProfile>("/auth/me"),
+  updateMe: (payload: UpdateMyProfilePayload) => apiClient.patch<ApiUserProfile>("/auth/me", payload),
   changePassword: (payload: ChangePasswordPayload) =>
     apiClient.post<null>("/auth/change-password", payload),
 };

@@ -135,6 +135,28 @@ public sealed class AuthService : IAuthService
         return ServiceResult<UserProfileDto>.Ok(MapProfile(user));
     }
 
+    public async Task<ServiceResult<UserProfileDto>> UpdateMeAsync(UpdateMyProfileRequest request, CancellationToken cancellationToken = default)
+    {
+        var userId = _userContext.User?.UserId;
+        if (userId is null) return ServiceResult<UserProfileDto>.Fail("Unauthenticated.");
+
+        var fullName = request.FullName.Trim();
+        if (string.IsNullOrWhiteSpace(fullName)) return ServiceResult<UserProfileDto>.Fail("Full name is required.");
+
+        var user = await LoadUserGraph(userId.Value, cancellationToken);
+        if (user is null) return ServiceResult<UserProfileDto>.Fail("User not found.");
+
+        user.FullName = fullName;
+        user.PhoneNumber = string.IsNullOrWhiteSpace(request.PhoneNumber) ? null : request.PhoneNumber.Trim();
+        user.AvatarUrl = string.IsNullOrWhiteSpace(request.AvatarUrl) ? null : request.AvatarUrl.Trim();
+        user.Initials = string.Concat(fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).TakeLast(2).Select(x => char.ToUpperInvariant(x[0])));
+        user.UpdatedAt = DateTime.UtcNow;
+        user.UpdatedBy = user.UserId;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _auditService.WriteActivityAsync("user", "update_profile", "User updated own profile", "User", user.UserId, user.Username, cancellationToken: cancellationToken);
+        return ServiceResult<UserProfileDto>.Ok(MapProfile(user));
+    }
+
     public async Task<ServiceResult<object>> ChangePasswordAsync(ChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
         if (request.NewPassword != request.ConfirmPassword)
