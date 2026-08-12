@@ -19,6 +19,14 @@ import { projectMemberApi, projectPhaseApi, type ApiProjectPhase } from "@/lib/a
 import { PersonPicker, type PersonSelection } from "@/components/common/PersonPicker";
 import type { DatePrecision, ResearchProject } from "@/lib/types";
 
+export interface ProjectCollaboratorInput {
+  projectMemberId?: number;
+  rowVersion?: number;
+  memberName: string;
+  email: string;
+  departmentNameText: string;
+}
+
 export interface DeTaiFormData {
   code: string;
   name: string;
