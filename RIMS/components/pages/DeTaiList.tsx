@@ -147,7 +147,7 @@ export function buildProjectPayload(data: DeTaiFormData, existing?: ResearchProj
     projectTitle: data.name.trim(),
     description: data.description.trim() || null,
     departmentId: Number.isFinite(departmentId) && departmentId > 0 ? departmentId : null,
-    principalInvestigatorId: null,
+    principalInvestigatorId: existing?.principalInvestigatorId ?? null,
     principalInvestigatorName: data.pi.trim(),
     principalInvestigatorEmail: data.piEmail.trim() || null,
     registrationDate: data.registrationDate || null,
@@ -282,16 +282,12 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
       const created = await researchApi.createProject({
         ...buildProjectPayload(data),
       });
-      const failedMembers: string[] = [];
-      for (const [index, member] of data.collaborators.filter((item) => item.memberName.trim()).entries()) {
-        try { await projectMemberApi.createMember({
+      await Promise.all(data.collaborators.filter(member => member.memberName.trim()).map((member, index) => projectMemberApi.createMember({
         projectId: created.projectId, userId: null, memberName: member.memberName.trim(), email: member.email.trim() || null,
         departmentId: null, departmentNameText: member.departmentNameText.trim() || null, memberRole: "collaborator",
         responsibility: null, sortOrder: index, joinedAt: new Date().toISOString().slice(0, 10), leftAt: null, isActive: true,
-      }); } catch { failedMembers.push(member.memberName.trim()); }
-      }
-      if (failedMembers.length) toast.warning({ title: "Đề tài đã được tạo nhưng chưa thêm đủ cộng sự", description: `Chưa thêm được: ${failedMembers.join(", ")}.` });
-      else toast.success({ title: "Đã thêm đề tài", description: data.code.trim() });
+      })));
+      toast.success({ title: "Đã thêm đề tài", description: data.code.trim() });
       await loadProjects();
     } catch (createError) {
       const message = createError instanceof Error ? createError.message : "Không thêm được đề tài.";
@@ -307,13 +303,10 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
     try {
       await researchApi.updateProject(editingProject.id, buildProjectPayload(data, editingProject));
       const existing = await projectMemberApi.getMembers({ projectId: editingProject.id, pageSize: 100 });
-      const existingCollaborators = existing.items.filter((member) => member.memberRole === "collaborator");
-      const collaborators = data.collaborators.filter((person) => person.memberName.trim());
-      const retainedIds = new Set(collaborators.flatMap(person => person.projectMemberId ? [person.projectMemberId] : []));
-      await Promise.all(existingCollaborators.filter(member => !retainedIds.has(member.projectMemberId)).map(member => projectMemberApi.deleteMember(member.projectMemberId)));
-      for (const [index, person] of collaborators.entries()) {
-        const current = existingCollaborators.find(item => item.projectMemberId === person.projectMemberId);
-        const payload = { projectId: Number(editingProject.id), userId: null, memberName: person.memberName.trim(), email: person.email.trim() || null, departmentId: null, departmentNameText: person.departmentNameText.trim() || null, memberRole: "collaborator", responsibility: current?.responsibility ?? null, sortOrder: index, joinedAt: current?.joinedAt ?? new Date().toISOString().slice(0, 10), leftAt: current?.leftAt ?? null, isActive: true, rowVersion: person.rowVersion };
+      const retainedIds = new Set(data.collaborators.flatMap(person => person.projectMemberId ? [person.projectMemberId] : []));
+      await Promise.all(existing.items.filter(member => !retainedIds.has(member.projectMemberId)).map(member => projectMemberApi.deleteMember(member.projectMemberId)));
+      for (const [index, person] of data.collaborators.entries()) {
+        const payload = { projectId: Number(editingProject.id), userId: person.userId, memberName: person.fullName, email: person.email ?? null, departmentId: person.departmentId ?? null, departmentNameText: person.departmentName ?? null, memberRole: "collaborator", responsibility: null, sortOrder: index, joinedAt: existing.items.find(item => item.projectMemberId === person.projectMemberId)?.joinedAt ?? new Date().toISOString().slice(0, 10), leftAt: null, isActive: true, rowVersion: person.rowVersion };
         if (person.projectMemberId) await projectMemberApi.updateMember(person.projectMemberId, payload); else await projectMemberApi.createMember(payload);
       }
       toast.success({ title: "Đã cập nhật đề tài", description: editingProject.code });

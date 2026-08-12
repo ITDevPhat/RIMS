@@ -162,11 +162,6 @@ export interface ApiProjectMember {
   leftAt?: string | null; isActive: boolean; rowVersion: number;
 }
 
-export interface ApiPersonLookup {
-  userId: number; fullName: string; email: string; title?: string | null;
-  departmentId?: number | null; departmentName?: string | null; avatarUrl?: string | null; initials?: string | null;
-}
-
 export interface ProjectMemberPayload {
   projectId?: number; userId?: number | null; memberName?: string | null; email?: string | null;
   departmentId?: number | null; departmentNameText?: string | null; memberRole: string;

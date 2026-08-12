@@ -16,6 +16,7 @@ import { SPONSORS } from "@/lib/constants/research";
 import { PrecisionDateInput } from "@/components/common/DateInput";
 import type { ApiDepartment } from "@/lib/api/admin-api";
 import { projectMemberApi, projectPhaseApi, type ApiProjectPhase } from "@/lib/api/research-api";
+import { PersonPicker, type PersonSelection } from "@/components/common/PersonPicker";
 import type { DatePrecision, ResearchProject } from "@/lib/types";
 
 export interface ProjectCollaboratorInput {
@@ -52,7 +53,7 @@ export interface DeTaiFormData {
   progress: string;
   currentPhase: string;
   notes: string;
-  collaborators: ProjectCollaboratorInput[];
+  collaborators: Array<{ memberName: string; email: string; departmentNameText: string }>;
 }
 
 interface DeTaiFormModalProps {
@@ -181,15 +182,11 @@ export default function DeTaiFormModal({ open, mode = "create", project, departm
     let cancelled = false;
     projectMemberApi.getMembers({ projectId: project.id, pageSize: 100 }).then(result => {
       if (cancelled) return;
-      setFormData(current => ({ ...current, collaborators: result.items
-        .filter(member => member.memberRole === "collaborator")
-        .map(member => ({
-          projectMemberId: member.projectMemberId,
-          rowVersion: member.rowVersion,
-          memberName: member.memberName ?? "",
-          email: member.email ?? "",
-          departmentNameText: member.departmentName ?? "",
-        })) }));
+      setFormData(current => ({ ...current, collaborators: result.items.map(member => ({
+        source: member.userId == null ? "manual" : "internal", userId: member.userId ?? null,
+        fullName: member.memberName, email: member.email, departmentId: member.departmentId,
+        departmentName: member.departmentName, projectMemberId: member.projectMemberId, rowVersion: member.rowVersion,
+      })) }));
     }).catch(() => { if (!cancelled) setSubmitError("Không tải được danh sách cộng sự."); });
     return () => { cancelled = true; };
   }, [open, project?.id]);
@@ -259,7 +256,7 @@ const hasCurrentPhaseOption = phaseOptions.some(
     if (!formData.name.trim()) next.name = "Vui lòng nhập tên đề tài.";
     if (formData.name.trim().length < 10) next.name = "Tên đề tài cần tối thiểu 10 ký tự.";
     if (!formData.departmentId && !formData.department) next.department = "Vui lòng chọn khoa/phòng chủ trì.";
-    if (!formData.pi.trim()) next.pi = "Vui lòng nhập chủ nhiệm đề tài.";
+    if (!formData.principalInvestigator) next.principalInvestigator = "Vui lòng chọn hoặc thêm chủ nhiệm đề tài.";
     if (!formData.startDate) next.startDate = "Vui lòng chọn ngày bắt đầu.";
     if (!formData.endDate) next.endDate = "Vui lòng chọn ngày kết thúc dự kiến.";
     if (formData.startDate && formData.endDate && formData.startDate > formData.endDate) {
@@ -285,11 +282,6 @@ const hasCurrentPhaseOption = phaseOptions.some(
         ...formData,
         code: formData.code.trim(),
         name: formData.name.trim(),
-        pi: formData.pi.trim(),
-        piEmail: formData.piEmail.trim(),
-        collaborators: formData.collaborators
-          .filter((collaborator) => collaborator.memberName.trim())
-          .map((collaborator) => ({ ...collaborator, memberName: collaborator.memberName.trim() })),
         protocolNumber: formData.protocolNumber.trim(),
         protocolVersion: formData.protocolVersion.trim(),
       });
@@ -379,36 +371,10 @@ const hasCurrentPhaseOption = phaseOptions.some(
                           </SelectContent>
                         </Select>
                       </Field>
-                  <Field label="Chủ nhiệm đề tài" required error={errors.pi}>
-                    <Input value={formData.pi} onChange={(event) => handleChange("pi", event.target.value)} placeholder="Nhập họ tên chủ nhiệm" />
+                  <Field label="Chủ nhiệm đề tài" required error={errors.principalInvestigator}>
+                    <PersonPicker mode="single" departments={departments} value={formData.principalInvestigator ? [formData.principalInvestigator] : []} onChange={people => setFormData(current => ({ ...current, principalInvestigator: people[0] ?? null }))} />
                   </Field>
-                  <Field label="Email chủ nhiệm">
-                    <Input type="email" value={formData.piEmail} onChange={(event) => handleChange("piEmail", event.target.value)} placeholder="Nhập email chủ nhiệm" />
-                  </Field>
-                  <Field label="Cộng sự">
-                    <div className="space-y-2">
-                      {formData.collaborators.map((collaborator, index) => (
-                        <div key={collaborator.projectMemberId ?? `new-${index}`} className="flex items-center gap-2">
-                          <Input
-                            value={collaborator.memberName}
-                            onChange={(event) => setFormData((current) => ({
-                              ...current,
-                              collaborators: current.collaborators.map((item, itemIndex) => itemIndex === index
-                                ? { ...item, memberName: event.target.value }
-                                : item),
-                            }))}
-                            placeholder="Nhập họ tên cộng sự"
-                          />
-                          <Button type="button" variant="outline" size="icon" aria-label={`Xóa cộng sự ${index + 1}`} onClick={() => setFormData((current) => ({ ...current, collaborators: current.collaborators.filter((_, itemIndex) => itemIndex !== index) }))}>
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                      <Button type="button" variant="outline" className="gap-2" onClick={() => setFormData((current) => ({ ...current, collaborators: [...current.collaborators, { memberName: "", email: "", departmentNameText: "" }] }))}>
-                        <Plus className="h-4 w-4" /> Thêm cộng sự
-                      </Button>
-                    </div>
-                  </Field>
+                  <Field label="Email chủ nhiệm"><Input type="email" value={formData.piEmail} onChange={(e) => handleChange("piEmail", e.target.value)} placeholder="email@example.com" /></Field>
                   <Field label="Nhà tài trợ/nguồn kinh phí">
                     <Select value={formData.sponsor} onValueChange={(value) => handleChange("sponsor", value ?? "")}>
                       <SelectTrigger><SelectValue placeholder="Chọn nguồn kinh phí" /></SelectTrigger>
@@ -500,6 +466,16 @@ const hasCurrentPhaseOption = phaseOptions.some(
                 </div>
               </section>
 
+              <section className="rounded-lg border border-slate-200 bg-white p-4 lg:col-span-2">
+                <SectionTitle icon={<Hospital className="h-4 w-4" />} title="Cộng sự ngoài hệ thống" />
+                <div className="space-y-3">{formData.collaborators.map((member, index) => <div key={index} className="grid gap-2 rounded-lg border border-slate-200 p-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
+                  <Input aria-label="Họ tên cộng sự" placeholder="Họ tên cộng sự" value={member.memberName} onChange={e => setFormData(prev => ({ ...prev, collaborators: prev.collaborators.map((item, i) => i === index ? { ...item, memberName: e.target.value } : item) }))} />
+                  <Input aria-label="Email cộng sự" placeholder="Email (không bắt buộc)" value={member.email} onChange={e => setFormData(prev => ({ ...prev, collaborators: prev.collaborators.map((item, i) => i === index ? { ...item, email: e.target.value } : item) }))} />
+                  <Input aria-label="Đơn vị cộng sự" placeholder="Khoa/phòng hoặc đơn vị" value={member.departmentNameText} onChange={e => setFormData(prev => ({ ...prev, collaborators: prev.collaborators.map((item, i) => i === index ? { ...item, departmentNameText: e.target.value } : item) }))} />
+                  <Button type="button" variant="outline" aria-label="Xóa cộng sự" onClick={() => setFormData(prev => ({ ...prev, collaborators: prev.collaborators.filter((_, i) => i !== index) }))}><X className="h-4 w-4" /></Button>
+                </div>)}</div>
+                <Button type="button" variant="outline" className="mt-3 gap-2" onClick={() => setFormData(prev => ({ ...prev, collaborators: [...prev.collaborators, { memberName: "", email: "", departmentNameText: "" }] }))}><Plus className="h-4 w-4" />Thêm cộng sự</Button>
+              </section>
 
               
             </div>
