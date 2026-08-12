@@ -4,7 +4,8 @@ namespace Rms.Application.Reports;
 
 public static class ProjectTimelineExportLogic
 {
-    private static readonly char[] InvalidFileNameChars = Path.GetInvalidFileNameChars();
+    // Keep exported names portable across Linux servers and Windows clients.
+    private static readonly HashSet<char> InvalidFileNameChars = new(Path.GetInvalidFileNameChars().Concat("<>:\"/\\|?*"));
 
     public static int CalculateWorkingDays(DateOnly? start, DateOnly? end)
     {

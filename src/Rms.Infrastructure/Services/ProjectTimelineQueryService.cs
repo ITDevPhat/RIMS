@@ -26,7 +26,7 @@ public sealed class ProjectTimelineQueryService : IProjectTimelineQueryService
                 x.ProjectId,
                 x.ProjectCode,
                 x.ProjectTitle,
-                x.PrincipalInvestigator != null ? x.PrincipalInvestigator.FullName : null,
+                x.PrincipalInvestigatorName ?? (x.PrincipalInvestigator != null ? x.PrincipalInvestigator.FullName : null),
                 x.LeadDepartment != null ? x.LeadDepartment.DepartmentName : null,
                 x.Sponsor != null ? x.Sponsor.SponsorName : x.SponsorNameText,
                 x.PlannedStartDate,

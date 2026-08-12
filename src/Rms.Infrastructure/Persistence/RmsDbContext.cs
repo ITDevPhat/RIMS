@@ -916,7 +916,7 @@ public partial class RmsDbContext : DbContext
         {
             entity.ToTable("project_members", "research");
 
-            entity.HasIndex(e => new { e.ProjectId, e.UserId, e.MemberRole }, "UQ_project_members_project_user_role").IsUnique();
+            entity.HasIndex(e => new { e.ProjectId, e.UserId }, "UX_project_members_project_user_active").IsUnique().HasFilter("user_id IS NOT NULL AND deleted_at IS NULL");
 
             entity.Property(e => e.ProjectMemberId).HasColumnName("project_member_id");
             entity.Property(e => e.CreatedAt)
@@ -924,6 +924,16 @@ public partial class RmsDbContext : DbContext
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+            entity.Property(e => e.MemberName).HasMaxLength(255).HasColumnName("member_name");
+            entity.Property(e => e.Email).HasMaxLength(255).HasColumnName("email");
+            entity.Property(e => e.DepartmentId).HasColumnName("department_id");
+            entity.Property(e => e.DepartmentNameText).HasMaxLength(255).HasColumnName("department_name_text");
+            entity.Property(e => e.SortOrder).HasDefaultValue(0).HasColumnName("sort_order");
+            entity.Property(e => e.UpdatedAt).HasPrecision(0).HasColumnName("updated_at");
+            entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
+            entity.Property(e => e.DeletedAt).HasPrecision(0).HasColumnName("deleted_at");
+            entity.Property(e => e.DeletedBy).HasColumnName("deleted_by");
+            entity.Property(e => e.RowVersion).IsConcurrencyToken().HasDefaultValue(1L).HasColumnName("row_version");
             entity.Property(e => e.IsActive)
                 .HasDefaultValue(true)
                 .HasColumnName("is_active");
@@ -953,6 +963,18 @@ public partial class RmsDbContext : DbContext
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_project_members_user");
+
+            entity.HasOne(d => d.Department).WithMany()
+                .HasForeignKey(d => d.DepartmentId).OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_project_members_department");
+
+            entity.HasOne(d => d.UpdatedByNavigation).WithMany()
+                .HasForeignKey(d => d.UpdatedBy).OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_project_members_updated_by");
+
+            entity.HasOne(d => d.DeletedByNavigation).WithMany()
+                .HasForeignKey(d => d.DeletedBy).OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_project_members_deleted_by");
         });
 
         modelBuilder.Entity<ProjectMilestone>(entity =>
@@ -993,6 +1015,7 @@ public partial class RmsDbContext : DbContext
             entity.Property(e => e.MilestoneName)
                 .HasMaxLength(255)
                 .HasColumnName("milestone_name");
+            entity.Property(e => e.MilestoneType).HasMaxLength(100).HasColumnName("milestone_type");
             entity.Property(e => e.MilestoneStatus)
                 .HasMaxLength(100)
                 .HasDefaultValue("not_started")
@@ -1195,6 +1218,14 @@ public partial class RmsDbContext : DbContext
                 .HasDefaultValue("DAY")
                 .HasColumnName("planned_start_date_precision");
             entity.Property(e => e.PrincipalInvestigatorId).HasColumnName("principal_investigator_id");
+            entity.Property(e => e.PrincipalInvestigatorName).HasMaxLength(255).HasColumnName("principal_investigator_name");
+            entity.Property(e => e.PrincipalInvestigatorEmail).HasMaxLength(255).HasColumnName("principal_investigator_email");
+            entity.Property(e => e.RegistrationDate).HasColumnName("registration_date");
+            entity.Property(e => e.RegistrationDatePrecision).HasMaxLength(10).HasDefaultValue("DAY").HasColumnName("registration_date_precision");
+            entity.Property(e => e.ProposalReviewDate).HasColumnName("proposal_review_date");
+            entity.Property(e => e.ProposalReviewDatePrecision).HasMaxLength(10).HasDefaultValue("DAY").HasColumnName("proposal_review_date_precision");
+            entity.Property(e => e.AcceptanceDate).HasColumnName("acceptance_date");
+            entity.Property(e => e.AcceptanceDatePrecision).HasMaxLength(10).HasDefaultValue("DAY").HasColumnName("acceptance_date_precision");
             entity.Property(e => e.PriorityLevel)
                 .HasMaxLength(50)
                 .HasDefaultValue("normal")

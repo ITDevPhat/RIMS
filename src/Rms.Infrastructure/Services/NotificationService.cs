@@ -73,17 +73,12 @@ public sealed class NotificationService : INotificationService, INotificationRul
     public async Task MarkAllReadAsync(CancellationToken cancellationToken = default)
     {
         var userId = RequireUserId();
-        var recipients = await _dbContext.NotificationRecipients
+        var updatedCount = await _dbContext.NotificationRecipients
             .Where(x => x.UserId == userId && !x.IsDismissed && !x.IsRead)
-            .ToListAsync(cancellationToken);
-        foreach (var recipient in recipients)
-        {
-            recipient.IsRead = true;
-            recipient.ReadAt = DateTime.UtcNow;
-        }
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await _auditService.WriteActivityAsync("notification", "read_all", $"Marked {recipients.Count} notifications as read", cancellationToken: cancellationToken);
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.IsRead, true)
+                .SetProperty(x => x.ReadAt, DateTime.UtcNow), cancellationToken);
+        await _auditService.WriteActivityAsync("notification", "read_all", $"Marked {updatedCount} notifications as read", cancellationToken: cancellationToken);
     }
 
     public async Task DeleteNotificationAsync(long id, CancellationToken cancellationToken = default)

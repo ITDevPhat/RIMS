@@ -11,6 +11,11 @@ public sealed record ChangePasswordRequest(
     [Required, MinLength(8)] string NewPassword,
     [Required] string ConfirmPassword);
 
+public sealed record UpdateMyProfileRequest(
+    [Required, MaxLength(200)] string FullName,
+    [MaxLength(30)] string? PhoneNumber,
+    [MaxLength(500)] string? AvatarUrl);
+
 public sealed record AuthPreferenceDto(
     string AppearanceMode,
     string LanguageCode,

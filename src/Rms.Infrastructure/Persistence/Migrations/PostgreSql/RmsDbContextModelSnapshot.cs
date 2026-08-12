@@ -463,6 +463,95 @@ namespace Rms.Infrastructure.Persistence.Migrations.PostgreSql
                     b.ToTable("login_sessions", "auth");
                 });
 
+            modelBuilder.Entity("Rms.Infrastructure.Persistence.Entities.MasterDataItem", b =>
+                {
+                    b.Property<long>("MasterDataItemId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("master_data_item_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("MasterDataItemId"));
+
+                    b.Property<string>("CategoryCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("category_code");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(0)
+                        .HasColumnType("timestamp(0) with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<long?>("CreatedBy")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasPrecision(0)
+                        .HasColumnType("timestamp(0) with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("ItemCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("item_code");
+
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("item_name");
+
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(1L)
+                        .HasColumnName("row_version");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(100)
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasPrecision(0)
+                        .HasColumnType("timestamp(0) with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<long?>("UpdatedBy")
+                        .HasColumnType("bigint")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("MasterDataItemId");
+
+                    b.HasIndex(new[] { "CategoryCode", "ItemCode" }, "UQ_master_data_items_category_code")
+                        .IsUnique()
+                        .HasFilter("deleted_at IS NULL");
+
+                    b.ToTable("master_data_items", "ref");
+                });
+
             modelBuilder.Entity("Rms.Infrastructure.Persistence.Entities.Notification", b =>
                 {
                     b.Property<long>("NotificationId")
@@ -1174,6 +1263,14 @@ namespace Rms.Infrastructure.Persistence.Migrations.PostgreSql
                         .HasColumnType("date")
                         .HasColumnName("due_date");
 
+                    b.Property<string>("DueDatePrecision")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("DAY")
+                        .HasColumnName("due_date_precision");
+
                     b.Property<long?>("MilestoneId")
                         .HasColumnType("bigint")
                         .HasColumnName("milestone_id");
@@ -1340,6 +1437,29 @@ namespace Rms.Infrastructure.Persistence.Migrations.PostgreSql
                         .HasColumnType("bigint")
                         .HasColumnName("created_by");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasPrecision(0)
+                        .HasColumnType("timestamp(0) with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<long?>("DepartmentId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("department_id");
+
+                    b.Property<string>("DepartmentNameText")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("department_name_text");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("email");
+
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -1356,6 +1476,11 @@ namespace Rms.Infrastructure.Persistence.Migrations.PostgreSql
                         .HasColumnType("date")
                         .HasColumnName("left_at");
 
+                    b.Property<string>("MemberName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("member_name");
+
                     b.Property<string>("MemberRole")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -1371,7 +1496,29 @@ namespace Rms.Infrastructure.Persistence.Migrations.PostgreSql
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("responsibility");
 
-                    b.Property<long>("UserId")
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(1L)
+                        .HasColumnName("row_version");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasPrecision(0)
+                        .HasColumnType("timestamp(0) with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<long?>("UpdatedBy")
+                        .HasColumnType("bigint")
+                        .HasColumnName("updated_by");
+
+                    b.Property<long?>("UserId")
                         .HasColumnType("bigint")
                         .HasColumnName("user_id");
 
@@ -1379,10 +1526,17 @@ namespace Rms.Infrastructure.Persistence.Migrations.PostgreSql
 
                     b.HasIndex("CreatedBy");
 
+                    b.HasIndex("DeletedBy");
+
+                    b.HasIndex("DepartmentId");
+
+                    b.HasIndex("UpdatedBy");
+
                     b.HasIndex("UserId");
 
-                    b.HasIndex(new[] { "ProjectId", "UserId", "MemberRole" }, "UQ_project_members_project_user_role")
-                        .IsUnique();
+                    b.HasIndex(new[] { "ProjectId", "UserId" }, "UX_project_members_project_user_active")
+                        .IsUnique()
+                        .HasFilter("user_id IS NOT NULL AND deleted_at IS NULL");
 
                     b.ToTable("project_members", "research");
                 });
@@ -1399,6 +1553,14 @@ namespace Rms.Infrastructure.Persistence.Migrations.PostgreSql
                     b.Property<DateOnly?>("CompletedDate")
                         .HasColumnType("date")
                         .HasColumnName("completed_date");
+
+                    b.Property<string>("CompletedDatePrecision")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("DAY")
+                        .HasColumnName("completed_date_precision");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -1423,6 +1585,14 @@ namespace Rms.Infrastructure.Persistence.Migrations.PostgreSql
                     b.Property<DateOnly>("DueDate")
                         .HasColumnType("date")
                         .HasColumnName("due_date");
+
+                    b.Property<string>("DueDatePrecision")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("DAY")
+                        .HasColumnName("due_date_precision");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
@@ -1452,6 +1622,11 @@ namespace Rms.Infrastructure.Persistence.Migrations.PostgreSql
                         .HasColumnType("character varying(100)")
                         .HasDefaultValue("not_started")
                         .HasColumnName("milestone_status");
+
+                    b.Property<string>("MilestoneType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("milestone_type");
 
                     b.Property<string>("Notes")
                         .HasColumnType("text")
@@ -1523,9 +1698,25 @@ namespace Rms.Infrastructure.Persistence.Migrations.PostgreSql
                         .HasColumnType("date")
                         .HasColumnName("actual_end_date");
 
+                    b.Property<string>("ActualEndDatePrecision")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("DAY")
+                        .HasColumnName("actual_end_date_precision");
+
                     b.Property<DateOnly?>("ActualStartDate")
                         .HasColumnType("date")
                         .HasColumnName("actual_start_date");
+
+                    b.Property<string>("ActualStartDatePrecision")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("DAY")
+                        .HasColumnName("actual_start_date_precision");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -1541,6 +1732,14 @@ namespace Rms.Infrastructure.Persistence.Migrations.PostgreSql
                     b.Property<DateOnly?>("DeadlineDate")
                         .HasColumnType("date")
                         .HasColumnName("deadline_date");
+
+                    b.Property<string>("DeadlineDatePrecision")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("DAY")
+                        .HasColumnName("deadline_date_precision");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasPrecision(0)
@@ -1592,9 +1791,25 @@ namespace Rms.Infrastructure.Persistence.Migrations.PostgreSql
                         .HasColumnType("date")
                         .HasColumnName("planned_end_date");
 
+                    b.Property<string>("PlannedEndDatePrecision")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("DAY")
+                        .HasColumnName("planned_end_date_precision");
+
                     b.Property<DateOnly?>("PlannedStartDate")
                         .HasColumnType("date")
                         .HasColumnName("planned_start_date");
+
+                    b.Property<string>("PlannedStartDatePrecision")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("DAY")
+                        .HasColumnName("planned_start_date_precision");
 
                     b.Property<decimal>("ProgressPercent")
                         .HasColumnType("decimal(5, 2)")
@@ -1648,13 +1863,41 @@ namespace Rms.Infrastructure.Persistence.Migrations.PostgreSql
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("ProjectId"));
 
+                    b.Property<DateOnly?>("AcceptanceDate")
+                        .HasColumnType("date")
+                        .HasColumnName("acceptance_date");
+
+                    b.Property<string>("AcceptanceDatePrecision")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("DAY")
+                        .HasColumnName("acceptance_date_precision");
+
                     b.Property<DateOnly?>("ActualEndDate")
                         .HasColumnType("date")
                         .HasColumnName("actual_end_date");
 
+                    b.Property<string>("ActualEndDatePrecision")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("DAY")
+                        .HasColumnName("actual_end_date_precision");
+
                     b.Property<DateOnly?>("ActualStartDate")
                         .HasColumnType("date")
                         .HasColumnName("actual_start_date");
+
+                    b.Property<string>("ActualStartDatePrecision")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("DAY")
+                        .HasColumnName("actual_start_date_precision");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -1728,13 +1971,39 @@ namespace Rms.Infrastructure.Persistence.Migrations.PostgreSql
                         .HasColumnType("date")
                         .HasColumnName("planned_end_date");
 
+                    b.Property<string>("PlannedEndDatePrecision")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("DAY")
+                        .HasColumnName("planned_end_date_precision");
+
                     b.Property<DateOnly?>("PlannedStartDate")
                         .HasColumnType("date")
                         .HasColumnName("planned_start_date");
 
+                    b.Property<string>("PlannedStartDatePrecision")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("DAY")
+                        .HasColumnName("planned_start_date_precision");
+
+                    b.Property<string>("PrincipalInvestigatorEmail")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("principal_investigator_email");
+
                     b.Property<long?>("PrincipalInvestigatorId")
                         .HasColumnType("bigint")
                         .HasColumnName("principal_investigator_id");
+
+                    b.Property<string>("PrincipalInvestigatorName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("principal_investigator_name");
 
                     b.Property<string>("PriorityLevel")
                         .IsRequired()
@@ -1772,6 +2041,18 @@ namespace Rms.Infrastructure.Persistence.Migrations.PostgreSql
                         .HasColumnType("character varying(500)")
                         .HasColumnName("project_title");
 
+                    b.Property<DateOnly?>("ProposalReviewDate")
+                        .HasColumnType("date")
+                        .HasColumnName("proposal_review_date");
+
+                    b.Property<string>("ProposalReviewDatePrecision")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("DAY")
+                        .HasColumnName("proposal_review_date_precision");
+
                     b.Property<string>("ProtocolNumber")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
@@ -1781,6 +2062,18 @@ namespace Rms.Infrastructure.Persistence.Migrations.PostgreSql
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("protocol_version");
+
+                    b.Property<DateOnly?>("RegistrationDate")
+                        .HasColumnType("date")
+                        .HasColumnName("registration_date");
+
+                    b.Property<string>("RegistrationDatePrecision")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("DAY")
+                        .HasColumnName("registration_date_precision");
 
                     b.Property<string>("ResearchType")
                         .HasMaxLength(100)
@@ -3229,21 +3522,44 @@ namespace Rms.Infrastructure.Persistence.Migrations.PostgreSql
                         .HasForeignKey("CreatedBy")
                         .HasConstraintName("FK_project_members_created_by");
 
+                    b.HasOne("Rms.Infrastructure.Persistence.Entities.User", "DeletedByNavigation")
+                        .WithMany()
+                        .HasForeignKey("DeletedBy")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("FK_project_members_deleted_by");
+
+                    b.HasOne("Rms.Infrastructure.Persistence.Entities.Department", "Department")
+                        .WithMany()
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("FK_project_members_department");
+
                     b.HasOne("Rms.Infrastructure.Persistence.Entities.ResearchProject", "Project")
                         .WithMany("ProjectMembers")
                         .HasForeignKey("ProjectId")
                         .IsRequired()
                         .HasConstraintName("FK_project_members_project");
 
+                    b.HasOne("Rms.Infrastructure.Persistence.Entities.User", "UpdatedByNavigation")
+                        .WithMany()
+                        .HasForeignKey("UpdatedBy")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("FK_project_members_updated_by");
+
                     b.HasOne("Rms.Infrastructure.Persistence.Entities.User", "User")
                         .WithMany("ProjectMemberUsers")
                         .HasForeignKey("UserId")
-                        .IsRequired()
                         .HasConstraintName("FK_project_members_user");
 
                     b.Navigation("CreatedByNavigation");
 
+                    b.Navigation("DeletedByNavigation");
+
+                    b.Navigation("Department");
+
                     b.Navigation("Project");
+
+                    b.Navigation("UpdatedByNavigation");
 
                     b.Navigation("User");
                 });

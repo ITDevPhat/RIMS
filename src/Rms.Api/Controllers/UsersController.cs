@@ -22,6 +22,13 @@ public sealed class UsersController : ApiControllerBase
         return OkResponse(await _adminService.GetUsersAsync(query, cancellationToken));
     }
 
+    [HttpGet("lookup")]
+    [RequirePermission(PermissionCodes.ResearchProjectView)]
+    public async Task<IActionResult> Lookup([FromQuery] Rms.Application.Common.PaginationQuery query, CancellationToken cancellationToken)
+    {
+        return OkResponse(await _adminService.LookupUsersAsync(query, cancellationToken));
+    }
+
     [HttpGet("{id:long}")]
     [RequirePermission(PermissionCodes.UserView)]
     public async Task<IActionResult> Get(long id, CancellationToken cancellationToken)

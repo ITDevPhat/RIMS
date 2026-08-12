@@ -16,6 +16,14 @@ public partial class ResearchProject
     public long? LeadDepartmentId { get; set; }
 
     public long? PrincipalInvestigatorId { get; set; }
+    public string? PrincipalInvestigatorName { get; set; }
+    public string? PrincipalInvestigatorEmail { get; set; }
+    public DateOnly? RegistrationDate { get; set; }
+    public string RegistrationDatePrecision { get; set; } = "DAY";
+    public DateOnly? ProposalReviewDate { get; set; }
+    public string ProposalReviewDatePrecision { get; set; } = "DAY";
+    public DateOnly? AcceptanceDate { get; set; }
+    public string AcceptanceDatePrecision { get; set; } = "DAY";
 
     public long? SponsorId { get; set; }
 

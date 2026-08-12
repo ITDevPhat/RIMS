@@ -16,6 +16,11 @@ function mapType(category: string, notificationType: string): NotificationType {
 }
 
 export function mapApiNotificationToUi(item: ApiNotification): Notification {
+  const entityType = (item.relatedEntityType ?? "").toLowerCase();
+  const relatedObjectType: Notification["relatedObjectType"] = entityType.includes("training") || entityType.includes("conference")
+    ? "conference" : entityType.includes("milestone") ? "milestone" : entityType.includes("deadline")
+      ? "deadline" : entityType.includes("phase") ? "phase" : entityType.includes("project") || entityType.includes("research")
+        ? "project" : "system";
   return {
     id: String(item.notificationId),
     title: item.title,
@@ -26,7 +31,7 @@ export function mapApiNotificationToUi(item: ApiNotification): Notification {
     read: item.isRead,
     actionUrl: item.actionUrl ?? undefined,
     relatedObjectId: item.relatedEntityId ? String(item.relatedEntityId) : undefined,
-    relatedObjectType: item.relatedEntityType?.includes("training") ? "conference" : "project",
+    relatedObjectType,
     suggestedActions: item.actionLabel ? [{ label: item.actionLabel, action: item.actionUrl ?? "" }] : undefined,
   };
 }
