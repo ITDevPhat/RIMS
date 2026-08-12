@@ -179,6 +179,10 @@ export const researchApi = {
   deleteProject: (id: string | number) => apiClient.delete<null>(`/research-projects/${id}`),
 };
 
+export const personLookupApi = {
+  search: (search: string, pageSize = 10) => apiClient.get<PagedResult<ApiPersonLookup>>("/users/lookup", { search, pageSize }),
+};
+
 export const sponsorApi = {
   getSponsors: (filters?: QueryParams) => apiClient.get<PagedResult<ApiSponsor>>("/sponsors", filters),
   createSponsor: (payload: unknown) => apiClient.post<ApiSponsor>("/sponsors", payload),

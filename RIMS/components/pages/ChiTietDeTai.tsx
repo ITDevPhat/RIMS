@@ -131,8 +131,17 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
 
   const handleProjectSave = async (data: DeTaiFormData) => {
     await researchApi.updateProject(currentProject.id, buildProjectPayload(data, currentProject));
+    const retainedIds = new Set(data.collaborators.flatMap(person => person.projectMemberId ? [person.projectMemberId] : []));
+    await Promise.all(members.filter(member => !retainedIds.has(member.projectMemberId)).map(member => projectMemberApi.deleteMember(member.projectMemberId)));
+    for (const [index, person] of data.collaborators.entries()) {
+      const current = members.find(member => member.projectMemberId === person.projectMemberId);
+      const payload = { projectId: Number(currentProject.id), userId: person.userId, memberName: person.fullName, email: person.email ?? null, departmentId: person.departmentId ?? null, departmentNameText: person.departmentName ?? null, memberRole: "collaborator", responsibility: current?.responsibility ?? null, sortOrder: index, joinedAt: current?.joinedAt ?? new Date().toISOString().slice(0, 10), leftAt: current?.leftAt ?? null, isActive: true, rowVersion: person.rowVersion };
+      if (person.projectMemberId) await projectMemberApi.updateMember(person.projectMemberId, payload); else await projectMemberApi.createMember(payload);
+    }
     const refreshed = await researchApi.getProject(currentProject.id);
     setCurrentProject(mapApiProjectToUi(refreshed));
+    const refreshedMembers = await projectMemberApi.getMembers({ projectId: currentProject.id, pageSize: 100 });
+    setMembers(refreshedMembers.items);
     toast.success("Đã cập nhật đề tài.");
   };
 

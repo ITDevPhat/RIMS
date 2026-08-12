@@ -302,6 +302,13 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
     setActionError("");
     try {
       await researchApi.updateProject(editingProject.id, buildProjectPayload(data, editingProject));
+      const existing = await projectMemberApi.getMembers({ projectId: editingProject.id, pageSize: 100 });
+      const retainedIds = new Set(data.collaborators.flatMap(person => person.projectMemberId ? [person.projectMemberId] : []));
+      await Promise.all(existing.items.filter(member => !retainedIds.has(member.projectMemberId)).map(member => projectMemberApi.deleteMember(member.projectMemberId)));
+      for (const [index, person] of data.collaborators.entries()) {
+        const payload = { projectId: Number(editingProject.id), userId: person.userId, memberName: person.fullName, email: person.email ?? null, departmentId: person.departmentId ?? null, departmentNameText: person.departmentName ?? null, memberRole: "collaborator", responsibility: null, sortOrder: index, joinedAt: existing.items.find(item => item.projectMemberId === person.projectMemberId)?.joinedAt ?? new Date().toISOString().slice(0, 10), leftAt: null, isActive: true, rowVersion: person.rowVersion };
+        if (person.projectMemberId) await projectMemberApi.updateMember(person.projectMemberId, payload); else await projectMemberApi.createMember(payload);
+      }
       toast.success({ title: "Đã cập nhật đề tài", description: editingProject.code });
       setEditingProject(null);
       await loadProjects();

@@ -5,6 +5,7 @@ namespace Rms.Application.Admin;
 public interface IAdminService
 {
     Task<PagedResult<UserDto>> GetUsersAsync(UserListQuery query, CancellationToken cancellationToken = default);
+    Task<PagedResult<UserLookupDto>> LookupUsersAsync(PaginationQuery query, CancellationToken cancellationToken = default);
     Task<UserDto> GetUserAsync(long id, CancellationToken cancellationToken = default);
     Task<UserDto> CreateUserAsync(CreateUserRequest request, CancellationToken cancellationToken = default);
     Task<UserDto> UpdateUserAsync(long id, UpdateUserRequest request, CancellationToken cancellationToken = default);

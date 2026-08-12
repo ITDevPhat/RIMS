@@ -35,6 +35,16 @@ public sealed record UserDto(
     DateTime? LastLoginAt,
     IReadOnlyList<RoleDto> Roles);
 
+public sealed record UserLookupDto(
+    long UserId,
+    string FullName,
+    string Email,
+    string? Title,
+    long? DepartmentId,
+    string? DepartmentName,
+    string? AvatarUrl,
+    string? Initials);
+
 public sealed record RoleDto(
     long RoleId,
     string RoleCode,

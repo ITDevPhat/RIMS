@@ -15,7 +15,8 @@ import { cn } from "@/lib/utils";
 import { SPONSORS } from "@/lib/constants/research";
 import { PrecisionDateInput } from "@/components/common/DateInput";
 import type { ApiDepartment } from "@/lib/api/admin-api";
-import { projectPhaseApi, type ApiProjectPhase } from "@/lib/api/research-api";
+import { projectMemberApi, projectPhaseApi, type ApiProjectPhase } from "@/lib/api/research-api";
+import { PersonPicker, type PersonSelection } from "@/components/common/PersonPicker";
 import type { DatePrecision, ResearchProject } from "@/lib/types";
 
 export interface DeTaiFormData {
@@ -168,6 +169,20 @@ export default function DeTaiFormModal({ open, mode = "create", project, departm
     };
   }, [open, project?.id]);
 
+  useEffect(() => {
+    if (!open || !project?.id) return;
+    let cancelled = false;
+    projectMemberApi.getMembers({ projectId: project.id, pageSize: 100 }).then(result => {
+      if (cancelled) return;
+      setFormData(current => ({ ...current, collaborators: result.items.map(member => ({
+        source: member.userId == null ? "manual" : "internal", userId: member.userId ?? null,
+        fullName: member.memberName, email: member.email, departmentId: member.departmentId,
+        departmentName: member.departmentName, projectMemberId: member.projectMemberId, rowVersion: member.rowVersion,
+      })) }));
+    }).catch(() => { if (!cancelled) setSubmitError("Không tải được danh sách cộng sự."); });
+    return () => { cancelled = true; };
+  }, [open, project?.id]);
+
   const title = mode === "edit" ? "Cập nhật đề tài nghiên cứu" : "Thêm đề tài nghiên cứu";
   const saveLabel = mode === "edit" ? "Lưu thay đổi" : "Tạo đề tài";
 
@@ -233,7 +248,7 @@ const hasCurrentPhaseOption = phaseOptions.some(
     if (!formData.name.trim()) next.name = "Vui lòng nhập tên đề tài.";
     if (formData.name.trim().length < 10) next.name = "Tên đề tài cần tối thiểu 10 ký tự.";
     if (!formData.departmentId && !formData.department) next.department = "Vui lòng chọn khoa/phòng chủ trì.";
-    if (!formData.pi.trim()) next.pi = "Vui lòng nhập chủ nhiệm đề tài.";
+    if (!formData.principalInvestigator) next.principalInvestigator = "Vui lòng chọn hoặc thêm chủ nhiệm đề tài.";
     if (!formData.startDate) next.startDate = "Vui lòng chọn ngày bắt đầu.";
     if (!formData.endDate) next.endDate = "Vui lòng chọn ngày kết thúc dự kiến.";
     if (formData.startDate && formData.endDate && formData.startDate > formData.endDate) {
@@ -259,7 +274,6 @@ const hasCurrentPhaseOption = phaseOptions.some(
         ...formData,
         code: formData.code.trim(),
         name: formData.name.trim(),
-        pi: formData.pi.trim(),
         protocolNumber: formData.protocolNumber.trim(),
         protocolVersion: formData.protocolVersion.trim(),
       });
@@ -318,7 +332,7 @@ const hasCurrentPhaseOption = phaseOptions.some(
               </section>
 
               <section className="rounded-lg border border-slate-200 bg-white p-4">
-                <SectionTitle icon={<Hospital className="h-4 w-4" />} title="Đơn vị phụ trách" />
+                <SectionTitle icon={<Hospital className="h-4 w-4" />} title="Đơn vị & nhân sự" />
                 <div className="grid gap-4">
                   <Field
                         label="Khoa/phòng chủ trì"
@@ -349,8 +363,8 @@ const hasCurrentPhaseOption = phaseOptions.some(
                           </SelectContent>
                         </Select>
                       </Field>
-                  <Field label="Chủ nhiệm đề tài" required error={errors.pi}>
-                    <Input value={formData.pi} onChange={(e) => handleChange("pi", e.target.value)} placeholder="VD: TS. Nguyễn Minh Anh" />
+                  <Field label="Chủ nhiệm đề tài" required error={errors.principalInvestigator}>
+                    <PersonPicker mode="single" departments={departments} value={formData.principalInvestigator ? [formData.principalInvestigator] : []} onChange={people => setFormData(current => ({ ...current, principalInvestigator: people[0] ?? null }))} />
                   </Field>
                   <Field label="Email chủ nhiệm"><Input type="email" value={formData.piEmail} onChange={(e) => handleChange("piEmail", e.target.value)} placeholder="email@example.com" /></Field>
                   <Field label="Nhà tài trợ/nguồn kinh phí">
