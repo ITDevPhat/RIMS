@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 interface AdminLayoutProps {
   activePage: PageKey;
   onNavigate: (page: PageKey) => void;
-  onOpenProfile: () => void;
   onOpenNotifications: () => void;
   onSearchProjects: (query: string) => void;
   onLogout: () => void;
@@ -18,7 +17,6 @@ interface AdminLayoutProps {
 export default function AdminLayout({
   activePage,
   onNavigate,
-  onOpenProfile,
   onOpenNotifications,
   onSearchProjects,
   onLogout,
@@ -63,7 +61,6 @@ export default function AdminLayout({
         <Topbar
           sidebarCollapsed={collapsed}
           onToggleSidebar={() => window.innerWidth < 1024 ? setMobileOpen((v) => !v) : setCollapsed((v) => !v)}
-          onOpenProfile={onOpenProfile}
           onOpenNotifications={onOpenNotifications}
           onNavigate={onNavigate}
           onSearchProjects={onSearchProjects}
