@@ -12,10 +12,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { DEPARTMENTS, SPONSORS } from "@/lib/constants/research";
+import { SPONSORS } from "@/lib/constants/research";
 import { PrecisionDateInput } from "@/components/common/DateInput";
 import type { ApiDepartment } from "@/lib/api/admin-api";
-import { projectPhaseApi, type ApiProjectPhase } from "@/lib/api/research-api";
+import { projectMemberApi, projectPhaseApi, type ApiProjectPhase } from "@/lib/api/research-api";
+import { PersonPicker, type PersonSelection } from "@/components/common/PersonPicker";
 import type { DatePrecision, ResearchProject } from "@/lib/types";
 
 export interface DeTaiFormData {
@@ -24,7 +25,10 @@ export interface DeTaiFormData {
   description: string;
   departmentId: string;
   department: string;
-  pi: string;
+  principalInvestigator: PersonSelection | null;
+  registrationDate: string; registrationDatePrecision: DatePrecision;
+  proposalReviewDate: string; proposalReviewDatePrecision: DatePrecision;
+  acceptanceDate: string; acceptanceDatePrecision: DatePrecision;
   sponsor: string;
   type: string;
   protocolNumber: string;
@@ -40,6 +44,7 @@ export interface DeTaiFormData {
   progress: string;
   currentPhase: string;
   notes: string;
+  collaborators: PersonSelection[];
 }
 
 interface DeTaiFormModalProps {
@@ -61,7 +66,10 @@ const emptyForm: DeTaiFormData = {
   description: "",
   departmentId: "",
   department: "",
-  pi: "",
+  principalInvestigator: null,
+  registrationDate: "", registrationDatePrecision: "DAY",
+  proposalReviewDate: "", proposalReviewDatePrecision: "DAY",
+  acceptanceDate: "", acceptanceDatePrecision: "DAY",
   sponsor: "",
   type: "Khác",
   protocolNumber: "",
@@ -77,6 +85,7 @@ const emptyForm: DeTaiFormData = {
   progress: "0",
   currentPhase: "",
   notes: "",
+  collaborators: [],
 };
 
 function fromProject(project?: ResearchProject | null): DeTaiFormData {
@@ -87,7 +96,10 @@ function fromProject(project?: ResearchProject | null): DeTaiFormData {
     description: project.description ?? "",
     departmentId: project.departmentId ? String(project.departmentId) : "",
     department: project.department === "Chưa phân khoa" ? "" : project.department,
-    pi: project.pi === "Chưa phân công" ? "" : project.pi,
+    principalInvestigator: project.pi === "Chưa phân công" ? null : { source: project.principalInvestigatorId ? "internal" : "manual", userId: project.principalInvestigatorId ?? null, fullName: project.pi, email: project.principalInvestigatorEmail ?? null, departmentId: project.departmentId ?? null, departmentName: project.department },
+    registrationDate: project.registrationDate ?? "", registrationDatePrecision: project.registrationDatePrecision ?? "DAY",
+    proposalReviewDate: project.proposalReviewDate ?? "", proposalReviewDatePrecision: project.proposalReviewDatePrecision ?? "DAY",
+    acceptanceDate: project.acceptanceDate ?? "", acceptanceDatePrecision: project.acceptanceDatePrecision ?? "DAY",
     sponsor: project.sponsor === "Chưa có" ? "" : project.sponsor,
     type: project.researchType || "Khác",
     protocolNumber: project.protocolNumber ?? "",
@@ -103,6 +115,7 @@ function fromProject(project?: ResearchProject | null): DeTaiFormData {
     progress: String(project.progress ?? 0),
     currentPhase: project.currentPhase ?? "Chưa bắt đầu",
     notes: "",
+    collaborators: [],
   };
 }
 
@@ -153,6 +166,20 @@ export default function DeTaiFormModal({ open, mode = "create", project, departm
     };
   }, [open, project?.id]);
 
+  useEffect(() => {
+    if (!open || !project?.id) return;
+    let cancelled = false;
+    projectMemberApi.getMembers({ projectId: project.id, pageSize: 100 }).then(result => {
+      if (cancelled) return;
+      setFormData(current => ({ ...current, collaborators: result.items.map(member => ({
+        source: member.userId == null ? "manual" : "internal", userId: member.userId ?? null,
+        fullName: member.memberName, email: member.email, departmentId: member.departmentId,
+        departmentName: member.departmentName, projectMemberId: member.projectMemberId, rowVersion: member.rowVersion,
+      })) }));
+    }).catch(() => { if (!cancelled) setSubmitError("Không tải được danh sách cộng sự."); });
+    return () => { cancelled = true; };
+  }, [open, project?.id]);
+
   const title = mode === "edit" ? "Cập nhật đề tài nghiên cứu" : "Thêm đề tài nghiên cứu";
   const saveLabel = mode === "edit" ? "Lưu thay đổi" : "Tạo đề tài";
 
@@ -168,16 +195,7 @@ const departmentOptions = useMemo(() => {
 
   if (active.length > 0) return active;
 
-  return DEPARTMENTS
-    .filter((item) => item !== "Tất cả")
-    .map((name, index) => ({
-      departmentId: -(index + 1),
-      departmentCode: name.toUpperCase().replace(/\s+/g, "_"),
-      departmentName: name,
-      isActive: true,
-      sortOrder: index + 1,
-      createdAt: "",
-    } satisfies ApiDepartment));
+  return [];
 }, [departments]);
 
 const selectedDepartment = useMemo(
@@ -227,7 +245,7 @@ const hasCurrentPhaseOption = phaseOptions.some(
     if (!formData.name.trim()) next.name = "Vui lòng nhập tên đề tài.";
     if (formData.name.trim().length < 10) next.name = "Tên đề tài cần tối thiểu 10 ký tự.";
     if (!formData.departmentId && !formData.department) next.department = "Vui lòng chọn khoa/phòng chủ trì.";
-    if (!formData.pi.trim()) next.pi = "Vui lòng nhập chủ nhiệm đề tài.";
+    if (!formData.principalInvestigator) next.principalInvestigator = "Vui lòng chọn hoặc thêm chủ nhiệm đề tài.";
     if (!formData.startDate) next.startDate = "Vui lòng chọn ngày bắt đầu.";
     if (!formData.endDate) next.endDate = "Vui lòng chọn ngày kết thúc dự kiến.";
     if (formData.startDate && formData.endDate && formData.startDate > formData.endDate) {
@@ -253,7 +271,6 @@ const hasCurrentPhaseOption = phaseOptions.some(
         ...formData,
         code: formData.code.trim(),
         name: formData.name.trim(),
-        pi: formData.pi.trim(),
         protocolNumber: formData.protocolNumber.trim(),
         protocolVersion: formData.protocolVersion.trim(),
       });
@@ -312,7 +329,7 @@ const hasCurrentPhaseOption = phaseOptions.some(
               </section>
 
               <section className="rounded-lg border border-slate-200 bg-white p-4">
-                <SectionTitle icon={<Hospital className="h-4 w-4" />} title="Đơn vị phụ trách" />
+                <SectionTitle icon={<Hospital className="h-4 w-4" />} title="Đơn vị & nhân sự" />
                 <div className="grid gap-4">
                   <Field
                         label="Khoa/phòng chủ trì"
@@ -343,20 +360,20 @@ const hasCurrentPhaseOption = phaseOptions.some(
                           </SelectContent>
                         </Select>
                       </Field>
-                  <Field label="Chủ nhiệm đề tài" required error={errors.pi}>
-                    <Input value={formData.pi} onChange={(e) => handleChange("pi", e.target.value)} placeholder="VD: TS. Nguyễn Minh Anh" />
+                  <Field label="Chủ nhiệm đề tài" required error={errors.principalInvestigator}>
+                    <PersonPicker mode="single" departments={departments} value={formData.principalInvestigator ? [formData.principalInvestigator] : []} onChange={people => setFormData(current => ({ ...current, principalInvestigator: people[0] ?? null }))} />
                   </Field>
-                  <Field label="Nhà tài trợ/nguồn kinh phí">
-                    <Select value={formData.sponsor} onValueChange={(value) => handleChange("sponsor", value ?? "")}>
-                      <SelectTrigger><SelectValue placeholder="Chọn nguồn kinh phí" /></SelectTrigger>
-                      <SelectContent>{SPONSORS.filter((item) => item !== "Tất cả").map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
-                    </Select>
+                  <Field label="Cộng sự">
+                    <PersonPicker mode="multiple" departments={departments} value={formData.collaborators} onChange={collaborators => setFormData(current => ({ ...current, collaborators }))} />
                   </Field>
                 </div>
               </section>
 <section className="rounded-lg border border-slate-200 bg-white p-4">
                 <SectionTitle icon={<CalendarDays className="h-4 w-4" />} title="Tiến độ" />
                 <div className="grid gap-4 sm:grid-cols-2">
+                  <PrecisionDateInput label="Ngày đăng ký" value={formData.registrationDate} precision={formData.registrationDatePrecision} onValueChange={(value) => handleChange("registrationDate", value)} onPrecisionChange={(precision) => handlePrecisionChange("registrationDatePrecision", precision)} />
+                  <PrecisionDateInput label="Ngày xét đề cương" value={formData.proposalReviewDate} precision={formData.proposalReviewDatePrecision} onValueChange={(value) => handleChange("proposalReviewDate", value)} onPrecisionChange={(precision) => handlePrecisionChange("proposalReviewDatePrecision", precision)} />
+                  <PrecisionDateInput label="Ngày nghiệm thu đề tài" value={formData.acceptanceDate} precision={formData.acceptanceDatePrecision} onValueChange={(value) => handleChange("acceptanceDate", value)} onPrecisionChange={(precision) => handlePrecisionChange("acceptanceDatePrecision", precision)} />
                   <PrecisionDateInput
                     label="Ngày bắt đầu"
                     required
@@ -432,6 +449,11 @@ const hasCurrentPhaseOption = phaseOptions.some(
                     </Select>
                   </Field>
                 </div>
+              </section>
+
+              <section className="rounded-lg border border-slate-200 bg-white p-4">
+                <SectionTitle icon={<FileText className="h-4 w-4" />} title="Nguồn tài trợ" />
+                <Field label="Nhà tài trợ/nguồn kinh phí"><Select value={formData.sponsor} onValueChange={(value) => handleChange("sponsor", value ?? "")}><SelectTrigger><SelectValue placeholder="Chọn nguồn kinh phí" /></SelectTrigger><SelectContent>{SPONSORS.filter((item) => item !== "Tất cả").map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent></Select></Field>
               </section>
 
               

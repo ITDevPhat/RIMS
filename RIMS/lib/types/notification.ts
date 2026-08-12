@@ -11,6 +11,6 @@ export interface Notification {
   read: boolean;
   actionUrl?: string;
   relatedObjectId?: string;
-  relatedObjectType?: "project" | "phase" | "milestone" | "conference";
+  relatedObjectType?: "project" | "phase" | "milestone" | "deadline" | "conference" | "system";
   suggestedActions?: Array<{ label: string; action: string }>;
 }

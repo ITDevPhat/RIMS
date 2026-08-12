@@ -8,6 +8,7 @@ import {
   getStoredUser,
   storeToken,
   storeUser,
+  replaceStoredUser,
 } from "@/lib/api/api-client";
 
 export interface AppUser {
@@ -22,6 +23,8 @@ export interface AppUser {
   trangThai: "Hoạt động" | "Vô hiệu hóa";
   initials: string;
   permissions: string[];
+  avatarUrl: string;
+  autoMarkReadOnOpen: boolean;
 }
 
 function mapProfile(profile: ApiUserProfile): AppUser {
@@ -37,6 +40,8 @@ function mapProfile(profile: ApiUserProfile): AppUser {
     trangThai: profile.accountStatus === "active" ? "Hoạt động" : "Vô hiệu hóa",
     initials: profile.initials ?? profile.fullName.split(" ").slice(-2).map((part) => part[0]).join("").toUpperCase(),
     permissions: profile.permissions,
+    avatarUrl: profile.avatarUrl ?? "",
+    autoMarkReadOnOpen: Boolean(profile.preferences && typeof profile.preferences === "object" && "autoMarkReadOnOpen" in profile.preferences && profile.preferences.autoMarkReadOnOpen),
   };
 }
 
@@ -46,6 +51,7 @@ interface AuthContextValue {
   user: AppUser | null;
   login: (email: string, password: string, remember?: boolean) => Promise<boolean>;
   logout: () => Promise<void>;
+  updateProfile: (profile: ApiUserProfile) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -123,8 +129,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateProfile = (profile: ApiUserProfile) => {
+    const mapped = mapProfile(profile);
+    replaceStoredUser(mapped);
+    setUser(mapped);
+  };
+
   return (
-    <AuthContext.Provider value={{ isLoggedIn, isRestoring, user, login, logout }}>
+    <AuthContext.Provider value={{ isLoggedIn, isRestoring, user, login, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

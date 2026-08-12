@@ -10,6 +10,7 @@ export function mapApiMilestoneToUi(item: ApiProjectMilestone, order = 1): Resea
     researchId: String(item.projectId),
     order,
     name: item.milestoneName,
+    milestoneType: item.milestoneType ?? null,
     responsibleUserId: item.responsibleUserId ? String(item.responsibleUserId) : null,
     assignee: item.responsibleUserName ?? undefined,
     plannedStartDate: item.dueDate,

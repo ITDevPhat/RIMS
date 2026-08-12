@@ -11,6 +11,26 @@ namespace Rms.Infrastructure.Services;
 
 public sealed class AdminService : IAdminService
 {
+    public async Task<PagedResult<UserLookupDto>> LookupUsersAsync(PaginationQuery query, CancellationToken cancellationToken = default)
+    {
+        var search = query.Search?.Trim();
+        var users = _dbContext.Users.AsNoTracking()
+            .Where(x => x.DeletedAt == null && x.AccountStatus == "active");
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var pattern = $"%{search}%";
+            users = users.Where(x => EF.Functions.ILike(x.FullName, pattern) || EF.Functions.ILike(x.Email, pattern));
+        }
+
+        var pageSize = Math.Min(query.PageSize, 20);
+        var total = await users.CountAsync(cancellationToken);
+        var items = await users.OrderBy(x => x.FullName)
+            .Skip((query.Page - 1) * pageSize).Take(pageSize)
+            .Select(x => new UserLookupDto(x.UserId, x.FullName, x.Email, x.Title, x.DepartmentId,
+                x.Department != null ? x.Department.DepartmentName : null, x.AvatarUrl, x.Initials))
+            .ToListAsync(cancellationToken);
+        return PagedResult<UserLookupDto>.Create(items, query.Page, pageSize, total);
+    }
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly RmsDbContext _dbContext;
     private readonly IPasswordService _passwordService;
