@@ -14,6 +14,7 @@ public partial class ProjectMilestone
     public string? MilestoneCode { get; set; }
 
     public string MilestoneName { get; set; } = null!;
+    public string? MilestoneType { get; set; }
 
     public string? MilestoneDescription { get; set; }
 

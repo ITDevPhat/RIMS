@@ -86,6 +86,7 @@ export default function MocTienDoFormModal({
   const [form, setForm] = useState({
     phaseId: phases[0]?.id ?? "",
     name: "",
+    milestoneType: "other",
     assignee: "",
     plannedStartDate: "",
     plannedEndDate: "",
@@ -108,6 +109,7 @@ export default function MocTienDoFormModal({
       setForm({
         phaseId: milestone.phaseId,
         name: milestone.name,
+        milestoneType: milestone.milestoneType ?? "other",
         assignee: milestone.assignee ?? "",
         plannedStartDate: milestone.plannedStartDate,
         plannedEndDate: milestone.plannedEndDate,
@@ -127,6 +129,7 @@ export default function MocTienDoFormModal({
       setForm({
         phaseId: phases[0]?.id ?? "",
         name: "",
+        milestoneType: "other",
         assignee: "",
         plannedStartDate: "",
         plannedEndDate: "",
@@ -183,6 +186,7 @@ export default function MocTienDoFormModal({
       ...(numericProjectId ? { projectId: numericProjectId } : {}),
       phaseId: toNumberOrNull(form.phaseId),
       milestoneName: form.name.trim(),
+      milestoneType: form.milestoneType,
       description: null,
       dueDate,
       dueDatePrecision: form.deadlinePrecision,
@@ -237,6 +241,18 @@ export default function MocTienDoFormModal({
                   {p.order}. {p.name}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </FormDrawerField>
+
+        <FormDrawerField label="Phân loại mốc">
+          <Select value={form.milestoneType} onValueChange={(value) => handleChange("milestoneType", value ?? "other")}>
+            <SelectTrigger className="h-10 border-slate-200"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="proposal_preparation">Chuẩn bị đề cương</SelectItem><SelectItem value="proposal_review">Xét đề cương</SelectItem>
+              <SelectItem value="ethics_review">Xét duyệt đạo đức</SelectItem><SelectItem value="data_collection">Thu thập dữ liệu</SelectItem>
+              <SelectItem value="data_processing">Xử lý dữ liệu</SelectItem><SelectItem value="report_writing">Viết báo cáo</SelectItem>
+              <SelectItem value="acceptance">Nghiệm thu</SelectItem><SelectItem value="publication">Công bố</SelectItem><SelectItem value="other">Khác</SelectItem>
             </SelectContent>
           </Select>
         </FormDrawerField>

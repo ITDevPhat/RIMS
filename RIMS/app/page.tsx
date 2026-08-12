@@ -21,7 +21,6 @@ const QuanLyGiaiDoan = dynamic(() => import("@/components/pages/QuanLyGiaiDoan")
 const QuanLyMocTienDo = dynamic(() => import("@/components/pages/QuanLyMocTienDo"), { loading: PageLoading });
 const HanChotPage = dynamic(() => import("@/components/pages/HanChotPage"), { loading: PageLoading });
 const MangDaoTaoPage = dynamic(() => import("@/components/pages/MangDaoTaoPage"), { loading: PageLoading });
-const ThongTinCaNhan = dynamic(() => import("@/components/pages/ThongTinCaNhan"), { loading: PageLoading });
 const CaiDat = dynamic(() => import("@/components/pages/CaiDat"), { loading: PageLoading });
 const TrungTamThongBao = dynamic(() => import("@/components/pages/TrungTamThongBao"), { loading: PageLoading });
 const NhatKyHeThong = dynamic(() => import("@/components/pages/NhatKyHeThong"), { loading: PageLoading });
@@ -31,18 +30,14 @@ function AppInner() {
   const { isLoggedIn, isRestoring, logout } = useAuth();
   const [activePage, setActivePage] = useState<PageKey>("tong-quan");
   const [selectedProject, setSelectedProject] = useState<ResearchProject | null>(null);
-  const [showProfile, setShowProfile] = useState(false);
   const [projectSearch, setProjectSearch] = useState("");
 
   const handleLogout = async () => {
     await logout();
-    setShowProfile(false);
     setSelectedProject(null);
   };
 
-  const handleLoginSuccess = () => {
-    setShowProfile(false);
-  };
+  const handleLoginSuccess = () => undefined;
 
   if (isRestoring) {
     return <div className="flex min-h-screen items-center justify-center bg-slate-100 text-sm text-slate-500">Đang khôi phục phiên đăng nhập...</div>;
@@ -54,23 +49,15 @@ function AppInner() {
 
   const handleSidebarNavigate = (page: PageKey) => {
     setSelectedProject(null);
-    setShowProfile(false);
     setActivePage(page);
   };
 
   const handleViewDetail = (project: ResearchProject) => {
     setSelectedProject(project);
-    setShowProfile(false);
     setActivePage("de-tai");
   };
 
   const renderContent = () => {
-    if (showProfile) {
-      return (
-        <ThongTinCaNhan onBack={() => setShowProfile(false)} />
-      );
-    }
-
     if (activePage === "de-tai" && selectedProject) {
       return (
         <ChiTietDeTai
@@ -114,7 +101,6 @@ function AppInner() {
     <AdminLayout
       activePage={activePage}
       onNavigate={handleSidebarNavigate}
-      onOpenProfile={() => setShowProfile(true)}
       onOpenNotifications={() => handleSidebarNavigate("thong-bao")}
       onSearchProjects={(query) => { setProjectSearch(query); handleSidebarNavigate("de-tai"); }}
       onLogout={handleLogout}

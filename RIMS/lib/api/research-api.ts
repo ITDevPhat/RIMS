@@ -10,6 +10,13 @@ export interface ApiResearchProject {
   departmentName?: string | null;
   principalInvestigatorId?: number | null;
   principalInvestigatorName?: string | null;
+  principalInvestigatorEmail?: string | null;
+  registrationDate?: string | null;
+  registrationDatePrecision?: DatePrecision | null;
+  proposalReviewDate?: string | null;
+  proposalReviewDatePrecision?: DatePrecision | null;
+  acceptanceDate?: string | null;
+  acceptanceDatePrecision?: DatePrecision | null;
   sponsorId?: number | null;
   sponsorName?: string | null;
   researchType?: string | null;
@@ -67,6 +74,7 @@ export interface ApiProjectMilestone {
   phaseId?: number | null;
   phaseName?: string | null;
   milestoneName: string;
+  milestoneType?: string | null;
   description?: string | null;
   dueDate: string;
   dueDatePrecision?: DatePrecision | null;
@@ -135,6 +143,7 @@ export interface ProjectMilestonePayload {
   projectId?: number;
   phaseId?: number | null;
   milestoneName: string;
+  milestoneType?: string | null;
   description?: string | null;
   dueDate: string;
   dueDatePrecision?: DatePrecision | null;
@@ -144,6 +153,20 @@ export interface ProjectMilestonePayload {
   completedAt?: string | null;
   completedAtPrecision?: DatePrecision | null;
   notes?: string | null;
+}
+
+export interface ApiProjectMember {
+  projectMemberId: number; projectId: number; userId?: number | null; memberName: string;
+  email?: string | null; departmentId?: number | null; departmentName?: string | null;
+  memberRole: string; responsibility?: string | null; sortOrder: number; joinedAt: string;
+  leftAt?: string | null; isActive: boolean; rowVersion: number;
+}
+
+export interface ProjectMemberPayload {
+  projectId?: number; userId?: number | null; memberName?: string | null; email?: string | null;
+  departmentId?: number | null; departmentNameText?: string | null; memberRole: string;
+  responsibility?: string | null; sortOrder: number; joinedAt: string; leftAt?: string | null;
+  isActive: boolean; rowVersion?: number;
 }
 
 export const researchApi = {
@@ -177,6 +200,13 @@ export const projectMilestoneApi = {
   createMilestone: (payload: unknown) => apiClient.post<ApiProjectMilestone>("/project-milestones", payload),
   updateMilestone: (id: string | number, payload: unknown) => apiClient.put<ApiProjectMilestone>(`/project-milestones/${id}`, payload),
   deleteMilestone: (id: string | number) => apiClient.delete<null>(`/project-milestones/${id}`),
+};
+
+export const projectMemberApi = {
+  getMembers: (filters?: QueryParams) => apiClient.get<PagedResult<ApiProjectMember>>("/project-members", filters),
+  createMember: (payload: ProjectMemberPayload) => apiClient.post<ApiProjectMember>("/project-members", payload),
+  updateMember: (id: string | number, payload: ProjectMemberPayload) => apiClient.put<ApiProjectMember>(`/project-members/${id}`, payload),
+  deleteMember: (id: string | number) => apiClient.delete<null>(`/project-members/${id}`),
 };
 
 export const projectDeadlineApi = {

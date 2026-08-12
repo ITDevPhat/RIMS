@@ -58,6 +58,7 @@ export interface ResearchProject {
   department: string;      // Khoa/phòng
   principalInvestigatorId?: number | null;
   pi: string;              // Chủ nhiệm đề tài
+  principalInvestigatorEmail?: string | null;
   principalInvestigator?: string;
   managerName?: string;
   sponsorId?: number | null;
@@ -67,6 +68,12 @@ export interface ResearchProject {
   protocolVersion: string;
   ethicsStatus: EthicsStatus;
   ethicsExpiry: string | null;  // ISO date
+  registrationDate?: string | null;
+  registrationDatePrecision?: DatePrecision;
+  proposalReviewDate?: string | null;
+  proposalReviewDatePrecision?: DatePrecision;
+  acceptanceDate?: string | null;
+  acceptanceDatePrecision?: DatePrecision;
   startDate: string;
   startDatePrecision: DatePrecision;
   plannedEndDate: string;
@@ -118,6 +125,7 @@ export interface ResearchPhase {
 }
 
 export interface ResearchMilestone {
+  milestoneType?: string | null;
   id: string;
   phaseId: string;
   researchId: string;

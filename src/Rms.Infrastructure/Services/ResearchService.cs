@@ -77,6 +77,12 @@ public sealed class ResearchService : IResearchService
         var plannedEndDatePrecision = NormalizeDatePrecision(request.PlannedEndDatePrecision);
         var actualStartDatePrecision = NormalizeDatePrecision(request.ActualStartDatePrecision);
         var actualEndDatePrecision = NormalizeDatePrecision(request.ActualEndDatePrecision);
+        var registrationDatePrecision = NormalizeDatePrecision(request.RegistrationDatePrecision);
+        var proposalReviewDatePrecision = NormalizeDatePrecision(request.ProposalReviewDatePrecision);
+        var acceptanceDatePrecision = NormalizeDatePrecision(request.AcceptanceDatePrecision);
+        var pi = request.PrincipalInvestigatorId is null ? null : await _dbContext.Users.AsNoTracking().FirstOrDefaultAsync(x => x.UserId == request.PrincipalInvestigatorId && x.DeletedAt == null, cancellationToken);
+        if (request.PrincipalInvestigatorId is not null && pi is null) throw new InvalidOperationException("Không tìm thấy tài khoản chủ nhiệm đề tài.");
+        if (request.PrincipalInvestigatorId is null && string.IsNullOrWhiteSpace(request.PrincipalInvestigatorName)) throw new InvalidOperationException("Vui lòng nhập tên chủ nhiệm đề tài.");
         if (await _dbContext.ResearchProjects.AnyAsync(x => x.ProjectCode == request.ProjectCode, cancellationToken))
         {
             throw new InvalidOperationException("Project code already exists.");
@@ -89,6 +95,14 @@ public sealed class ResearchService : IResearchService
             ProjectDescription = request.Description,
             LeadDepartmentId = request.DepartmentId,
             PrincipalInvestigatorId = request.PrincipalInvestigatorId,
+            PrincipalInvestigatorName = pi?.FullName ?? request.PrincipalInvestigatorName?.Trim(),
+            PrincipalInvestigatorEmail = pi?.Email ?? request.PrincipalInvestigatorEmail?.Trim(),
+            RegistrationDate = NormalizeDateValue(request.RegistrationDate, registrationDatePrecision),
+            RegistrationDatePrecision = registrationDatePrecision,
+            ProposalReviewDate = NormalizeDateValue(request.ProposalReviewDate, proposalReviewDatePrecision),
+            ProposalReviewDatePrecision = proposalReviewDatePrecision,
+            AcceptanceDate = NormalizeDateValue(request.AcceptanceDate, acceptanceDatePrecision),
+            AcceptanceDatePrecision = acceptanceDatePrecision,
             SponsorId = request.SponsorId,
             SponsorNameText = request.SponsorName,
             ResearchType = request.ResearchType,
@@ -131,6 +145,12 @@ public sealed class ResearchService : IResearchService
         var plannedEndDatePrecision = NormalizeDatePrecision(request.PlannedEndDatePrecision);
         var actualStartDatePrecision = NormalizeDatePrecision(request.ActualStartDatePrecision);
         var actualEndDatePrecision = NormalizeDatePrecision(request.ActualEndDatePrecision);
+        var registrationDatePrecision = NormalizeDatePrecision(request.RegistrationDatePrecision);
+        var proposalReviewDatePrecision = NormalizeDatePrecision(request.ProposalReviewDatePrecision);
+        var acceptanceDatePrecision = NormalizeDatePrecision(request.AcceptanceDatePrecision);
+        var pi = request.PrincipalInvestigatorId is null ? null : await _dbContext.Users.AsNoTracking().FirstOrDefaultAsync(x => x.UserId == request.PrincipalInvestigatorId && x.DeletedAt == null, cancellationToken);
+        if (request.PrincipalInvestigatorId is not null && pi is null) throw new InvalidOperationException("Không tìm thấy tài khoản chủ nhiệm đề tài.");
+        if (request.PrincipalInvestigatorId is null && string.IsNullOrWhiteSpace(request.PrincipalInvestigatorName)) throw new InvalidOperationException("Vui lòng nhập tên chủ nhiệm đề tài.");
         var project = await _dbContext.ResearchProjects.FirstOrDefaultAsync(x => x.ProjectId == id && x.DeletedAt == null, cancellationToken);
         if (project is null) throw new NotFoundException("Research project not found.");
 
@@ -150,6 +170,14 @@ public sealed class ResearchService : IResearchService
         project.ProjectDescription = request.Description;
         project.LeadDepartmentId = request.DepartmentId;
         project.PrincipalInvestigatorId = request.PrincipalInvestigatorId;
+        project.PrincipalInvestigatorName = pi?.FullName ?? request.PrincipalInvestigatorName?.Trim();
+        project.PrincipalInvestigatorEmail = pi?.Email ?? request.PrincipalInvestigatorEmail?.Trim();
+        project.RegistrationDate = NormalizeDateValue(request.RegistrationDate, registrationDatePrecision);
+        project.RegistrationDatePrecision = registrationDatePrecision;
+        project.ProposalReviewDate = NormalizeDateValue(request.ProposalReviewDate, proposalReviewDatePrecision);
+        project.ProposalReviewDatePrecision = proposalReviewDatePrecision;
+        project.AcceptanceDate = NormalizeDateValue(request.AcceptanceDate, acceptanceDatePrecision);
+        project.AcceptanceDatePrecision = acceptanceDatePrecision;
         project.SponsorId = request.SponsorId;
         project.SponsorNameText = request.SponsorName;
         project.ResearchType = request.ResearchType;
@@ -326,6 +354,7 @@ public sealed class ResearchService : IResearchService
             ProjectId = request.ProjectId,
             PhaseId = request.PhaseId,
             MilestoneName = request.MilestoneName,
+            MilestoneType = request.MilestoneType,
             MilestoneDescription = request.Description,
             DueDate = NormalizeRequiredDateValue(request.DueDate, dueDatePrecision),
             DueDatePrecision = dueDatePrecision,
@@ -353,6 +382,7 @@ public sealed class ResearchService : IResearchService
         if (milestone is null) throw new NotFoundException("Project milestone not found.");
         milestone.PhaseId = request.PhaseId;
         milestone.MilestoneName = request.MilestoneName;
+        milestone.MilestoneType = request.MilestoneType;
         milestone.MilestoneDescription = request.Description;
         milestone.DueDate = NormalizeRequiredDateValue(request.DueDate, dueDatePrecision);
         milestone.DueDatePrecision = dueDatePrecision;
@@ -525,35 +555,53 @@ public sealed class ResearchService : IResearchService
 
     public async Task<PagedResult<ProjectMemberDto>> GetMembersAsync(PaginationQuery query, long? projectId = null, CancellationToken cancellationToken = default)
     {
-        var members = _dbContext.ProjectMembers.Include(x => x.User).AsQueryable();
+        var members = _dbContext.ProjectMembers.Include(x => x.User).Include(x => x.Department).Where(x => x.DeletedAt == null);
         if (projectId is not null) members = members.Where(x => x.ProjectId == projectId);
-        if (!string.IsNullOrWhiteSpace(query.Search)) members = members.Where(x => x.User.FullName.Contains(query.Search) || x.MemberRole.Contains(query.Search));
+        if (!string.IsNullOrWhiteSpace(query.Search)) members = members.Where(x => (x.MemberName != null && x.MemberName.Contains(query.Search)) || (x.User != null && x.User.FullName.Contains(query.Search)) || x.MemberRole.Contains(query.Search));
         var total = await members.CountAsync(cancellationToken);
-        var items = await members.OrderBy(x => x.ProjectMemberId).Skip((query.Page - 1) * query.PageSize).Take(query.PageSize).ToListAsync(cancellationToken);
+        var items = await members.OrderBy(x => x.SortOrder).ThenBy(x => x.ProjectMemberId).Skip((query.Page - 1) * query.PageSize).Take(query.PageSize).ToListAsync(cancellationToken);
         return PagedResult<ProjectMemberDto>.Create(items.Select(MapMember).ToList(), query.Page, query.PageSize, total);
     }
 
     public async Task<ProjectMemberDto> CreateMemberAsync(CreateProjectMemberRequest request, CancellationToken cancellationToken = default)
     {
-        var member = new ProjectMember { ProjectId = request.ProjectId, UserId = request.UserId, MemberRole = request.MemberRole, Responsibility = request.Responsibility, JoinedAt = request.JoinedAt, LeftAt = request.LeftAt, IsActive = request.IsActive, CreatedAt = DateTime.UtcNow, CreatedBy = _userContext.User?.UserId };
+        if (request.UserId is null && string.IsNullOrWhiteSpace(request.MemberName)) throw new InvalidOperationException("Thành viên phải có tài khoản hệ thống hoặc họ tên.");
+        var user = request.UserId is null ? null : await _dbContext.Users.Include(x => x.Department).AsNoTracking().FirstOrDefaultAsync(x => x.UserId == request.UserId && x.DeletedAt == null, cancellationToken);
+        if (request.UserId is not null && user is null) throw new InvalidOperationException("Không tìm thấy tài khoản thành viên.");
+        if (request.UserId is not null && await _dbContext.ProjectMembers.AnyAsync(x => x.ProjectId == request.ProjectId && x.UserId == request.UserId && x.DeletedAt == null, cancellationToken)) throw new InvalidOperationException("Thành viên này đã có trong đề tài.");
+        var member = new ProjectMember { ProjectId = request.ProjectId, UserId = request.UserId, MemberName = user?.FullName ?? request.MemberName?.Trim(), Email = user?.Email ?? request.Email?.Trim(), DepartmentId = user?.DepartmentId ?? request.DepartmentId, DepartmentNameText = user?.Department?.DepartmentName ?? request.DepartmentNameText?.Trim(), MemberRole = request.MemberRole, Responsibility = request.Responsibility, SortOrder = request.SortOrder, JoinedAt = request.JoinedAt, LeftAt = request.LeftAt, IsActive = request.IsActive, CreatedAt = DateTime.UtcNow, CreatedBy = _userContext.User?.UserId };
         _dbContext.ProjectMembers.Add(member);
         await _dbContext.SaveChangesAsync(cancellationToken);
         await _auditService.WriteActivityAsync("research_project", "create", $"Created project member {member.UserId}", "ProjectMember", member.ProjectMemberId, cancellationToken: cancellationToken);
         var created = await _dbContext.ProjectMembers
-            .Include(x => x.User)
+            .Include(x => x.User).Include(x => x.Department)
             .FirstAsync(x => x.ProjectMemberId == member.ProjectMemberId, cancellationToken);
         return MapMember(created);
     }
 
     public async Task<ProjectMemberDto> UpdateMemberAsync(long id, UpdateProjectMemberRequest request, CancellationToken cancellationToken = default)
     {
-        var member = await _dbContext.ProjectMembers.Include(x => x.User).FirstOrDefaultAsync(x => x.ProjectMemberId == id, cancellationToken);
+        var member = await _dbContext.ProjectMembers.Include(x => x.User).Include(x => x.Department).FirstOrDefaultAsync(x => x.ProjectMemberId == id && x.DeletedAt == null, cancellationToken);
         if (member is null) throw new NotFoundException("Project member not found.");
+        if (request.RowVersion is not null && request.RowVersion != member.RowVersion) throw new InvalidOperationException("Dữ liệu thành viên đã được thay đổi. Vui lòng tải lại.");
+        if (request.UserId is null && string.IsNullOrWhiteSpace(request.MemberName)) throw new InvalidOperationException("Thành viên phải có tài khoản hệ thống hoặc họ tên.");
+        var user = request.UserId is null ? null : await _dbContext.Users.Include(x => x.Department).AsNoTracking().FirstOrDefaultAsync(x => x.UserId == request.UserId && x.DeletedAt == null, cancellationToken);
+        if (request.UserId is not null && user is null) throw new InvalidOperationException("Không tìm thấy tài khoản thành viên.");
+        if (request.UserId is not null && await _dbContext.ProjectMembers.AnyAsync(x => x.ProjectMemberId != id && x.ProjectId == member.ProjectId && x.UserId == request.UserId && x.DeletedAt == null, cancellationToken)) throw new InvalidOperationException("Thành viên này đã có trong đề tài.");
+        member.UserId = request.UserId;
+        member.MemberName = user?.FullName ?? request.MemberName?.Trim();
+        member.Email = user?.Email ?? request.Email?.Trim();
+        member.DepartmentId = user?.DepartmentId ?? request.DepartmentId;
+        member.DepartmentNameText = user?.Department?.DepartmentName ?? request.DepartmentNameText?.Trim();
         member.MemberRole = request.MemberRole;
         member.Responsibility = request.Responsibility;
         member.JoinedAt = request.JoinedAt;
         member.LeftAt = request.LeftAt;
         member.IsActive = request.IsActive;
+        member.SortOrder = request.SortOrder;
+        member.UpdatedAt = DateTime.UtcNow;
+        member.UpdatedBy = _userContext.User?.UserId;
+        member.RowVersion++;
         await _dbContext.SaveChangesAsync(cancellationToken);
         await _auditService.WriteActivityAsync("research_project", "update", $"Updated project member {member.UserId}", "ProjectMember", member.ProjectMemberId, cancellationToken: cancellationToken);
         return MapMember(member);
@@ -561,9 +609,12 @@ public sealed class ResearchService : IResearchService
 
     public async Task DeleteMemberAsync(long id, CancellationToken cancellationToken = default)
     {
-        var member = await _dbContext.ProjectMembers.FirstOrDefaultAsync(x => x.ProjectMemberId == id, cancellationToken);
+        var member = await _dbContext.ProjectMembers.FirstOrDefaultAsync(x => x.ProjectMemberId == id && x.DeletedAt == null, cancellationToken);
         if (member is null) throw new NotFoundException("Project member not found.");
         member.IsActive = false;
+        member.DeletedAt = DateTime.UtcNow;
+        member.DeletedBy = _userContext.User?.UserId;
+        member.RowVersion++;
         await _dbContext.SaveChangesAsync(cancellationToken);
         await _auditService.WriteActivityAsync("research_project", "delete", $"Disabled project member {member.UserId}", "ProjectMember", member.ProjectMemberId, cancellationToken: cancellationToken);
     }
@@ -669,11 +720,11 @@ public sealed class ResearchService : IResearchService
     private static ResearchProjectDto MapProject(ResearchProject project)
     {
         var nearestDeadline = project.ProjectDeadlines.Where(x => x.DeletedAt == null && x.DeadlineStatus != "completed").OrderBy(x => x.DueDate).FirstOrDefault();
-        return new ResearchProjectDto(project.ProjectId, project.ProjectCode, project.ProjectTitle, project.ProjectDescription, project.LeadDepartmentId, project.LeadDepartment?.DepartmentName, project.PrincipalInvestigatorId, project.PrincipalInvestigator?.FullName, project.SponsorId, project.Sponsor?.SponsorName ?? project.SponsorNameText, project.ResearchType, project.ProtocolNumber, project.ProtocolVersion, project.EthicsStatus, project.EthicsApprovalDate, project.EthicsExpiryDate, project.PlannedStartDate, NormalizeDatePrecision(project.PlannedStartDatePrecision), project.PlannedEndDate, NormalizeDatePrecision(project.PlannedEndDatePrecision), project.ActualStartDate, NormalizeDatePrecision(project.ActualStartDatePrecision), project.ActualEndDate, NormalizeDatePrecision(project.ActualEndDatePrecision), project.CurrentPhaseName, project.ProgressPercent, project.ProjectStatus, project.RiskLevel, nearestDeadline?.DueDate, NormalizeDatePrecision(nearestDeadline?.DueDatePrecision), project.Notes);
+        return new ResearchProjectDto(project.ProjectId, project.ProjectCode, project.ProjectTitle, project.ProjectDescription, project.LeadDepartmentId, project.LeadDepartment?.DepartmentName, project.PrincipalInvestigatorId, project.PrincipalInvestigatorName ?? project.PrincipalInvestigator?.FullName, project.PrincipalInvestigatorEmail ?? project.PrincipalInvestigator?.Email, project.SponsorId, project.Sponsor?.SponsorName ?? project.SponsorNameText, project.ResearchType, project.ProtocolNumber, project.ProtocolVersion, project.EthicsStatus, project.EthicsApprovalDate, project.EthicsExpiryDate, project.RegistrationDate, NormalizeDatePrecision(project.RegistrationDatePrecision), project.ProposalReviewDate, NormalizeDatePrecision(project.ProposalReviewDatePrecision), project.AcceptanceDate, NormalizeDatePrecision(project.AcceptanceDatePrecision), project.PlannedStartDate, NormalizeDatePrecision(project.PlannedStartDatePrecision), project.PlannedEndDate, NormalizeDatePrecision(project.PlannedEndDatePrecision), project.ActualStartDate, NormalizeDatePrecision(project.ActualStartDatePrecision), project.ActualEndDate, NormalizeDatePrecision(project.ActualEndDatePrecision), project.CurrentPhaseName, project.ProgressPercent, project.ProjectStatus, project.RiskLevel, nearestDeadline?.DueDate, NormalizeDatePrecision(nearestDeadline?.DueDatePrecision), project.Notes);
     }
 
     private static ProjectPhaseDto MapPhase(ProjectPhase phase) => new(phase.PhaseId, phase.ProjectId, phase.Project.ProjectCode, phase.Project.ProjectTitle, phase.PhaseName, phase.PhaseDescription, phase.OwnerUserId, phase.OwnerUser?.FullName, phase.PlannedStartDate, NormalizeDatePrecision(phase.PlannedStartDatePrecision), phase.PlannedEndDate, NormalizeDatePrecision(phase.PlannedEndDatePrecision), phase.DeadlineDate, NormalizeDatePrecision(phase.DeadlineDatePrecision), phase.ActualStartDate, NormalizeDatePrecision(phase.ActualStartDatePrecision), phase.ActualEndDate, NormalizeDatePrecision(phase.ActualEndDatePrecision), phase.ProgressPercent, phase.PhaseStatus, phase.Notes, phase.SortOrder);
-    private static ProjectMilestoneDto MapMilestone(ProjectMilestone milestone) => new(milestone.MilestoneId, milestone.ProjectId, milestone.Project.ProjectCode, milestone.Project.ProjectTitle, milestone.PhaseId, milestone.Phase?.PhaseName, milestone.MilestoneName, milestone.MilestoneDescription, milestone.DueDate, NormalizeDatePrecision(milestone.DueDatePrecision), milestone.OwnerUserId, milestone.OwnerUser?.FullName, milestone.MilestoneStatus, milestone.PriorityLevel, milestone.CompletedDate, NormalizeDatePrecision(milestone.CompletedDatePrecision), milestone.Notes);
+    private static ProjectMilestoneDto MapMilestone(ProjectMilestone milestone) => new(milestone.MilestoneId, milestone.ProjectId, milestone.Project.ProjectCode, milestone.Project.ProjectTitle, milestone.PhaseId, milestone.Phase?.PhaseName, milestone.MilestoneName, milestone.MilestoneType, milestone.MilestoneDescription, milestone.DueDate, NormalizeDatePrecision(milestone.DueDatePrecision), milestone.OwnerUserId, milestone.OwnerUser?.FullName, milestone.MilestoneStatus, milestone.PriorityLevel, milestone.CompletedDate, NormalizeDatePrecision(milestone.CompletedDatePrecision), milestone.Notes);
 
     private static ProjectDeadlineDto MapDeadline(ProjectDeadline deadline)
     {
@@ -685,6 +736,6 @@ public sealed class ResearchService : IResearchService
     }
 
     private static SponsorDto MapSponsor(Sponsor sponsor) => new(sponsor.SponsorId, sponsor.SponsorCode, sponsor.SponsorName, sponsor.SponsorType, sponsor.IsActive);
-    private static ProjectMemberDto MapMember(ProjectMember member) => new(member.ProjectMemberId, member.ProjectId, member.UserId, member.User.FullName, member.MemberRole, member.Responsibility, member.JoinedAt, member.LeftAt, member.IsActive);
+    private static ProjectMemberDto MapMember(ProjectMember member) => new(member.ProjectMemberId, member.ProjectId, member.UserId, member.MemberName ?? member.User?.FullName ?? "", member.Email ?? member.User?.Email, member.DepartmentId, member.DepartmentNameText ?? member.Department?.DepartmentName, member.MemberRole, member.Responsibility, member.SortOrder, member.JoinedAt, member.LeftAt, member.IsActive, member.RowVersion);
     private static ProjectDocumentDto MapDocument(ProjectDocument document) => new(document.DocumentId, document.ProjectId, document.PhaseId, document.MilestoneId, document.DocumentType, document.DocumentTitle, document.FileName, document.FileUrl, document.FileSizeBytes, document.MimeType, document.VersionLabel, document.UploadedAt, document.UploadedBy);
 }

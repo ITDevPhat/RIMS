@@ -39,6 +39,12 @@ public sealed class AuthController : ApiControllerBase
         return ServiceResponse(await _authService.GetMeAsync(cancellationToken));
     }
 
+    [HttpPatch("me")]
+    public async Task<IActionResult> UpdateMe(UpdateMyProfileRequest request, CancellationToken cancellationToken)
+    {
+        return ServiceResponse(await _authService.UpdateMeAsync(request, cancellationToken));
+    }
+
     [HttpPost("change-password")]
     public async Task<IActionResult> ChangePassword(ChangePasswordRequest request, CancellationToken cancellationToken)
     {
