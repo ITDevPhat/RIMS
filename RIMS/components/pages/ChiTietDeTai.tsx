@@ -13,7 +13,7 @@ import PhaseFormModal from "@/components/modals/PhaseFormModal";
 import DeTaiFormModal, { type DeTaiFormData } from "@/components/modals/DeTaiFormModal";
 import { buildProjectPayload } from "@/components/pages/DeTaiList";
 import { auditApi, type ApiAuditLog } from "@/lib/api/audit-api";
-import { projectDeadlineApi, projectMilestoneApi, projectPhaseApi, researchApi } from "@/lib/api/research-api";
+import { projectDeadlineApi, projectMemberApi, projectMilestoneApi, projectPhaseApi, researchApi, type ApiProjectMember } from "@/lib/api/research-api";
 import type { ProjectPhasePayload } from "@/lib/api/research-api";
 import { mapApiDeadlineToUi } from "@/lib/mappers/deadline-mapper";
 import { mapApiMilestoneToUi } from "@/lib/mappers/milestone-mapper";
@@ -120,6 +120,7 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
   const [phases, setPhases] = useState<ResearchPhase[]>([]);
   const [milestones, setMilestones] = useState<ResearchMilestone[]>([]);
   const [deadlines, setDeadlines] = useState<DeadlineItem[]>([]);
+  const [members, setMembers] = useState<ApiProjectMember[]>([]);
   const [activityLog, setActivityLog] = useState<ApiAuditLog[]>([]);
   const [departments, setDepartments] = useState<ApiDepartment[]>([]);
   const [detailLoading, setDetailLoading] = useState(true);
@@ -139,11 +140,12 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
     setDetailLoading(true);
     setDetailError("");
     try {
-      const [projectResult, phaseResult, milestoneResult, deadlineResult, auditResult, departmentResult] = await Promise.all([
+      const [projectResult, phaseResult, milestoneResult, deadlineResult, memberResult, auditResult, departmentResult] = await Promise.all([
         researchApi.getProject(project.id),
         projectPhaseApi.getPhases({ pageSize: 100, projectId: project.id }),
         projectMilestoneApi.getMilestones({ pageSize: 100, projectId: project.id }),
         projectDeadlineApi.getDeadlines({ pageSize: 100, projectId: project.id }),
+        projectMemberApi.getMembers({ pageSize: 100, projectId: project.id }),
         auditApi.getAuditLogs({ pageSize: 20, moduleCode: "research_project", entityType: "ResearchProject", entityId: project.id }),
         adminApi.getDepartments({ pageSize: 200, isActive: true }),
       ]);
@@ -151,6 +153,7 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
       setPhases(phaseResult.items.map(mapApiPhaseToUi));
       setMilestones(milestoneResult.items.map((item, index) => mapApiMilestoneToUi(item, index + 1)));
       setDeadlines(deadlineResult.items.map(mapApiDeadlineToUi));
+      setMembers(memberResult.items);
       setActivityLog(auditResult.items);
       setDepartments(departmentResult.items);
     } catch (error) {
@@ -159,6 +162,7 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
       setPhases([]);
       setMilestones([]);
       setDeadlines([]);
+      setMembers([]);
       setActivityLog([]);
       setDepartments([]);
     } finally {
@@ -356,6 +360,11 @@ export default function ChiTietDeTai({ project, onBack, onNavigate }: ChiTietDeT
                   </InfoRow>
                   <InfoRow label="Khoa/phòng chủ trì">{currentProject.department}</InfoRow>
                   <InfoRow label="Chủ nhiệm đề tài">{currentProject.pi}</InfoRow>
+                  <InfoRow label="Email chủ nhiệm">{currentProject.principalInvestigatorEmail || "—"}</InfoRow>
+                  <InfoRow label="Ngày đăng ký">{formatProjectDate(currentProject.registrationDate, currentProject.registrationDatePrecision)}</InfoRow>
+                  <InfoRow label="Ngày xét đề cương">{formatProjectDate(currentProject.proposalReviewDate, currentProject.proposalReviewDatePrecision)}</InfoRow>
+                  <InfoRow label="Ngày nghiệm thu">{formatProjectDate(currentProject.acceptanceDate, currentProject.acceptanceDatePrecision)}</InfoRow>
+                  <InfoRow label="Cộng sự / Thành viên">{members.length ? <div className="space-y-1">{members.map(member => <div key={member.projectMemberId}><span>{member.memberName}</span>{member.departmentName && <span className="ml-2 text-slate-500">— {member.departmentName}</span>}</div>)}</div> : "Chưa có thành viên"}</InfoRow>
                   <InfoRow label="Nhà tài trợ">{currentProject.sponsor}</InfoRow>
                   <InfoRow label="Loại nghiên cứu">{currentProject.researchType}</InfoRow>
                   <InfoRow label="Mã đề cương">

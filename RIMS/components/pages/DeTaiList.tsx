@@ -27,7 +27,7 @@ import {
 import type { ResearchProject, EthicsStatus, ProjectHealth } from "@/lib/types";
 import { Search, Plus, Eye, Pencil, Trash2, Filter, ArrowUpDown } from "lucide-react";
 import DeTaiFormModal, { type DeTaiFormData } from "@/components/modals/DeTaiFormModal";
-import { researchApi } from "@/lib/api/research-api";
+import { projectMemberApi, researchApi } from "@/lib/api/research-api";
 import { adminApi, type ApiDepartment } from "@/lib/api/admin-api";
 import { mapApiProjectToUi } from "@/lib/mappers/project-mapper";
 import { ConfirmationDialog } from "@/components/common/ConfirmationDialog";
@@ -148,6 +148,14 @@ export function buildProjectPayload(data: DeTaiFormData, existing?: ResearchProj
     description: data.description.trim() || null,
     departmentId: Number.isFinite(departmentId) && departmentId > 0 ? departmentId : null,
     principalInvestigatorId: existing?.principalInvestigatorId ?? null,
+    principalInvestigatorName: data.pi.trim(),
+    principalInvestigatorEmail: data.piEmail.trim() || null,
+    registrationDate: data.registrationDate || null,
+    registrationDatePrecision: data.registrationDatePrecision,
+    proposalReviewDate: data.proposalReviewDate || null,
+    proposalReviewDatePrecision: data.proposalReviewDatePrecision,
+    acceptanceDate: data.acceptanceDate || null,
+    acceptanceDatePrecision: data.acceptanceDatePrecision,
     sponsorId: existing?.sponsorId ?? null,
     sponsorName: data.sponsor.trim() || null,
     researchType: data.type || null,
@@ -271,9 +279,14 @@ export default function DeTaiList({ onViewDetail, initialSearch = "" }: DeTaiLis
   const handleCreateProject = async (data: DeTaiFormData) => {
     setActionError("");
     try {
-      await researchApi.createProject({
+      const created = await researchApi.createProject({
         ...buildProjectPayload(data),
       });
+      await Promise.all(data.collaborators.filter(member => member.memberName.trim()).map((member, index) => projectMemberApi.createMember({
+        projectId: created.projectId, userId: null, memberName: member.memberName.trim(), email: member.email.trim() || null,
+        departmentId: null, departmentNameText: member.departmentNameText.trim() || null, memberRole: "collaborator",
+        responsibility: null, sortOrder: index, joinedAt: new Date().toISOString().slice(0, 10), leftAt: null, isActive: true,
+      })));
       toast.success({ title: "Đã thêm đề tài", description: data.code.trim() });
       await loadProjects();
     } catch (createError) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, CalendarDays, ClipboardList, FileText, Hospital, Save } from "lucide-react";
+import { AlertCircle, CalendarDays, ClipboardList, FileText, Hospital, Plus, Save, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { DEPARTMENTS, SPONSORS } from "@/lib/constants/research";
+import { SPONSORS } from "@/lib/constants/research";
 import { PrecisionDateInput } from "@/components/common/DateInput";
 import type { ApiDepartment } from "@/lib/api/admin-api";
 import { projectPhaseApi, type ApiProjectPhase } from "@/lib/api/research-api";
@@ -25,6 +25,10 @@ export interface DeTaiFormData {
   departmentId: string;
   department: string;
   pi: string;
+  piEmail: string;
+  registrationDate: string; registrationDatePrecision: DatePrecision;
+  proposalReviewDate: string; proposalReviewDatePrecision: DatePrecision;
+  acceptanceDate: string; acceptanceDatePrecision: DatePrecision;
   sponsor: string;
   type: string;
   protocolNumber: string;
@@ -40,6 +44,7 @@ export interface DeTaiFormData {
   progress: string;
   currentPhase: string;
   notes: string;
+  collaborators: Array<{ memberName: string; email: string; departmentNameText: string }>;
 }
 
 interface DeTaiFormModalProps {
@@ -62,6 +67,10 @@ const emptyForm: DeTaiFormData = {
   departmentId: "",
   department: "",
   pi: "",
+  piEmail: "",
+  registrationDate: "", registrationDatePrecision: "DAY",
+  proposalReviewDate: "", proposalReviewDatePrecision: "DAY",
+  acceptanceDate: "", acceptanceDatePrecision: "DAY",
   sponsor: "",
   type: "Khác",
   protocolNumber: "",
@@ -77,6 +86,7 @@ const emptyForm: DeTaiFormData = {
   progress: "0",
   currentPhase: "",
   notes: "",
+  collaborators: [],
 };
 
 function fromProject(project?: ResearchProject | null): DeTaiFormData {
@@ -88,6 +98,10 @@ function fromProject(project?: ResearchProject | null): DeTaiFormData {
     departmentId: project.departmentId ? String(project.departmentId) : "",
     department: project.department === "Chưa phân khoa" ? "" : project.department,
     pi: project.pi === "Chưa phân công" ? "" : project.pi,
+    piEmail: project.principalInvestigatorEmail ?? "",
+    registrationDate: project.registrationDate ?? "", registrationDatePrecision: project.registrationDatePrecision ?? "DAY",
+    proposalReviewDate: project.proposalReviewDate ?? "", proposalReviewDatePrecision: project.proposalReviewDatePrecision ?? "DAY",
+    acceptanceDate: project.acceptanceDate ?? "", acceptanceDatePrecision: project.acceptanceDatePrecision ?? "DAY",
     sponsor: project.sponsor === "Chưa có" ? "" : project.sponsor,
     type: project.researchType || "Khác",
     protocolNumber: project.protocolNumber ?? "",
@@ -103,6 +117,7 @@ function fromProject(project?: ResearchProject | null): DeTaiFormData {
     progress: String(project.progress ?? 0),
     currentPhase: project.currentPhase ?? "Chưa bắt đầu",
     notes: "",
+    collaborators: [],
   };
 }
 
@@ -168,16 +183,7 @@ const departmentOptions = useMemo(() => {
 
   if (active.length > 0) return active;
 
-  return DEPARTMENTS
-    .filter((item) => item !== "Tất cả")
-    .map((name, index) => ({
-      departmentId: -(index + 1),
-      departmentCode: name.toUpperCase().replace(/\s+/g, "_"),
-      departmentName: name,
-      isActive: true,
-      sortOrder: index + 1,
-      createdAt: "",
-    } satisfies ApiDepartment));
+  return [];
 }, [departments]);
 
 const selectedDepartment = useMemo(
@@ -346,6 +352,7 @@ const hasCurrentPhaseOption = phaseOptions.some(
                   <Field label="Chủ nhiệm đề tài" required error={errors.pi}>
                     <Input value={formData.pi} onChange={(e) => handleChange("pi", e.target.value)} placeholder="VD: TS. Nguyễn Minh Anh" />
                   </Field>
+                  <Field label="Email chủ nhiệm"><Input type="email" value={formData.piEmail} onChange={(e) => handleChange("piEmail", e.target.value)} placeholder="email@example.com" /></Field>
                   <Field label="Nhà tài trợ/nguồn kinh phí">
                     <Select value={formData.sponsor} onValueChange={(value) => handleChange("sponsor", value ?? "")}>
                       <SelectTrigger><SelectValue placeholder="Chọn nguồn kinh phí" /></SelectTrigger>
@@ -357,6 +364,9 @@ const hasCurrentPhaseOption = phaseOptions.some(
 <section className="rounded-lg border border-slate-200 bg-white p-4">
                 <SectionTitle icon={<CalendarDays className="h-4 w-4" />} title="Tiến độ" />
                 <div className="grid gap-4 sm:grid-cols-2">
+                  <PrecisionDateInput label="Ngày đăng ký" value={formData.registrationDate} precision={formData.registrationDatePrecision} onValueChange={(value) => handleChange("registrationDate", value)} onPrecisionChange={(precision) => handlePrecisionChange("registrationDatePrecision", precision)} />
+                  <PrecisionDateInput label="Ngày xét đề cương" value={formData.proposalReviewDate} precision={formData.proposalReviewDatePrecision} onValueChange={(value) => handleChange("proposalReviewDate", value)} onPrecisionChange={(precision) => handlePrecisionChange("proposalReviewDatePrecision", precision)} />
+                  <PrecisionDateInput label="Ngày nghiệm thu đề tài" value={formData.acceptanceDate} precision={formData.acceptanceDatePrecision} onValueChange={(value) => handleChange("acceptanceDate", value)} onPrecisionChange={(precision) => handlePrecisionChange("acceptanceDatePrecision", precision)} />
                   <PrecisionDateInput
                     label="Ngày bắt đầu"
                     required
@@ -432,6 +442,17 @@ const hasCurrentPhaseOption = phaseOptions.some(
                     </Select>
                   </Field>
                 </div>
+              </section>
+
+              <section className="rounded-lg border border-slate-200 bg-white p-4 lg:col-span-2">
+                <SectionTitle icon={<Hospital className="h-4 w-4" />} title="Cộng sự ngoài hệ thống" />
+                <div className="space-y-3">{formData.collaborators.map((member, index) => <div key={index} className="grid gap-2 rounded-lg border border-slate-200 p-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
+                  <Input aria-label="Họ tên cộng sự" placeholder="Họ tên cộng sự" value={member.memberName} onChange={e => setFormData(prev => ({ ...prev, collaborators: prev.collaborators.map((item, i) => i === index ? { ...item, memberName: e.target.value } : item) }))} />
+                  <Input aria-label="Email cộng sự" placeholder="Email (không bắt buộc)" value={member.email} onChange={e => setFormData(prev => ({ ...prev, collaborators: prev.collaborators.map((item, i) => i === index ? { ...item, email: e.target.value } : item) }))} />
+                  <Input aria-label="Đơn vị cộng sự" placeholder="Khoa/phòng hoặc đơn vị" value={member.departmentNameText} onChange={e => setFormData(prev => ({ ...prev, collaborators: prev.collaborators.map((item, i) => i === index ? { ...item, departmentNameText: e.target.value } : item) }))} />
+                  <Button type="button" variant="outline" aria-label="Xóa cộng sự" onClick={() => setFormData(prev => ({ ...prev, collaborators: prev.collaborators.filter((_, i) => i !== index) }))}><X className="h-4 w-4" /></Button>
+                </div>)}</div>
+                <Button type="button" variant="outline" className="mt-3 gap-2" onClick={() => setFormData(prev => ({ ...prev, collaborators: [...prev.collaborators, { memberName: "", email: "", departmentNameText: "" }] }))}><Plus className="h-4 w-4" />Thêm cộng sự</Button>
               </section>
 
               
